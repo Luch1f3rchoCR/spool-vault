@@ -12,11 +12,14 @@ Incluye:
 - compras por proveedor con precio histórico inmutable;
 - separación entre precio total, costo reutilizable del spool y costo consumible por gramo;
 - inventario de spools numerados, vacíos y en uso;
-- asignación y liberación de spools para filamentos ya registrados;
+- edición, asignación, liberación, inactivación y reactivación de spools;
+- actualización rápida por balanza usando peso total menos tara;
 - costo de cada consumo calculado con el rollo realmente utilizado;
 - QR por rollo;
 - lectura/escritura NFC con Web NFC cuando el celular/navegador lo soporte;
 - modo demo local si Supabase todavía no está configurado.
+
+El estado de implementación y los próximos bloques están en [`ROADMAP.md`](./ROADMAP.md).
 
 ## NFC
 

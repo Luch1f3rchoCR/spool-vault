@@ -196,6 +196,8 @@ export default function Home() {
   const [signedInEmail, setSignedInEmail] = useState("");
   const [authVersion, setAuthVersion] = useState(0);
   const [nfcNote, setNfcNote] = useState("");
+  const [measuredTotalWeight, setMeasuredTotalWeight] = useState("");
+  const [weighingTare, setWeighingTare] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [dataMode, setDataMode] = useState<DataMode>("demo");
 
@@ -657,17 +659,14 @@ export default function Home() {
     formElement.reset();
   }
 
-  async function adjustAvailableWeight(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function saveAvailableWeight(availableWeight: number, successNote: string) {
     if (!selectedRoll) return;
     activateLocalMode();
 
-    const form = new FormData(event.currentTarget);
-    const availableWeight = Math.min(
-      Number(selectedRoll.initial_weight_g),
-      Math.max(0, parseNumber(form.get("available_weight_g"), selectedRoll.available_weight_g))
-    );
-    const status = normalizeStatus(availableWeight, selectedRoll.low_threshold_g, selectedRoll.status);
+    const currentStatus = availableWeight < Number(selectedRoll.initial_weight_g) && selectedRoll.status === "new"
+      ? "open"
+      : selectedRoll.status;
+    const status = normalizeStatus(availableWeight, selectedRoll.low_threshold_g, currentStatus);
 
     if (usingSupabase && supabase) {
       const { data, error } = await supabase
@@ -685,7 +684,7 @@ export default function Home() {
       setRolls((current) =>
         current.map((roll) => (roll.id === selectedRoll.id ? (data as FilamentRoll) : roll))
       );
-      setSyncNote("Peso actualizado en Supabase");
+      setSyncNote(successNote);
       return;
     }
 
@@ -696,7 +695,45 @@ export default function Home() {
           : roll
       )
     );
-    setSyncNote("Peso actualizado en el inventario local");
+    setSyncNote(successNote);
+  }
+
+  async function adjustAvailableWeight(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedRoll) return;
+    const form = new FormData(event.currentTarget);
+    const availableWeight = Math.min(
+      Number(selectedRoll.initial_weight_g),
+      Math.max(0, parseNumber(form.get("available_weight_g"), selectedRoll.available_weight_g))
+    );
+    await saveAvailableWeight(
+      availableWeight,
+      usingSupabase ? "Peso actualizado en Supabase" : "Peso actualizado en el inventario local"
+    );
+  }
+
+  async function adjustFromMeasuredWeight(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedRoll) return;
+    const form = new FormData(event.currentTarget);
+    const totalWeight = parseNumber(form.get("measured_total_weight_g"), -1);
+    const tareWeight = parseNumber(form.get("tare_weight_g"), -1);
+    const calculatedWeight = Math.round((totalWeight - tareWeight) * 100) / 100;
+
+    if (totalWeight < 0 || tareWeight < 0 || calculatedWeight < 0) {
+      setSyncNote("Revisá el peso total y la tara: el resultado no puede ser negativo.");
+      return;
+    }
+    if (calculatedWeight > Number(selectedRoll.initial_weight_g)) {
+      setSyncNote(`El resultado supera los ${selectedRoll.initial_weight_g} g nominales del rollo. Revisá la tara.`);
+      return;
+    }
+
+    await saveAvailableWeight(
+      calculatedWeight,
+      `Balanza: ${totalWeight} g − tara ${tareWeight} g = ${calculatedWeight} g disponibles`
+    );
+    setMeasuredTotalWeight("");
   }
 
   async function addSpool(event: React.FormEvent<HTMLFormElement>) {
@@ -984,9 +1021,20 @@ export default function Home() {
   const selectedSpool = selectedRoll?.spool_id
     ? spools.find((spool) => spool.id === selectedRoll.spool_id)
     : undefined;
+  const suggestedTare = selectedSpool?.tare_weight_g != null
+    ? Number(selectedSpool.tare_weight_g) + (selectedRoll?.brand === "Bambu Lab" ? 41 : 0)
+    : selectedRoll?.brand === "Bambu Lab" ? 254 : null;
+  const measuredRemaining = measuredTotalWeight !== "" && weighingTare !== ""
+    ? Math.round((Number(measuredTotalWeight) - Number(weighingTare)) * 100) / 100
+    : null;
   const selectedCostPerGram = selectedRoll?.filament_cost_amount && selectedRoll.initial_weight_g
     ? Number(selectedRoll.filament_cost_amount) / Number(selectedRoll.initial_weight_g)
     : null;
+
+  useEffect(() => {
+    setMeasuredTotalWeight("");
+    setWeighingTare(suggestedTare == null ? "" : String(suggestedTare));
+  }, [selectedRoll?.id, suggestedTare]);
 
   if (isLoading) {
     return (
@@ -1632,9 +1680,55 @@ export default function Home() {
 
             {selectedRoll.drying_notes && <p className="notes">{selectedRoll.drying_notes}</p>}
 
-            <form className="consume-form" id="quick-weigh" onSubmit={adjustAvailableWeight}>
-              <h3>Ajustar peso disponible</h3>
-              <div className="inline-fields">
+            <form className="consume-form weighing-form" id="quick-weigh" onSubmit={adjustFromMeasuredWeight}>
+              <h3>Actualizar con balanza</h3>
+              <p className="form-help">Ingresá el peso completo. Restamos la tara antes de guardar el filamento disponible.</p>
+              <div className="weighing-fields">
+                <label>
+                  Peso total medido
+                  <input
+                    name="measured_total_weight_g"
+                    required
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Ej. 469"
+                    value={measuredTotalWeight}
+                    onChange={(event) => setMeasuredTotalWeight(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Tara usada
+                  <input
+                    name="tare_weight_g"
+                    required
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Ej. 254"
+                    value={weighingTare}
+                    onChange={(event) => setWeighingTare(event.target.value)}
+                  />
+                </label>
+              </div>
+              {selectedRoll.brand === "Bambu Lab" && (
+                <p className="tare-hint">Referencia Bambu: 213 g del spool + 41 g del cartón/NFC = 254 g. Podés corregirla si tu montaje es distinto.</p>
+              )}
+              <div className={measuredRemaining != null && measuredRemaining < 0 ? "weighing-result invalid" : "weighing-result"}>
+                <span>Filamento calculado</span>
+                <strong>{measuredRemaining == null ? "—" : `${measuredRemaining.toLocaleString("es-CR")} g`}</strong>
+                <small>Peso total − tara</small>
+              </div>
+              <button className="primary-action" type="submit" disabled={measuredRemaining == null || measuredRemaining < 0}>
+                <Weight size={18} aria-hidden="true" />
+                Guardar peso calculado
+              </button>
+            </form>
+
+            <details className="manual-weight">
+              <summary>Ajuste manual de gramos</summary>
+              <form className="consume-form" onSubmit={adjustAvailableWeight}>
+                <div className="inline-fields">
                 <input
                   key={`${selectedRoll.id}-${selectedRoll.available_weight_g}`}
                   name="available_weight_g"
@@ -1650,8 +1744,9 @@ export default function Home() {
                   <Weight size={18} aria-hidden="true" />
                   Actualizar gramos
                 </button>
-              </div>
-            </form>
+                </div>
+              </form>
+            </details>
 
             <form className="consume-form" onSubmit={recordConsumption}>
               <h3>Registrar consumo</h3>

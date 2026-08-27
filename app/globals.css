@@ -998,6 +998,71 @@ textarea:focus {
   margin-top: 14px;
 }
 
+.form-help,
+.tare-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.weighing-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weighing-fields label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.weighing-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(47, 125, 95, 0.25);
+  border-radius: 9px;
+  color: var(--accent-dark);
+  background: rgba(47, 125, 95, 0.08);
+}
+
+.weighing-result strong {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  font-size: 1.18rem;
+}
+
+.weighing-result small {
+  color: var(--muted);
+}
+
+.weighing-result.invalid {
+  border-color: rgba(184, 55, 42, 0.28);
+  color: var(--danger);
+  background: rgba(184, 55, 42, 0.08);
+}
+
+.manual-weight {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 253, 248, 0.55);
+}
+
+.manual-weight summary {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .inline-fields {
   display: grid;
   grid-template-columns: 0.75fr 1fr;
@@ -1465,6 +1530,10 @@ textarea:focus {
 
   .spool-item-status {
     text-align: left;
+  }
+
+  .weighing-fields {
+    grid-template-columns: 1fr;
   }
 
   .history-list article {
