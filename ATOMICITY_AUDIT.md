@@ -15,14 +15,14 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Asignar spool a rollo | Atómico | Bajo | Mantener la función transaccional y sus bloqueos de filas. |
 | Liberar spool | Atómico | Bajo | Mantener la función transaccional. |
 | Inactivar/reactivar spool | Atómico | Bajo | Mantener la función transaccional y validaciones. |
-| Registrar consumo y descontar gramos | Atómico en base de datos | Medio | Agregar idempotencia y bloqueo del botón para evitar consumos duplicados. |
+| Registrar consumo y descontar gramos | Atómico e idempotente | Bajo | Mantener la función transaccional y probar reintentos en cada cambio del flujo. |
 | Agregar spool vacío | Una sola escritura | Medio | Agregar idempotencia y estado de envío en la UI. |
 | Editar spool | Una sola escritura | Bajo | Mantener validaciones y mostrar estado pendiente. |
-| Agregar rollo, proveedor e historial de compra | No atómico | Alto | Reemplazar las solicitudes separadas por una función transaccional. |
+| Agregar rollo, proveedor e historial de compra | Atómico e idempotente | Bajo | Mantener la función `create_roll_with_purchase` como único punto de escritura del formulario. |
 | Guardar pesaje actual | Una sola actualización | Medio | Al introducir historial, guardar medición y saldo juntos en una función transaccional. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Para reportes financieros, usar una vista o función que produzca una lectura consistente. |
 
-La revisión de producción no encontró actualmente compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La prioridad es prevenir inconsistencias futuras sin modificar los registros reales existentes.
+La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
 
 ## Riesgos transversales
 
@@ -78,11 +78,12 @@ Mensajes recomendados:
 
 ### Fase 0 — Cerrar los riesgos actuales
 
-1. Crear una operación atómica e idempotente para proveedor + rollo + historial de compra.
-2. Incorporar idempotencia en consumos y altas.
-3. Agregar estados pendientes y protección contra doble envío en la UI.
-4. Cerrar permisos innecesarios de funciones internas y agregar índices de relaciones.
-5. Probar RLS, reversión completa, reintentos y compilación.
+1. [Completado] Crear una operación atómica e idempotente para proveedor + rollo + historial de compra.
+2. [Completado] Incorporar idempotencia en consumos y altas.
+3. [Completado] Agregar estados pendientes y protección contra doble envío en esos flujos.
+4. [Completado] Cerrar permisos innecesarios de funciones internas y agregar índices de relaciones.
+5. [Completado] Probar RLS, reversión completa, reintentos y compilación.
+6. [Pendiente] Extender el mismo contrato al catálogo de spools y al historial de pesajes.
 
 ### Fase 1 — Tara y pesajes históricos
 

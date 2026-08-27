@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
   AlertTriangle,
@@ -43,6 +43,17 @@ const LOCAL_PURCHASES_KEY = "spool-vault-purchases";
 
 type DataMode = "authenticated" | "demo" | "local" | "error";
 type SpoolMutationResult = { roll: FilamentRoll | null; spool: Spool };
+type AtomicRollCreationResult = {
+  roll: FilamentRoll;
+  supplier: Supplier | null;
+  purchase: PurchaseRecord | null;
+  replayed: boolean;
+};
+type ConsumptionMutationResult = {
+  roll: FilamentRoll;
+  log: ConsumptionLog;
+  replayed: boolean;
+};
 
 const brandOptions = ["Bambu Lab", "Pritonic", "Genérico", "Creality", "Polymaker", "eSUN"];
 const materialOptions = ["PLA", "PETG", "ABS", "ASA", "TPU", "PA", "PC", "Resina"];
@@ -200,6 +211,11 @@ export default function Home() {
   const [weighingTare, setWeighingTare] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [dataMode, setDataMode] = useState<DataMode>("demo");
+  const [isAddingRoll, setIsAddingRoll] = useState(false);
+  const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
+  const [isSavingWeight, setIsSavingWeight] = useState(false);
+  const addRollRequestId = useRef<string | null>(null);
+  const consumptionRequest = useRef<{ id: string; rollId: string } | null>(null);
 
   const supabase = useMemo(() => getSupabaseClient(), []);
   const usingSupabase = Boolean(supabase && signedInEmail);
@@ -432,6 +448,7 @@ export default function Home() {
 
   async function addRoll(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isAddingRoll) return;
     activateLocalMode();
 
     const form = new FormData(event.currentTarget);
@@ -442,7 +459,18 @@ export default function Home() {
     const totalPrice = form.get("price_amount") ? parseNumber(form.get("price_amount")) : null;
     const spoolCost = packageType === "spooled" ? parseNumber(form.get("spool_cost_amount"), 1000) : 0;
     const filamentCost = totalPrice === null ? null : Math.max(0, totalPrice - spoolCost);
-    const supplierName = String(form.get("supplier_name") || "Sin proveedor");
+    const supplierName = String(form.get("supplier_name") || "Sin proveedor").trim() || "Sin proveedor";
+
+    if (availableWeight < 0 || availableWeight > initialWeight) {
+      setSyncNote("El peso disponible debe estar entre cero y el peso inicial.");
+      return;
+    }
+
+    if (totalPrice !== null && spoolCost > totalPrice) {
+      setSyncNote("El precio total debe cubrir el costo del spool.");
+      return;
+    }
+
     const newRoll: FilamentRoll = {
       id: crypto.randomUUID(),
       brand: String(form.get("brand") || "Bambu Lab"),
@@ -453,7 +481,7 @@ export default function Home() {
       initial_weight_g: initialWeight,
       available_weight_g: availableWeight,
       low_threshold_g: threshold,
-      status: normalizeStatus(availableWeight, threshold, "new"),
+      status: normalizeStatus(availableWeight, threshold, availableWeight < initialWeight ? "open" : "new"),
       location: String(form.get("location") || ""),
       purchase_date: String(form.get("purchase_date") || ""),
       price_amount: totalPrice,
@@ -471,136 +499,119 @@ export default function Home() {
       qr_payload: null
     };
 
-    if (usingSupabase && supabase) {
-      let supplierId: string | null = null;
-      const existingSupplier = suppliers.find(
-        (supplier) => supplier.name.toLowerCase() === supplierName.toLowerCase()
-      );
+    setIsAddingRoll(true);
 
-      if (existingSupplier) {
-        supplierId = existingSupplier.id;
-      } else {
-        const { data: supplierData, error: supplierInsertError } = await supabase
-          .from("suppliers")
-          .insert({ name: supplierName })
-          .select()
-          .single();
+    try {
+      if (usingSupabase && supabase) {
+        const requestId = addRollRequestId.current ?? crypto.randomUUID();
+        addRollRequestId.current = requestId;
 
-        if (supplierInsertError) {
-          setSyncNote(`No se pudo guardar el proveedor: ${supplierInsertError.message}`);
+        const { data, error } = await supabase.rpc("create_roll_with_purchase", {
+          p_request_id: requestId,
+          p_brand: newRoll.brand,
+          p_product_line: newRoll.product_line,
+          p_material: newRoll.material,
+          p_color_name: newRoll.color_name,
+          p_color_hex: newRoll.color_hex,
+          p_initial_weight_g: newRoll.initial_weight_g,
+          p_available_weight_g: newRoll.available_weight_g,
+          p_low_threshold_g: newRoll.low_threshold_g,
+          p_location: newRoll.location || null,
+          p_purchase_date: newRoll.purchase_date || null,
+          p_total_price: newRoll.price_amount,
+          p_currency: newRoll.currency,
+          p_supplier_name: supplierName,
+          p_package_type: newRoll.package_type,
+          p_spool_cost: newRoll.spool_cost_amount,
+          p_drying_notes: newRoll.drying_notes || null,
+          p_photo_url: newRoll.photo_url || null,
+          p_purchase_url: newRoll.purchase_url || null
+        });
+
+        if (error || !data) {
+          setSyncNote(
+            `No se pudo confirmar el alta. Podés reintentar sin duplicar datos: ${error?.message ?? "respuesta vacía"}`
+          );
           return;
         }
 
-        supplierId = (supplierData as Supplier).id;
-        setSuppliers((current) => [...current, supplierData as Supplier]);
-      }
+        const result = data as AtomicRollCreationResult;
+        const savedRoll = normalizeRollData(result.roll);
+        setRolls((current) => [savedRoll, ...current.filter((roll) => roll.id !== savedRoll.id)]);
+        setSelectedId(savedRoll.id);
 
-      const { data, error } = await supabase
-        .from("filament_rolls")
-        .insert({
-          brand: newRoll.brand,
-          product_line: newRoll.product_line,
-          material: newRoll.material,
-          color_name: newRoll.color_name,
-          color_hex: newRoll.color_hex,
-          initial_weight_g: newRoll.initial_weight_g,
-          available_weight_g: newRoll.available_weight_g,
-          low_threshold_g: newRoll.low_threshold_g,
-          status: newRoll.status,
-          location: newRoll.location,
-          purchase_date: newRoll.purchase_date || null,
-          price_amount: newRoll.price_amount,
-          currency: newRoll.currency,
-          supplier_id: supplierId,
-          package_type: newRoll.package_type,
-          spool_cost_amount: newRoll.spool_cost_amount,
-          filament_cost_amount: newRoll.filament_cost_amount,
-          drying_notes: newRoll.drying_notes,
-          photo_url: newRoll.photo_url,
-          purchase_url: newRoll.purchase_url
-        })
-        .select()
-        .single();
-
-      if (error) {
-        setSyncNote(`No se pudo guardar en Supabase: ${error.message}`);
-        return;
-      }
-
-      setRolls((current) => [data as FilamentRoll, ...current]);
-      setSelectedId((data as FilamentRoll).id);
-
-      if (totalPrice !== null) {
-        const purchasePayload = {
-          roll_id: (data as FilamentRoll).id,
-          supplier_id: supplierId,
-          supplier_name: supplierName,
-          brand: newRoll.brand,
-          material: newRoll.material,
-          product_line: newRoll.product_line,
-          color_name: newRoll.color_name,
-          color_hex: newRoll.color_hex,
-          purchased_at: newRoll.purchase_date || todayIso(),
-          package_type: packageType,
-          total_price: totalPrice,
-          spool_cost: spoolCost,
-          filament_cost: filamentCost ?? totalPrice,
-          currency: newRoll.currency,
-          quantity_g: initialWeight
-        };
-        const { data: purchaseData, error: purchaseError } = await supabase
-          .from("purchase_history")
-          .insert(purchasePayload)
-          .select()
-          .single();
-
-        if (purchaseError) {
-          setSyncNote(`Rollo guardado; historial pendiente: ${purchaseError.message}`);
-        } else {
-          setPurchases((current) => [purchaseData as PurchaseRecord, ...current]);
+        if (result.supplier) {
+          setSuppliers((current) =>
+            [result.supplier as Supplier, ...current.filter((supplier) => supplier.id !== result.supplier?.id)]
+              .sort((a, b) => a.name.localeCompare(b.name))
+          );
         }
-      }
-    } else {
-      setRolls((current) => [newRoll, ...current]);
-      setSelectedId(newRoll.id);
-      if (totalPrice !== null) {
-        setPurchases((current) => [
-          {
-            id: crypto.randomUUID(),
-            roll_id: newRoll.id,
-            supplier_id: null,
-            supplier_name: supplierName,
-            brand: newRoll.brand,
-            material: newRoll.material,
-            product_line: newRoll.product_line,
-            color_name: newRoll.color_name,
-            color_hex: newRoll.color_hex,
-            purchased_at: newRoll.purchase_date || todayIso(),
-            package_type: packageType,
-            total_price: totalPrice,
-            spool_cost: spoolCost,
-            filament_cost: filamentCost ?? totalPrice,
-            currency: newRoll.currency,
-            quantity_g: initialWeight
-          },
-          ...current
-        ]);
-      }
-    }
 
-    setDraft(initialDraft);
-    setShowAdd(false);
+        if (result.purchase) {
+          setPurchases((current) => [
+            result.purchase as PurchaseRecord,
+            ...current.filter((purchase) => purchase.id !== result.purchase?.id)
+          ]);
+        }
+
+        setSyncNote(
+          result.replayed
+            ? "Esta operación ya estaba guardada; recuperamos el rollo y su compra."
+            : "Rollo, proveedor y compra guardados correctamente."
+        );
+        addRollRequestId.current = null;
+      } else {
+        setRolls((current) => [newRoll, ...current]);
+        setSelectedId(newRoll.id);
+        if (totalPrice !== null) {
+          setPurchases((current) => [
+            {
+              id: crypto.randomUUID(),
+              roll_id: newRoll.id,
+              supplier_id: null,
+              supplier_name: supplierName,
+              brand: newRoll.brand,
+              material: newRoll.material,
+              product_line: newRoll.product_line,
+              color_name: newRoll.color_name,
+              color_hex: newRoll.color_hex,
+              purchased_at: newRoll.purchase_date || todayIso(),
+              package_type: packageType,
+              total_price: totalPrice,
+              spool_cost: spoolCost,
+              filament_cost: filamentCost ?? totalPrice,
+              currency: newRoll.currency,
+              quantity_g: initialWeight
+            },
+            ...current
+          ]);
+        }
+        setSyncNote("Rollo guardado en el inventario local.");
+      }
+
+      setDraft(initialDraft);
+      setShowAdd(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo confirmar el alta. Podés reintentar sin duplicar datos: ${message}`);
+    } finally {
+      setIsAddingRoll(false);
+    }
   }
 
   async function recordConsumption(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedRoll) return;
+    if (!selectedRoll || isRecordingConsumption) return;
     activateLocalMode();
 
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const grams = parseNumber(form.get("grams_used"));
     if (grams <= 0) return;
+    if (grams > Number(selectedRoll.available_weight_g)) {
+      setSyncNote(`Solo hay ${selectedRoll.available_weight_g} g disponibles en este rollo.`);
+      return;
+    }
     const costPerGram = selectedRoll.filament_cost_amount && selectedRoll.initial_weight_g
       ? Number(selectedRoll.filament_cost_amount) / Number(selectedRoll.initial_weight_g)
       : null;
@@ -616,54 +627,69 @@ export default function Home() {
       currency: costPerGram === null ? null : selectedRoll.currency
     };
 
-    if (usingSupabase && supabase) {
-      const { error } = await supabase.from("consumption_logs").insert({
-        roll_id: selectedRoll.id,
-        project_name: log.project_name,
-        grams_used: log.grams_used,
-        consumed_at: log.consumed_at,
-        notes: log.notes,
-        cost_amount: log.cost_amount,
-        currency: log.currency
-      });
+    setIsRecordingConsumption(true);
 
-      if (error) {
-        setSyncNote(`No se pudo registrar consumo: ${error.message}`);
-        return;
-      }
+    try {
+      if (usingSupabase && supabase) {
+        if (!consumptionRequest.current || consumptionRequest.current.rollId !== selectedRoll.id) {
+          consumptionRequest.current = { id: crypto.randomUUID(), rollId: selectedRoll.id };
+        }
 
-      const { data } = await supabase
-        .from("filament_rolls")
-        .select("*")
-        .eq("id", selectedRoll.id)
-        .single();
+        const { data, error } = await supabase.rpc("record_consumption", {
+          p_request_id: consumptionRequest.current.id,
+          p_roll_id: selectedRoll.id,
+          p_project_name: log.project_name,
+          p_grams_used: log.grams_used,
+          p_consumed_at: log.consumed_at,
+          p_notes: log.notes || null
+        });
 
-      if (data) {
+        if (error || !data) {
+          setSyncNote(
+            `No se pudo confirmar el consumo. Podés reintentar sin descontar dos veces: ${error?.message ?? "respuesta vacía"}`
+          );
+          return;
+        }
+
+        const result = data as ConsumptionMutationResult;
+        const savedRoll = normalizeRollData(result.roll);
         setRolls((current) =>
-          current.map((roll) => (roll.id === selectedRoll.id ? (data as FilamentRoll) : roll))
+          current.map((roll) => (roll.id === savedRoll.id ? savedRoll : roll))
         );
+        setLogs((current) => [result.log, ...current.filter((item) => item.id !== result.log.id)]);
+        setSyncNote(
+          result.replayed
+            ? "Este consumo ya estaba registrado; recuperamos su resultado sin descontar de nuevo."
+            : `${grams} g descontados correctamente.`
+        );
+        consumptionRequest.current = null;
+      } else {
+        setRolls((current) =>
+          current.map((roll) => {
+            if (roll.id !== selectedRoll.id) return roll;
+            const nextWeight = Math.max(0, Number(roll.available_weight_g) - grams);
+            return {
+              ...roll,
+              available_weight_g: nextWeight,
+              status: normalizeStatus(nextWeight, roll.low_threshold_g, roll.status)
+            };
+          })
+        );
+        setLogs((current) => [log, ...current]);
+        setSyncNote(`${grams} g descontados del inventario local.`);
       }
-      setLogs((current) => [log, ...current]);
-    } else {
-      setRolls((current) =>
-        current.map((roll) => {
-          if (roll.id !== selectedRoll.id) return roll;
-          const nextWeight = Math.max(0, Number(roll.available_weight_g) - grams);
-          return {
-            ...roll,
-            available_weight_g: nextWeight,
-            status: normalizeStatus(nextWeight, roll.low_threshold_g, roll.status)
-          };
-        })
-      );
-      setLogs((current) => [log, ...current]);
-    }
 
-    formElement.reset();
+      formElement.reset();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo confirmar el consumo. Podés reintentar sin descontar dos veces: ${message}`);
+    } finally {
+      setIsRecordingConsumption(false);
+    }
   }
 
   async function saveAvailableWeight(availableWeight: number, successNote: string) {
-    if (!selectedRoll) return;
+    if (!selectedRoll || isSavingWeight) return false;
     activateLocalMode();
 
     const currentStatus = availableWeight < Number(selectedRoll.initial_weight_g) && selectedRoll.status === "new"
@@ -671,34 +697,45 @@ export default function Home() {
       : selectedRoll.status;
     const status = normalizeStatus(availableWeight, selectedRoll.low_threshold_g, currentStatus);
 
-    if (usingSupabase && supabase) {
-      const { data, error } = await supabase
-        .from("filament_rolls")
-        .update({ available_weight_g: availableWeight, status })
-        .eq("id", selectedRoll.id)
-        .select()
-        .single();
+    setIsSavingWeight(true);
 
-      if (error) {
-        setSyncNote(`No se pudo ajustar el peso: ${error.message}`);
-        return;
+    try {
+      if (usingSupabase && supabase) {
+        const { data, error } = await supabase
+          .from("filament_rolls")
+          .update({ available_weight_g: availableWeight, status })
+          .eq("id", selectedRoll.id)
+          .select()
+          .single();
+
+        if (error) {
+          setSyncNote(`No se pudo ajustar el peso: ${error.message}`);
+          return false;
+        }
+
+        setRolls((current) =>
+          current.map((roll) => (roll.id === selectedRoll.id ? (data as FilamentRoll) : roll))
+        );
+        setSyncNote(successNote);
+        return true;
       }
 
       setRolls((current) =>
-        current.map((roll) => (roll.id === selectedRoll.id ? (data as FilamentRoll) : roll))
+        current.map((roll) =>
+          roll.id === selectedRoll.id
+            ? { ...roll, available_weight_g: availableWeight, status }
+            : roll
+        )
       );
       setSyncNote(successNote);
-      return;
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo ajustar el peso: ${message}`);
+      return false;
+    } finally {
+      setIsSavingWeight(false);
     }
-
-    setRolls((current) =>
-      current.map((roll) =>
-        roll.id === selectedRoll.id
-          ? { ...roll, available_weight_g: availableWeight, status }
-          : roll
-      )
-    );
-    setSyncNote(successNote);
   }
 
   async function adjustAvailableWeight(event: React.FormEvent<HTMLFormElement>) {
@@ -732,11 +769,11 @@ export default function Home() {
       return;
     }
 
-    await saveAvailableWeight(
+    const saved = await saveAvailableWeight(
       calculatedWeight,
       `Balanza: ${totalWeight} g − tara ${tareWeight} g = ${calculatedWeight} g disponibles`
     );
-    setMeasuredTotalWeight("");
+    if (saved) setMeasuredTotalWeight("");
   }
 
   async function addSpool(event: React.FormEvent<HTMLFormElement>) {
@@ -1180,7 +1217,7 @@ export default function Home() {
           className="modal-backdrop"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setShowAdd(false);
+            if (event.target === event.currentTarget && !isAddingRoll) setShowAdd(false);
           }}
         >
           <section
@@ -1198,12 +1235,13 @@ export default function Home() {
                 className="modal-close"
                 type="button"
                 onClick={() => setShowAdd(false)}
+                disabled={isAddingRoll}
                 aria-label="Cerrar formulario"
               >
                 <X size={20} aria-hidden="true" />
               </button>
             </div>
-            <form className="form-grid" onSubmit={addRoll}>
+            <form className="form-grid" onSubmit={addRoll} aria-busy={isAddingRoll}>
             <label>
               Marca
               <select
@@ -1395,9 +1433,9 @@ export default function Home() {
               Link de compra
               <input name="purchase_url" placeholder="Amazon, Bambu Lab, tienda local..." />
             </label>
-            <button className="primary-action wide" type="submit">
+            <button className="primary-action wide" type="submit" disabled={isAddingRoll}>
               <PackagePlus size={18} aria-hidden="true" />
-              Guardar rollo
+              {isAddingRoll ? "Guardando rollo y compra…" : "Guardar rollo"}
             </button>
             </form>
             <datalist id="supplier-options">
@@ -1722,9 +1760,9 @@ export default function Home() {
                 <strong>{measuredRemaining == null ? "—" : `${measuredRemaining.toLocaleString("es-CR")} g`}</strong>
                 <small>Peso total − tara</small>
               </div>
-              <button className="primary-action" type="submit" disabled={measuredRemaining == null || measuredRemaining < 0}>
+              <button className="primary-action" type="submit" disabled={isSavingWeight || measuredRemaining == null || measuredRemaining < 0}>
                 <Weight size={18} aria-hidden="true" />
-                Guardar peso calculado
+                {isSavingWeight ? "Guardando peso…" : "Guardar peso calculado"}
               </button>
             </form>
 
@@ -1743,9 +1781,9 @@ export default function Home() {
                   defaultValue={selectedRoll.available_weight_g}
                   aria-label="Peso disponible en gramos"
                 />
-                <button className="primary-action" type="submit">
+                <button className="primary-action" type="submit" disabled={isSavingWeight}>
                   <Weight size={18} aria-hidden="true" />
-                  Actualizar gramos
+                  {isSavingWeight ? "Guardando…" : "Actualizar gramos"}
                 </button>
                 </div>
               </form>
@@ -1759,9 +1797,9 @@ export default function Home() {
                 <input name="consumed_at" type="date" defaultValue={todayIso()} />
               </div>
               <input name="notes" placeholder="Notas opcionales" />
-              <button className="primary-action" type="submit">
+              <button className="primary-action" type="submit" disabled={isRecordingConsumption}>
                 <Weight size={18} aria-hidden="true" />
-                Descontar gramos
+                {isRecordingConsumption ? "Registrando consumo…" : "Descontar gramos"}
               </button>
             </form>
 

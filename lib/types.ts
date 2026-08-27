@@ -30,6 +30,7 @@ export type FilamentRoll = {
   qr_payload: string | null;
   created_at?: string;
   updated_at?: string;
+  creation_request_id?: string | null;
 };
 
 export type Supplier = {
@@ -80,6 +81,7 @@ export type ConsumptionLog = {
   notes: string | null;
   cost_amount: number | null;
   currency: string | null;
+  request_id?: string | null;
 };
 
 export type RollDraft = Omit<

@@ -20,16 +20,17 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Auditar las escrituras actuales y separar operaciones atómicas de flujos de varios pasos.
 - [x] Confirmar que el inventario real no contiene compras huérfanas, rollos sin historial esperado ni spools con estados cruzados.
 - [x] Mantener consumo + descuento del rollo dentro de una sola transacción mediante trigger.
-- [ ] Crear rollo, resolver/crear proveedor y registrar compra en una sola función transaccional.
-- [ ] Agregar una clave de idempotencia a altas, compras, consumos y pesajes para que un reintento no duplique datos.
-- [ ] Bloquear temporalmente el botón y mostrar “Guardando…” mientras una operación está en curso.
-- [ ] Sustituir los éxitos parciales por resultados inequívocos: “se guardó todo”, “no se guardó nada” o “estamos comprobando”.
+- [x] Crear rollo, resolver/crear proveedor y registrar compra en una sola función transaccional.
+- [x] Agregar idempotencia a la creación de rollos/compras y al registro de consumos.
+- [ ] Extender idempotencia a spools y al futuro historial de pesajes.
+- [x] Bloquear temporalmente los botones de alta, consumo y peso, mostrando el estado en curso.
+- [x] Eliminar los éxitos parciales del alta de rollos y recuperar operaciones cuyo resultado era incierto.
 - [ ] Guardar pesaje + actualización del saldo del rollo en una sola transacción.
 - [ ] Impedir desde la base de datos que `filament_rolls.spool_id` y el estado del spool puedan quedar desincronizados.
 - [ ] Centralizar en la base de datos el estado derivado del rollo según gramos y porcentaje.
 - [ ] Servir reportes financieros desde una vista o función consistente, evitando lecturas parciales entre varias tablas.
-- [ ] Revocar ejecución pública innecesaria de funciones internas y resolver avisos del asesor de seguridad.
-- [ ] Agregar índices faltantes para las relaciones de consumos, compras y proveedores.
+- [x] Revocar ejecución pública innecesaria de funciones internas y resolver esos avisos del asesor de seguridad.
+- [x] Agregar índices faltantes para las relaciones de consumos, compras y proveedores.
 
 ## Experiencia móvil y PWA
 
@@ -78,7 +79,8 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Marcar confianza del costo como Real, Estimado o Incompleto.
 - [ ] Permitir el supuesto histórico visible de ₡3.000 por orden y ₡1.000 por rollo cuando falte el express.
 - [ ] Mantener historial de proveedor y precio por compra, aunque el mismo filamento cambie de proveedor o costo.
-- [ ] Mantener el historial de compras inmutable y corregirlo mediante una acción trazable.
+- [x] Mantener el historial de compras inmutable desde el cliente.
+- [ ] Diseñar una corrección financiera trazable sin reescribir el registro original.
 
 ## Multimoneda y perfil
 
