@@ -12,8 +12,24 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Separación entre filamento y spool físico reutilizable.
 - [x] Registro, edición, asignación y liberación de spools.
 - [x] Inactivación y reactivación de spools sin eliminar su historial.
-- [x] Operaciones atómicas en Supabase para evitar estados cruzados.
+- [x] Operaciones atómicas para asignar, liberar, inactivar y reactivar spools.
 - [x] Estados claros para inventario real, local, demo y error de conexión.
+
+## Integridad, atomicidad y UX segura
+
+- [x] Auditar las escrituras actuales y separar operaciones atómicas de flujos de varios pasos.
+- [x] Confirmar que el inventario real no contiene compras huérfanas, rollos sin historial esperado ni spools con estados cruzados.
+- [x] Mantener consumo + descuento del rollo dentro de una sola transacción mediante trigger.
+- [ ] Crear rollo, resolver/crear proveedor y registrar compra en una sola función transaccional.
+- [ ] Agregar una clave de idempotencia a altas, compras, consumos y pesajes para que un reintento no duplique datos.
+- [ ] Bloquear temporalmente el botón y mostrar “Guardando…” mientras una operación está en curso.
+- [ ] Sustituir los éxitos parciales por resultados inequívocos: “se guardó todo”, “no se guardó nada” o “estamos comprobando”.
+- [ ] Guardar pesaje + actualización del saldo del rollo en una sola transacción.
+- [ ] Impedir desde la base de datos que `filament_rolls.spool_id` y el estado del spool puedan quedar desincronizados.
+- [ ] Centralizar en la base de datos el estado derivado del rollo según gramos y porcentaje.
+- [ ] Servir reportes financieros desde una vista o función consistente, evitando lecturas parciales entre varias tablas.
+- [ ] Revocar ejecución pública innecesaria de funciones internas y resolver avisos del asesor de seguridad.
+- [ ] Agregar índices faltantes para las relaciones de consumos, compras y proveedores.
 
 ## Experiencia móvil y PWA
 
@@ -37,7 +53,81 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Registrar historial de pesajes y margen de variación de la balanza.
 - [ ] Marcar explícitamente rollos incorporados con saldo inicial.
 
-## Siguiente bloque recomendado
+## Catálogo de tipos de spool
+
+- [ ] Crear tipos de spool reutilizables con fabricante, modelo, material, fotografía y notas.
+- [ ] Separar peso del spool, insert/cartón/RFID/NFC y tara total.
+- [ ] Registrar fuente y confianza de la tara: Verificada, Estimada o Desconocida.
+- [ ] Incluir como referencias iniciales Bambu Lab 254 g verificada, Pritonic plástico 250 g estimada y Pritonic cartón 170 g estimada.
+- [ ] Asociar cada spool físico con un tipo de spool sin perder la tara manual actual.
+- [ ] Conservar en cada pesaje una copia de la tara utilizada; editar el catálogo solo afectará pesajes futuros.
+- [ ] Ofrecer una recalculación histórica únicamente como acción explícita, nunca automática.
+
+## Pesajes confiables
+
+- [ ] Registrar peso bruto de balanza, tara aplicada, filamento calculado y confianza.
+- [ ] Mostrar claramente que el peso bruto incluye spool e insert y no equivale a filamento disponible.
+- [ ] Crear historial de pesajes por rollo.
+- [ ] Aplicar límites seguros para evitar resultados negativos o superiores a una capacidad razonable.
+
+## Compras, proveedores y costos
+
+- [ ] Separar la compra/orden de sus productos mediante encabezado y partidas.
+- [ ] Guardar envío/express y otros cargos en la compra, no directamente en el filamento.
+- [ ] Prorratear envío por unidad, por valor o manualmente; usar por unidad como valor inicial.
+- [ ] Marcar confianza del costo como Real, Estimado o Incompleto.
+- [ ] Permitir el supuesto histórico visible de ₡3.000 por orden y ₡1.000 por rollo cuando falte el express.
+- [ ] Mantener historial de proveedor y precio por compra, aunque el mismo filamento cambie de proveedor o costo.
+- [ ] Mantener el historial de compras inmutable y corregirlo mediante una acción trazable.
+
+## Multimoneda y perfil
+
+- [ ] Agregar moneda base al perfil; usar CRC como preferencia inicial.
+- [ ] Conservar monto y moneda originales, monto y moneda realmente pagados y su relación cambiaria.
+- [ ] Guardar tipo de cambio, fecha, fuente y clase: Real, Histórico, Actual, Manual o Estimado.
+- [ ] Dar prioridad al monto realmente pagado sobre una conversión calculada.
+- [ ] Evitar cualquier suma directa entre CRC y USD.
+- [ ] Mostrar totales separados por moneda o un total convertido claramente identificado.
+- [ ] Mantener fijo el costo histórico aunque cambie el tipo de cambio actual.
+
+## Color y procedencia
+
+- [ ] Guardar fuente del HEX como Oficial, Estimada o Personalizada.
+- [ ] No presentar colores estimados desde fotografías como oficiales.
+- [ ] Permitir corregir el HEX conservando su procedencia.
+
+## Estados y valor de inventario
+
+- [ ] Derivar estados por gramos y porcentaje: disponible, bajo, casi agotado, residual y agotado.
+- [ ] Preparar umbrales configurables por usuario.
+- [ ] Separar valor de compra original de valor consumible restante.
+- [ ] Indicar conversiones estimadas, costos incompletos y nivel de confianza sin falsa precisión.
+
+## Reportería
+
+- [ ] Crear el reporte “Saldo de filamentos” con inventario, tara, compra, proveedor, moneda, confianza, ubicación y etiquetas QR/NFC.
+- [ ] Mostrar valores originales y convertidos como columnas separadas.
+- [ ] Preparar exportación CSV como primer formato.
+- [ ] Agregar posteriormente exportación Excel y PDF.
+
+## Migración segura del inventario existente
+
+- [ ] Implementar únicamente migraciones aditivas en las primeras fases.
+- [ ] No volver a insertar automáticamente el inventario usado como referencia durante el levantamiento.
+- [ ] Mantener compatibilidad temporal con `purchase_history`, `tare_weight_g` y los formularios actuales.
+- [ ] Respaldar la tara y el costo utilizados históricamente antes de introducir catálogos o conversiones.
+- [ ] Probar políticas RLS y permisos de cada tabla y función nueva.
+- [ ] Ejecutar build, pruebas locales y humo en producción en cada fase.
+
+## Orden incremental recomendado
+
+- [ ] Fase 0: cerrar permisos internos, índices, idempotencia y la creación atómica de rollo + compra.
+- [ ] Fase 1: catálogo de tipos de spool, pesajes históricos y tara congelada por medición.
+- [ ] Fase 2: compras con partidas, express prorrateado, confianza de costos y multimoneda.
+- [ ] Fase 3: fuente HEX, moneda base, estados derivados y reporte de saldo.
+- [ ] Fase 4: retomar experiencia de producto y módulos de crecimiento.
+
+## Experiencia y módulos siguientes
 
 - [ ] Completar branding: “by Stone Collective Dev”, About y Open Graph.
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
