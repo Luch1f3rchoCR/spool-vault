@@ -219,7 +219,10 @@ export default function Home() {
           error: userError
         } = await supabase.auth.getUser();
 
-        if (userError) {
+        const sessionIsSimplyMissing = userError?.name === "AuthSessionMissingError"
+          || userError?.message === "Auth session missing!";
+
+        if (userError && !sessionIsSimplyMissing) {
           setRolls([]);
           setLogs([]);
           setSpools([]);
