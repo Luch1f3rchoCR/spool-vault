@@ -31,3 +31,11 @@ El MVP escribe una URL del rollo en etiquetas NFC. Web NFC funciona principalmen
 ## Supabase
 
 El esquema está en `supabase/schema.sql`. Está preparado con RLS y grants explícitos para que el inventario sea consultable después por ChatGPT mediante Supabase, sin hacer públicas las tablas para usuarios anónimos.
+
+Para Vercel, configurá estas variables en Production y Preview:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SITE_URL`
+
+En Supabase Auth, agregá los dominios reales de la app en Redirect URLs. Para probar desde celular no sirve `localhost`; usá el dominio de Vercel y permití el preview con un patrón como `https://*-tu-equipo.vercel.app/**`.

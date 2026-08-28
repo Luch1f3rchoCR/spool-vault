@@ -26,7 +26,11 @@ import { MobileNavigation } from "@/components/mobile-navigation";
 import { ProfilePanel } from "@/components/profile-panel";
 import { RollEditModal, type EditableRollValues } from "@/components/roll-edit-modal";
 import { demoLogs, demoRolls } from "@/lib/demo-data";
-import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  getAuthRedirectUrl,
+  getSupabaseClient,
+  getSupabaseConfigStatus
+} from "@/lib/supabase";
 import type {
   ConsumptionLog,
   FilamentRoll,
@@ -277,6 +281,7 @@ export default function Home() {
   const [syncNote, setSyncNote] = useState("Modo demo local");
   const [authEmail, setAuthEmail] = useState("");
   const [authNote, setAuthNote] = useState("");
+  const [authRedirectUrl, setAuthRedirectUrl] = useState("");
   const [signedInEmail, setSignedInEmail] = useState("");
   const [authVersion, setAuthVersion] = useState(0);
   const [nfcNote, setNfcNote] = useState("");
@@ -302,7 +307,12 @@ export default function Home() {
   const quickWeighInputRef = useRef<HTMLInputElement | null>(null);
 
   const supabase = useMemo(() => getSupabaseClient(), []);
+  const supabaseConfig = useMemo(() => getSupabaseConfigStatus(), []);
   const usingSupabase = Boolean(supabase && signedInEmail);
+
+  useEffect(() => {
+    setAuthRedirectUrl(getAuthRedirectUrl());
+  }, []);
 
   function activateLocalMode() {
     if (!usingSupabase) {
@@ -1339,12 +1349,20 @@ export default function Home() {
 
   async function sendMagicLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !authEmail) return;
+    if (!authEmail) return;
+
+    if (!supabase) {
+      setAuthNote("Supabase no está configurado en este deployment.");
+      return;
+    }
+
+    const emailRedirectTo = getAuthRedirectUrl();
+    setAuthRedirectUrl(emailRedirectTo);
 
     const { error } = await supabase.auth.signInWithOtp({
       email: authEmail,
       options: {
-        emailRedirectTo: window.location.origin
+        emailRedirectTo
       }
     });
 
@@ -1412,6 +1430,8 @@ export default function Home() {
     ? Number(selectedRoll.filament_cost_amount) / Number(selectedRoll.initial_weight_g)
     : null;
   const isDemoMode = dataMode === "demo";
+  const isAuthRedirectLocal =
+    authRedirectUrl.includes("localhost") || authRedirectUrl.includes("127.0.0.1");
 
   if (isLoading) {
     return (
@@ -1446,32 +1466,56 @@ export default function Home() {
             </span>
           </button>
 
-          {isSupabaseConfigured() && !signedInEmail && showLogin && (
+          {!signedInEmail && showLogin && (
             <section className="panel auth-panel auth-popover" id="login-panel" aria-label="Iniciar sesión">
               <div className="auth-panel-head">
                 <div>
-                  <p className="eyebrow">Cuenta segura</p>
-                  <h2>Entrá a Spool Vault</h2>
+                  <p className="eyebrow">{supabaseConfig.isConfigured ? "Cuenta segura" : "Configuración"}</p>
+                  <h2>{supabaseConfig.isConfigured ? "Entrá a Spool Vault" : "Conectá Supabase"}</h2>
                 </div>
                 <button className="modal-close" type="button" onClick={() => setShowLogin(false)} aria-label="Cerrar inicio de sesión">
                   <X size={17} aria-hidden="true" />
                 </button>
               </div>
-              <form onSubmit={sendMagicLink}>
-                <label htmlFor="auth-email">Correo electrónico</label>
-                <input
-                  id="auth-email"
-                  type="email"
-                  value={authEmail}
-                  onChange={(event) => setAuthEmail(event.target.value)}
-                  placeholder="nombre@correo.com"
-                  autoComplete="email"
-                  required
-                />
-                <button type="submit">Enviar enlace seguro</button>
-                <p className="auth-help">Enlace de un solo uso. Sin contraseña.</p>
-                {authNote && <p className="auth-result" role="status">{authNote}</p>}
-              </form>
+              {supabaseConfig.isConfigured ? (
+                <form onSubmit={sendMagicLink}>
+                  <label htmlFor="auth-email">Correo electrónico</label>
+                  <input
+                    id="auth-email"
+                    type="email"
+                    value={authEmail}
+                    onChange={(event) => setAuthEmail(event.target.value)}
+                    placeholder="nombre@correo.com"
+                    autoComplete="email"
+                    required
+                  />
+                  <button type="submit">Enviar enlace seguro</button>
+                  <p className="auth-help">Enlace de un solo uso. Sin contraseña.</p>
+                  <p className="auth-redirect">
+                    El enlace vuelve a <code>{authRedirectUrl || "detectando URL..."}</code>
+                  </p>
+                  {isAuthRedirectLocal && (
+                    <p className="auth-warning">
+                      Desde celular no usés localhost. Abrí el preview de Vercel para que el enlace vuelva al teléfono.
+                    </p>
+                  )}
+                  {authNote && <p className="auth-result" role="status">{authNote}</p>}
+                </form>
+              ) : (
+                <div className="auth-config-missing">
+                  <p>Supabase no está configurado para este deployment.</p>
+                  <ul>
+                    {!supabaseConfig.hasUrl && <li>Falta NEXT_PUBLIC_SUPABASE_URL</li>}
+                    {!supabaseConfig.hasPublishableKey && <li>Falta NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</li>}
+                  </ul>
+                  <p>
+                    Para magic links desde el cel, el redirect autorizado debe incluir el dominio donde abriste la app.
+                  </p>
+                  <p className="auth-redirect">
+                    URL actual: <code>{authRedirectUrl || "detectando URL..."}</code>
+                  </p>
+                </div>
+              )}
             </section>
           )}
         </div>
@@ -1546,7 +1590,7 @@ export default function Home() {
             <p>Estos rollos son ejemplos para probar la app. Al iniciar sesión, se carga solamente tu inventario real de Supabase.</p>
           </div>
           <button type="button" onClick={openAccount}>
-            {isSupabaseConfigured() ? "Entrar" : "Configurar Supabase"}
+            {supabaseConfig.isConfigured ? "Entrar" : "Configurar Supabase"}
           </button>
         </section>
       )}

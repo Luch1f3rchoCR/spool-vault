@@ -168,6 +168,41 @@ a {
   font-size: 0.72rem;
 }
 
+.auth-redirect,
+.auth-warning,
+.auth-config-missing {
+  overflow-wrap: anywhere;
+}
+
+.auth-redirect code {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.auth-warning {
+  padding: 8px;
+  border-radius: 8px;
+  color: #7a3412;
+  background: rgba(245, 158, 11, 0.16);
+  font-weight: 750;
+}
+
+.auth-config-missing {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-config-missing ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .hero {
   display: flex;
   align-items: flex-start;
