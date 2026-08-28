@@ -29,7 +29,8 @@ import { demoLogs, demoRolls } from "@/lib/demo-data";
 import {
   getAuthRedirectUrl,
   getSupabaseClient,
-  getSupabaseConfigStatus
+  getSupabaseConfigStatus,
+  initializeSupabaseClient
 } from "@/lib/supabase";
 import type {
   ConsumptionLog,
@@ -306,12 +307,26 @@ export default function Home() {
   const updateSpoolRequests = useRef<Record<string, string>>({});
   const quickWeighInputRef = useRef<HTMLInputElement | null>(null);
 
-  const supabase = useMemo(() => getSupabaseClient(), []);
-  const supabaseConfig = useMemo(() => getSupabaseConfigStatus(), []);
+  const [supabase, setSupabase] = useState(() => getSupabaseClient());
+  const [supabaseConfig, setSupabaseConfig] = useState(() => getSupabaseConfigStatus());
   const usingSupabase = Boolean(supabase && signedInEmail);
 
   useEffect(() => {
     setAuthRedirectUrl(getAuthRedirectUrl());
+    setSupabaseConfig(getSupabaseConfigStatus());
+
+    let isActive = true;
+
+    initializeSupabaseClient().then((client) => {
+      if (!isActive) return;
+      setSupabase(client);
+      setSupabaseConfig(getSupabaseConfigStatus());
+      setAuthRedirectUrl(getAuthRedirectUrl());
+    });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   function activateLocalMode() {
@@ -1505,8 +1520,10 @@ export default function Home() {
                 <div className="auth-config-missing">
                   <p>Supabase no está configurado para este deployment.</p>
                   <ul>
-                    {!supabaseConfig.hasUrl && <li>Falta NEXT_PUBLIC_SUPABASE_URL</li>}
-                    {!supabaseConfig.hasPublishableKey && <li>Falta NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</li>}
+                    {!supabaseConfig.hasUrl && <li>Falta URL: NEXT_PUBLIC_SUPABASE_URL o SUPABASE_URL</li>}
+                    {!supabaseConfig.hasPublishableKey && (
+                      <li>Falta public key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY o SUPABASE_ANON_KEY</li>
+                    )}
                   </ul>
                   <p>
                     Para magic links desde el cel, el redirect autorizado debe incluir el dominio donde abriste la app.

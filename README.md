@@ -38,4 +38,6 @@ Para Vercel, configurá estas variables en Production y Preview:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 
+También se acepta `NEXT_PUBLIC_SUPABASE_ANON_KEY` o `SUPABASE_ANON_KEY` como llave pública. Si cambiás variables en Vercel, hacé un redeploy porque los valores públicos de Next.js se congelan durante el build.
+
 En Supabase Auth, agregá los dominios reales de la app en Redirect URLs. Para probar desde celular no sirve `localhost`; usá el dominio de Vercel y permití el preview con un patrón como `https://*-tu-equipo.vercel.app/**`.
