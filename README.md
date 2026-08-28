@@ -14,6 +14,8 @@ Incluye:
 - inventario de spools numerados, vacíos y en uso;
 - edición, asignación, liberación, inactivación y reactivación de spools;
 - actualización rápida por balanza usando peso total menos tara;
+- catálogo de tipos de spool con tara verificada/estimada y componentes separados;
+- historial inmutable de pesajes con reintentos seguros;
 - costo de cada consumo calculado con el rollo realmente utilizado;
 - QR por rollo;
 - lectura/escritura NFC con Web NFC cuando el celular/navegador lo soporte;

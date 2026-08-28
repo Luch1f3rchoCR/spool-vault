@@ -22,10 +22,10 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Mantener consumo + descuento del rollo dentro de una sola transacción mediante trigger.
 - [x] Crear rollo, resolver/crear proveedor y registrar compra en una sola función transaccional.
 - [x] Agregar idempotencia a la creación de rollos/compras y al registro de consumos.
-- [ ] Extender idempotencia a spools y al futuro historial de pesajes.
+- [x] Extender idempotencia a altas/ediciones de spools y al historial de pesajes.
 - [x] Bloquear temporalmente los botones de alta, consumo y peso, mostrando el estado en curso.
 - [x] Eliminar los éxitos parciales del alta de rollos y recuperar operaciones cuyo resultado era incierto.
-- [ ] Guardar pesaje + actualización del saldo del rollo en una sola transacción.
+- [x] Guardar pesaje + actualización del saldo del rollo en una sola transacción.
 - [ ] Impedir desde la base de datos que `filament_rolls.spool_id` y el estado del spool puedan quedar desincronizados.
 - [ ] Centralizar en la base de datos el estado derivado del rollo según gramos y porcentaje.
 - [ ] Servir reportes financieros desde una vista o función consistente, evitando lecturas parciales entre varias tablas.
@@ -50,26 +50,26 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Vista previa del filamento calculado antes de guardar.
 - [x] Referencia Bambu Lab de 254 g editable (213 g de spool + 41 g de cartón/NFC).
 - [x] Ajuste manual disponible para casos especiales.
-- [ ] Guardar por separado peso del spool y peso del cartón/NFC.
+- [x] Guardar por separado peso del spool y peso del cartón/NFC.
 - [ ] Registrar historial de pesajes y margen de variación de la balanza.
 - [ ] Marcar explícitamente rollos incorporados con saldo inicial.
 
 ## Catálogo de tipos de spool
 
-- [ ] Crear tipos de spool reutilizables con fabricante, modelo, material, fotografía y notas.
-- [ ] Separar peso del spool, insert/cartón/RFID/NFC y tara total.
-- [ ] Registrar fuente y confianza de la tara: Verificada, Estimada o Desconocida.
-- [ ] Incluir como referencias iniciales Bambu Lab 254 g verificada, Pritonic plástico 250 g estimada y Pritonic cartón 170 g estimada.
-- [ ] Asociar cada spool físico con un tipo de spool sin perder la tara manual actual.
-- [ ] Conservar en cada pesaje una copia de la tara utilizada; editar el catálogo solo afectará pesajes futuros.
+- [x] Crear tipos de spool reutilizables con fabricante, modelo, material, fotografía y notas.
+- [x] Separar peso del spool, insert/cartón/RFID/NFC y tara total.
+- [x] Registrar fuente y confianza de la tara: Verificada, Estimada o Desconocida.
+- [x] Incluir como referencias iniciales Bambu Lab 254 g verificada, Pritonic plástico 250 g estimada y Pritonic cartón 170 g estimada.
+- [x] Asociar cada spool físico con un tipo de spool sin perder la tara manual actual.
+- [x] Conservar en cada pesaje una copia de la tara utilizada; editar el catálogo solo afectará pesajes futuros.
 - [ ] Ofrecer una recalculación histórica únicamente como acción explícita, nunca automática.
 
 ## Pesajes confiables
 
-- [ ] Registrar peso bruto de balanza, tara aplicada, filamento calculado y confianza.
-- [ ] Mostrar claramente que el peso bruto incluye spool e insert y no equivale a filamento disponible.
-- [ ] Crear historial de pesajes por rollo.
-- [ ] Aplicar límites seguros para evitar resultados negativos o superiores a una capacidad razonable.
+- [x] Registrar peso bruto de balanza, tara aplicada, filamento calculado y confianza.
+- [x] Mostrar claramente que el peso bruto incluye spool e insert y no equivale a filamento disponible.
+- [x] Crear historial de pesajes por rollo.
+- [x] Aplicar límites seguros para evitar resultados negativos o superiores al peso inicial del rollo.
 
 ## Compras, proveedores y costos
 
@@ -114,16 +114,16 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 ## Migración segura del inventario existente
 
-- [ ] Implementar únicamente migraciones aditivas en las primeras fases.
-- [ ] No volver a insertar automáticamente el inventario usado como referencia durante el levantamiento.
-- [ ] Mantener compatibilidad temporal con `purchase_history`, `tare_weight_g` y los formularios actuales.
+- [x] Implementar únicamente migraciones aditivas en las primeras fases.
+- [x] No volver a insertar automáticamente el inventario usado como referencia durante el levantamiento.
+- [x] Mantener compatibilidad temporal con `purchase_history`, `tare_weight_g` y los formularios actuales.
 - [ ] Respaldar la tara y el costo utilizados históricamente antes de introducir catálogos o conversiones.
-- [ ] Probar políticas RLS y permisos de cada tabla y función nueva.
+- [x] Probar políticas RLS y permisos de cada tabla y función nueva.
 - [ ] Ejecutar build, pruebas locales y humo en producción en cada fase.
 
 ## Orden incremental recomendado
 
-- [ ] Fase 0: cerrar permisos internos, índices, idempotencia y la creación atómica de rollo + compra.
+- [x] Fase 0: cerrar permisos internos, índices, idempotencia y la creación atómica de rollo + compra.
 - [ ] Fase 1: catálogo de tipos de spool, pesajes históricos y tara congelada por medición.
 - [ ] Fase 2: compras con partidas, express prorrateado, confianza de costos y multimoneda.
 - [ ] Fase 3: fuente HEX, moneda base, estados derivados y reporte de saldo.

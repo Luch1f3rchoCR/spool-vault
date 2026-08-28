@@ -1,6 +1,6 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
-Fecha de revisión: 27 de agosto de 2026.
+Fecha de revisión: 28 de agosto de 2026.
 
 ## Qué significa “atómica” en Spool Vault
 
@@ -16,10 +16,10 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Liberar spool | Atómico | Bajo | Mantener la función transaccional. |
 | Inactivar/reactivar spool | Atómico | Bajo | Mantener la función transaccional y validaciones. |
 | Registrar consumo y descontar gramos | Atómico e idempotente | Bajo | Mantener la función transaccional y probar reintentos en cada cambio del flujo. |
-| Agregar spool vacío | Una sola escritura | Medio | Agregar idempotencia y estado de envío en la UI. |
-| Editar spool | Una sola escritura | Bajo | Mantener validaciones y mostrar estado pendiente. |
+| Agregar spool vacío | Atómico e idempotente | Bajo | Mantener `create_spool` como único punto de escritura y conservar la clave durante reintentos. |
+| Editar spool | Atómico e idempotente | Bajo | Mantener `update_spool`, bloqueo de fila y estado pendiente. |
 | Agregar rollo, proveedor e historial de compra | Atómico e idempotente | Bajo | Mantener la función `create_roll_with_purchase` como único punto de escritura del formulario. |
-| Guardar pesaje actual | Una sola actualización | Medio | Al introducir historial, guardar medición y saldo juntos en una función transaccional. |
+| Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Para reportes financieros, usar una vista o función que produzca una lectura consistente. |
 
 La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
@@ -83,14 +83,14 @@ Mensajes recomendados:
 3. [Completado] Agregar estados pendientes y protección contra doble envío en esos flujos.
 4. [Completado] Cerrar permisos innecesarios de funciones internas y agregar índices de relaciones.
 5. [Completado] Probar RLS, reversión completa, reintentos y compilación.
-6. [Pendiente] Extender el mismo contrato al catálogo de spools y al historial de pesajes.
+6. [Completado] Extender el mismo contrato al catálogo de spools y al historial de pesajes.
 
 ### Fase 1 — Tara y pesajes históricos
 
-1. Crear catálogo reutilizable de tipos de spool.
-2. Mantener `tare_weight_g` actual durante la transición.
-3. Crear historial de pesajes con tara y confianza congeladas por evento.
-4. Guardar pesaje + saldo resultante en una sola transacción idempotente.
+1. [Completado] Crear catálogo reutilizable de tipos de spool.
+2. [Completado] Mantener `tare_weight_g` actual durante la transición.
+3. [Completado] Crear historial de pesajes con tara y confianza congeladas por evento.
+4. [Completado] Guardar pesaje + saldo resultante en una sola transacción idempotente.
 
 ### Fase 2 — Compras y multimoneda
 
