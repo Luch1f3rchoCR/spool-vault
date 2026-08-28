@@ -6,6 +6,7 @@ Incluye:
 
 - dashboard de rollos, gramos disponibles, materiales y rollos bajos;
 - inventario con marca, línea, material, color, HEX, peso, estado, ubicación, compra, precio, secado, foto y link;
+- edición de la ficha del filamento en un modal, conservando intacto el histórico de compras y mediciones;
 - filtros por búsqueda, marca, material y lista de compra;
 - registro de consumo por proyecto que descuenta gramos del rollo;
 - ajuste manual de gramos disponibles para corregir pesajes o recargas;

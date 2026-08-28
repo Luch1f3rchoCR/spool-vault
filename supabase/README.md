@@ -31,6 +31,7 @@ The schema uses RLS, authenticated-only access, and explicit grants so the inven
 - `record_consumption`: creates the log and discounts inventory in one transaction.
 - `create_spool` and `update_spool`: create or edit a physical spool with retry-safe request UUIDs.
 - `record_roll_weight`: stores the weighing snapshot and updates the roll balance in one transaction.
+- `update_filament_roll`: edits the operational roll card without rewriting financial or measurement history.
 - These critical functions accept a request UUID so browser retries return the original result instead of duplicating data.
 - Price history can be selected and inserted by the app, but not updated or deleted directly.
 - Weighing history can be selected and inserted by the safe function, but cannot be updated or deleted by the client.

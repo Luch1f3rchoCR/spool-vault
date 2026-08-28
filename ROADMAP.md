@@ -6,6 +6,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 - [x] Inventario real conectado a Supabase con autenticación y RLS.
 - [x] Alta de filamentos con marca, material, línea, color, compra y costos.
+- [x] Edición segura de la ficha del filamento sin reescribir compras, consumos ni pesajes históricos.
 - [x] Historial de compras y precios por rollo.
 - [x] Registro de consumo con costo calculado y descuento de inventario.
 - [x] QR y respaldo NFC cuando el navegador lo permite.

@@ -19,6 +19,7 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Agregar spool vacío | Atómico e idempotente | Bajo | Mantener `create_spool` como único punto de escritura y conservar la clave durante reintentos. |
 | Editar spool | Atómico e idempotente | Bajo | Mantener `update_spool`, bloqueo de fila y estado pendiente. |
 | Agregar rollo, proveedor e historial de compra | Atómico e idempotente | Bajo | Mantener la función `create_roll_with_purchase` como único punto de escritura del formulario. |
+| Editar ficha del filamento | Atómico e idempotente | Bajo | Mantener `update_filament_roll`; no reescribir compras, consumos ni pesajes desde este modal. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Para reportes financieros, usar una vista o función que produzca una lectura consistente. |
 
