@@ -1411,6 +1411,7 @@ export default function Home() {
   const selectedCostPerGram = selectedRoll?.filament_cost_amount && selectedRoll.initial_weight_g
     ? Number(selectedRoll.filament_cost_amount) / Number(selectedRoll.initial_weight_g)
     : null;
+  const isDemoMode = dataMode === "demo";
 
   if (isLoading) {
     return (
@@ -1537,6 +1538,18 @@ export default function Home() {
         )}
         {syncNote}
       </p>
+
+      {isDemoMode && (
+        <section className="panel demo-banner" aria-label="Datos de demostración">
+          <div>
+            <strong>Datos de muestra</strong>
+            <p>Estos rollos son ejemplos para probar la app. Al iniciar sesión, se carga solamente tu inventario real de Supabase.</p>
+          </div>
+          <button type="button" onClick={openAccount}>
+            {isSupabaseConfigured() ? "Entrar" : "Configurar Supabase"}
+          </button>
+        </section>
+      )}
 
       {dataMode === "error" && (
         <section className="panel data-error" aria-label="Error de conexión">
@@ -1836,11 +1849,18 @@ export default function Home() {
               <div className="quick-weigh-card">
                 <span className="quick-weigh-swatch" style={{ backgroundColor: selectedRoll.color_hex }} />
                 <div>
+                  {isDemoMode && <span className="demo-pill">Muestra</span>}
                   <strong>{selectedRoll.color_name}</strong>
                   <span>{selectedRoll.brand} · {selectedRoll.product_line || "Sin línea"} · {selectedRoll.material}</span>
                   <small>{Math.round(Number(selectedRoll.available_weight_g))} g guardados ahora</small>
                 </div>
               </div>
+
+              {isDemoMode && (
+                <p className="demo-weigh-note">
+                  Si guardás este pesaje, la app pasa a modo local en esta PC. No afecta tu inventario real.
+                </p>
+              )}
 
               <label>
                 Peso total medido
@@ -2228,6 +2248,7 @@ export default function Home() {
                 </span>
                 <span className="roll-side">
                   <span className={statusClass(roll.status)}>{statusLabels[roll.status]}</span>
+                  {isDemoMode && <span className="demo-pill">Muestra</span>}
                   <strong>{Math.round(roll.available_weight_g)} g</strong>
                 </span>
               </button>
@@ -2244,7 +2265,10 @@ export default function Home() {
             <div className="detail-head">
               <span className="detail-swatch" style={{ backgroundColor: selectedRoll.color_hex }} />
               <div>
-                <p className={statusClass(selectedRoll.status)}>{statusLabels[selectedRoll.status]}</p>
+                <div className="detail-badges">
+                  <p className={statusClass(selectedRoll.status)}>{statusLabels[selectedRoll.status]}</p>
+                  {isDemoMode && <span className="demo-pill">Muestra</span>}
+                </div>
                 <h2>{selectedRoll.color_name}</h2>
                 <p>
                   {selectedRoll.brand} · {selectedRoll.product_line || "Sin línea"} ·{" "}

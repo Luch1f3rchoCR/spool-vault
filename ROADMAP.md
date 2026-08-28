@@ -15,6 +15,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Inactivación y reactivación de spools sin eliminar su historial.
 - [x] Operaciones atómicas para asignar, liberar, inactivar y reactivar spools.
 - [x] Estados claros para inventario real, local, demo y error de conexión.
+- [x] Datos demo visualmente marcados para que no parezcan inventario real.
 
 ## Integridad, atomicidad y UX segura
 
