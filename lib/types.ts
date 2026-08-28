@@ -32,6 +32,7 @@ export type FilamentRoll = {
   created_at?: string;
   updated_at?: string;
   creation_request_id?: string | null;
+  last_update_request_id?: string | null;
 };
 
 export type Supplier = {

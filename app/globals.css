@@ -276,6 +276,14 @@ h3 {
   cursor: pointer;
 }
 
+.edit-roll-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -451,6 +459,10 @@ h3 {
   background: var(--paper);
 }
 
+.roll-edit-modal {
+  overflow-x: hidden;
+}
+
 .modal-head {
   position: sticky;
   top: -14px;
@@ -586,6 +598,32 @@ textarea:focus {
 .color-presets button.selected {
   border-color: var(--ink);
   box-shadow: 0 0 0 3px rgba(47, 125, 95, 0.2);
+}
+
+.field-hint {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.history-protection {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid rgba(47, 125, 95, 0.25);
+  border-radius: 8px;
+  background: rgba(47, 125, 95, 0.07);
+}
+
+.history-protection strong {
+  color: var(--accent-dark);
+}
+
+.history-protection span,
+.history-protection small {
+  color: var(--muted);
 }
 
 .cost-preview {

@@ -11,6 +11,7 @@ import {
   LogIn,
   Nfc,
   PackagePlus,
+  Pencil,
   Plus,
   QrCode,
   ScanLine,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { ProfilePanel } from "@/components/profile-panel";
+import { RollEditModal, type EditableRollValues } from "@/components/roll-edit-modal";
 import { demoLogs, demoRolls } from "@/lib/demo-data";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import type {
@@ -60,6 +62,7 @@ type ConsumptionMutationResult = {
 };
 type SpoolWriteResult = { spool: Spool; replayed: boolean };
 type WeightMutationResult = { roll: FilamentRoll; event: WeighingEvent; replayed: boolean };
+type RollUpdateResult = { roll: FilamentRoll; replayed: boolean };
 type WeightInput = {
   kind: "scale" | "manual";
   grossWeight: number | null;
@@ -263,6 +266,7 @@ export default function Home() {
   const [materialFilter, setMaterialFilter] = useState("Todos");
   const [lowOnly, setLowOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [editingRollId, setEditingRollId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
   const [editingSpoolId, setEditingSpoolId] = useState("");
   const [showProfile, setShowProfile] = useState(false);
@@ -283,10 +287,12 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [dataMode, setDataMode] = useState<DataMode>("demo");
   const [isAddingRoll, setIsAddingRoll] = useState(false);
+  const [isUpdatingRoll, setIsUpdatingRoll] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
   const [pendingSpoolAction, setPendingSpoolAction] = useState("");
   const addRollRequestId = useRef<string | null>(null);
+  const updateRollRequests = useRef<Record<string, string>>({});
   const consumptionRequest = useRef<{ id: string; rollId: string } | null>(null);
   const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
   const createSpoolRequestId = useRef<string | null>(null);
@@ -466,13 +472,14 @@ export default function Home() {
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showSpools || showProfile ? "hidden" : "";
+    document.body.style.overflow = showAdd || showSpools || showProfile || Boolean(editingRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [showAdd, showSpools, showProfile]);
+  }, [editingRollId, showAdd, showSpools, showProfile]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
+  const editingRoll = rolls.find((roll) => roll.id === editingRollId);
   const selectedSpool = spools.find((spool) => spool.id === selectedRoll?.spool_id);
   const recentWeighings = weighingEvents
     .filter((event) => event.roll_id === selectedRoll?.id)
@@ -710,6 +717,75 @@ export default function Home() {
       setSyncNote(`No se pudo confirmar el alta. Podés reintentar sin duplicar datos: ${message}`);
     } finally {
       setIsAddingRoll(false);
+    }
+  }
+
+  async function updateRoll(values: EditableRollValues) {
+    const roll = rolls.find((item) => item.id === editingRollId);
+    if (!roll || isUpdatingRoll) return;
+    activateLocalMode();
+
+    if (values.initial_weight_g < Number(roll.available_weight_g)) {
+      setSyncNote(`El peso inicial no puede ser menor a los ${roll.available_weight_g} g disponibles.`);
+      return;
+    }
+    if (values.low_threshold_g < 0 || values.low_threshold_g > values.initial_weight_g) {
+      setSyncNote("El umbral bajo debe estar entre cero y el peso inicial.");
+      return;
+    }
+
+    setIsUpdatingRoll(true);
+    try {
+      if (usingSupabase && supabase) {
+        const requestId = updateRollRequests.current[roll.id] ?? crypto.randomUUID();
+        updateRollRequests.current[roll.id] = requestId;
+        const { data, error } = await supabase.rpc("update_filament_roll", {
+          p_request_id: requestId,
+          p_roll_id: roll.id,
+          p_brand: values.brand,
+          p_product_line: values.product_line || null,
+          p_material: values.material,
+          p_color_name: values.color_name,
+          p_color_hex: values.color_hex,
+          p_initial_weight_g: values.initial_weight_g,
+          p_low_threshold_g: values.low_threshold_g,
+          p_location: values.location || null,
+          p_drying_notes: values.drying_notes || null,
+          p_photo_url: values.photo_url || null,
+          p_purchase_url: values.purchase_url || null
+        });
+
+        if (error || !data) {
+          setSyncNote(
+            `No se pudo confirmar la edición. Podés reintentar sin repetirla: ${error?.message ?? "respuesta vacía"}`
+          );
+          return;
+        }
+
+        const result = data as RollUpdateResult;
+        const savedRoll = normalizeRollData(result.roll);
+        setRolls((current) => current.map((item) => item.id === savedRoll.id ? savedRoll : item));
+        setSyncNote(result.replayed
+          ? "Esta edición ya estaba guardada; recuperamos su resultado."
+          : `Filamento ${savedRoll.color_name} actualizado correctamente.`);
+        delete updateRollRequests.current[roll.id];
+      } else {
+        const nextStatus = roll.status === "archived"
+          ? "archived"
+          : normalizeStatus(Number(roll.available_weight_g), values.low_threshold_g,
+            Number(roll.available_weight_g) < values.initial_weight_g ? "open" : "new");
+        setRolls((current) => current.map((item) => item.id === roll.id
+          ? { ...item, ...values, product_line: values.product_line || null, status: nextStatus }
+          : item));
+        setSyncNote(`Filamento ${values.color_name} actualizado en el inventario local.`);
+      }
+
+      setEditingRollId("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo confirmar la edición. Podés reintentar sin repetirla: ${message}`);
+    } finally {
+      setIsUpdatingRoll(false);
     }
   }
 
@@ -1691,6 +1767,19 @@ export default function Home() {
         </div>
       )}
 
+      {editingRoll && (
+        <RollEditModal
+          roll={editingRoll}
+          brandOptions={brandOptions}
+          materialOptions={materialOptions}
+          lineOptionsByMaterial={lineOptionsByMaterial}
+          colorPresets={colorPresets}
+          isSaving={isUpdatingRoll}
+          onClose={() => setEditingRollId("")}
+          onSave={updateRoll}
+        />
+      )}
+
       {showSpools && (
         <div
           className="modal-backdrop"
@@ -1985,6 +2074,15 @@ export default function Home() {
                 </p>
               </div>
             </div>
+
+            <button
+              className="secondary-action edit-roll-action"
+              type="button"
+              onClick={() => setEditingRollId(selectedRoll.id)}
+            >
+              <Pencil size={16} aria-hidden="true" />
+              Editar filamento
+            </button>
 
             <div className="detail-facts">
               <span>{Math.round(selectedRoll.available_weight_g)} g disponibles</span>
