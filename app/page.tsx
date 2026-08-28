@@ -266,6 +266,7 @@ export default function Home() {
   const [materialFilter, setMaterialFilter] = useState("Todos");
   const [lowOnly, setLowOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showQuickWeigh, setShowQuickWeigh] = useState(false);
   const [editingRollId, setEditingRollId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
   const [editingSpoolId, setEditingSpoolId] = useState("");
@@ -290,6 +291,7 @@ export default function Home() {
   const [isUpdatingRoll, setIsUpdatingRoll] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
+  const [isWeighingHighlighted, setIsWeighingHighlighted] = useState(false);
   const [pendingSpoolAction, setPendingSpoolAction] = useState("");
   const addRollRequestId = useRef<string | null>(null);
   const updateRollRequests = useRef<Record<string, string>>({});
@@ -297,6 +299,7 @@ export default function Home() {
   const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
   const createSpoolRequestId = useRef<string | null>(null);
   const updateSpoolRequests = useRef<Record<string, string>>({});
+  const quickWeighInputRef = useRef<HTMLInputElement | null>(null);
 
   const supabase = useMemo(() => getSupabaseClient(), []);
   const usingSupabase = Boolean(supabase && signedInEmail);
@@ -472,11 +475,11 @@ export default function Home() {
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showSpools || showProfile || Boolean(editingRollId) ? "hidden" : "";
+    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showProfile || Boolean(editingRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [editingRollId, showAdd, showSpools, showProfile]);
+  }, [editingRollId, showAdd, showQuickWeigh, showSpools, showProfile]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
   const editingRoll = rolls.find((roll) => roll.id === editingRollId);
@@ -511,6 +514,11 @@ export default function Home() {
       }
     }).then(setQrDataUrl);
   }, [selectedRoll]);
+
+  useEffect(() => {
+    if (!showQuickWeigh) return;
+    window.setTimeout(() => quickWeighInputRef.current?.focus(), 120);
+  }, [showQuickWeigh, selectedRoll?.id]);
 
   const dashboard = useMemo(() => {
     const totalWeight = rolls.reduce((sum, roll) => sum + Number(roll.available_weight_g), 0);
@@ -1025,7 +1033,10 @@ export default function Home() {
         source: spoolTypes.find((type) => type.id === weighingSpoolTypeId)?.weight_source ?? "Tara indicada manualmente"
       }
     );
-    if (saved) setMeasuredTotalWeight("");
+    if (saved) {
+      setMeasuredTotalWeight("");
+      if (event.currentTarget.id === "quick-weigh-sheet") setShowQuickWeigh(false);
+    }
   }
 
   async function addSpool(event: React.FormEvent<HTMLFormElement>) {
@@ -1353,11 +1364,13 @@ export default function Home() {
   }
 
   function goToWeighing() {
-    const target = document.getElementById("quick-weigh");
-    target?.scrollIntoView({ behavior: "smooth", block: "center" });
-    window.setTimeout(() => {
-      target?.querySelector<HTMLInputElement>('input[name="available_weight_g"]')?.focus();
-    }, 450);
+    if (!selectedRoll) {
+      setSyncNote("Agregá o seleccioná un rollo antes de pesar.");
+      return;
+    }
+    setShowQuickWeigh(true);
+    setIsWeighingHighlighted(true);
+    window.setTimeout(() => setIsWeighingHighlighted(false), 1800);
   }
 
   function openAccount() {
@@ -1391,6 +1404,9 @@ export default function Home() {
   const availableLineOptions = lineOptionsByMaterial[draft.material] ?? ["Genérico"];
   const measuredRemaining = measuredTotalWeight !== "" && weighingTare !== ""
     ? Math.round((Number(measuredTotalWeight) - Number(weighingTare)) * 100) / 100
+    : null;
+  const measuredDelta = selectedRoll && measuredRemaining !== null
+    ? Math.round((measuredRemaining - Number(selectedRoll.available_weight_g)) * 100) / 100
     : null;
   const selectedCostPerGram = selectedRoll?.filament_cost_amount && selectedRoll.initial_weight_g
     ? Number(selectedRoll.filament_cost_amount) / Number(selectedRoll.initial_weight_g)
@@ -1767,6 +1783,168 @@ export default function Home() {
         </div>
       )}
 
+      {showQuickWeigh && selectedRoll && (
+        <div
+          className="modal-backdrop quick-weigh-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSavingWeight) setShowQuickWeigh(false);
+          }}
+        >
+          <section
+            className="panel modal-panel quick-weigh-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quick-weigh-title"
+          >
+            <div className="modal-head quick-weigh-head">
+              <div>
+                <p className="eyebrow">Balanza</p>
+                <h2 id="quick-weigh-title">Actualizar peso</h2>
+              </div>
+              <button
+                className="modal-close"
+                type="button"
+                onClick={() => setShowQuickWeigh(false)}
+                disabled={isSavingWeight}
+                aria-label="Cerrar pesaje"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+
+            <form className="quick-weigh-form" id="quick-weigh-sheet" onSubmit={adjustFromMeasuredWeight}>
+              <label className="quick-roll-picker">
+                Rollo
+                <select
+                  value={selectedRoll.id}
+                  disabled={isSavingWeight}
+                  onChange={(event) => {
+                    setSelectedId(event.target.value);
+                    setMeasuredTotalWeight("");
+                    weightRequest.current = null;
+                  }}
+                >
+                  {rolls.map((roll) => (
+                    <option key={roll.id} value={roll.id}>
+                      {roll.color_name} · {roll.brand} · {Math.round(Number(roll.available_weight_g))} g
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="quick-weigh-card">
+                <span className="quick-weigh-swatch" style={{ backgroundColor: selectedRoll.color_hex }} />
+                <div>
+                  <strong>{selectedRoll.color_name}</strong>
+                  <span>{selectedRoll.brand} · {selectedRoll.product_line || "Sin línea"} · {selectedRoll.material}</span>
+                  <small>{Math.round(Number(selectedRoll.available_weight_g))} g guardados ahora</small>
+                </div>
+              </div>
+
+              <label>
+                Peso total medido
+                <input
+                  ref={quickWeighInputRef}
+                  name="measured_total_weight_g"
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  placeholder="Ej. 469"
+                  value={measuredTotalWeight}
+                  disabled={isSavingWeight}
+                  onChange={(event) => setMeasuredTotalWeight(event.target.value)}
+                />
+              </label>
+
+              <label>
+                Referencia de tara
+                <select
+                  value={weighingSpoolTypeId}
+                  disabled={isSavingWeight}
+                  onChange={(event) => {
+                    const typeId = event.target.value;
+                    const type = spoolTypes.find((item) => item.id === typeId);
+                    setWeighingSpoolTypeId(typeId);
+                    if (type) {
+                      setWeighingTare(String(type.total_tare_g));
+                      setWeighingConfidence(type.tare_confidence);
+                    } else {
+                      setWeighingConfidence("unknown");
+                    }
+                    weightRequest.current = null;
+                  }}
+                >
+                  <option value="">Tara manual</option>
+                  {spoolTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.manufacturer} · {type.name} · {type.total_tare_g} g
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="quick-weigh-row">
+                <label>
+                  Tara
+                  <input
+                    name="tare_weight_g"
+                    required
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    placeholder="Ej. 254"
+                    value={weighingTare}
+                    disabled={isSavingWeight}
+                    onChange={(event) => {
+                      setWeighingTare(event.target.value);
+                      weightRequest.current = null;
+                    }}
+                  />
+                </label>
+                <label>
+                  Confianza
+                  <select
+                    value={weighingConfidence}
+                    disabled={isSavingWeight}
+                    onChange={(event) => {
+                      setWeighingConfidence(event.target.value as TareConfidence);
+                      weightRequest.current = null;
+                    }}
+                  >
+                    <option value="verified">Verificada</option>
+                    <option value="estimated">Estimada</option>
+                    <option value="unknown">Desconocida</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className={measuredRemaining != null && measuredRemaining < 0 ? "quick-weigh-result invalid" : "quick-weigh-result"}>
+                <span>Disponible calculado</span>
+                <strong>{measuredRemaining == null ? "—" : `${measuredRemaining.toLocaleString("es-CR")} g`}</strong>
+                <small>
+                  {measuredDelta == null
+                    ? "Peso total menos tara"
+                    : `${measuredDelta >= 0 ? "+" : ""}${measuredDelta.toLocaleString("es-CR")} g vs registro actual`}
+                </small>
+              </div>
+
+              <button
+                className="primary-action"
+                type="submit"
+                disabled={isSavingWeight || measuredRemaining == null || measuredRemaining < 0}
+              >
+                <Weight size={18} aria-hidden="true" />
+                {isSavingWeight ? "Guardando pesaje..." : "Guardar pesaje"}
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
+
       {editingRoll && (
         <RollEditModal
           roll={editingRoll}
@@ -2122,7 +2300,11 @@ export default function Home() {
 
             {selectedRoll.drying_notes && <p className="notes">{selectedRoll.drying_notes}</p>}
 
-            <form className="consume-form weighing-form" id="quick-weigh" onSubmit={adjustFromMeasuredWeight}>
+            <form
+              className={isWeighingHighlighted ? "consume-form weighing-form weighing-form-active" : "consume-form weighing-form"}
+              id="quick-weigh"
+              onSubmit={adjustFromMeasuredWeight}
+            >
               <h3>Actualizar con balanza</h3>
               <p className="form-help">Ingresá el peso completo. Restamos la tara antes de guardar el filamento disponible.</p>
               <label className="weighing-type-field">

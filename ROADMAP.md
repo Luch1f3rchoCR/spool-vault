@@ -37,6 +37,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 - [x] Navegación inferior móvil.
 - [x] Accesos rápidos a inventario, pesaje y cuenta.
+- [x] Bandeja rápida de pesaje desde navegación móvil, con selección de rollo, tara y resultado previo.
 - [x] Manifest, service worker e instalación como PWA.
 - [x] Icono y favicon propios de Spool Vault.
 - [x] Login compacto en la franja superior.
@@ -48,6 +49,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 - [x] Tara configurable por spool.
 - [x] Pesaje rápido: peso total menos tara.
+- [x] Acceso móvil de un toque para pesar sin buscar el formulario dentro del detalle.
 - [x] Vista previa del filamento calculado antes de guardar.
 - [x] Referencia Bambu Lab de 254 g editable (213 g de spool + 41 g de cartón/NFC).
 - [x] Ajuste manual disponible para casos especiales.
