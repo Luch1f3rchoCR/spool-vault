@@ -489,6 +489,12 @@ h3 {
   font-weight: 800;
 }
 
+.auth-panel form > button:disabled,
+.auth-panel input:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .auth-panel .modal-close {
   min-height: 38px;
   color: var(--ink);

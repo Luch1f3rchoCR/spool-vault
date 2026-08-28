@@ -51,6 +51,7 @@ const LOCAL_LOGS_KEY = "filament-vault-logs";
 const LOCAL_SPOOLS_KEY = "spool-vault-spools";
 const LOCAL_PURCHASES_KEY = "spool-vault-purchases";
 const LOCAL_WEIGHINGS_KEY = "spool-vault-weighings";
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
 type DataMode = "authenticated" | "demo" | "local" | "error";
 type SpoolMutationResult = { roll: FilamentRoll | null; spool: Spool };
@@ -212,6 +213,23 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMessage: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, AUTH_REQUEST_TIMEOUT_MS);
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => window.clearTimeout(timeoutId));
+  });
+}
+
 function payloadForRoll(roll: Pick<FilamentRoll, "id" | "qr_payload">) {
   if (roll.qr_payload) return roll.qr_payload;
   if (typeof window === "undefined") return `filament-roll:${roll.id}`;
@@ -297,6 +315,7 @@ export default function Home() {
   const [isUpdatingRoll, setIsUpdatingRoll] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isWeighingHighlighted, setIsWeighingHighlighted] = useState(false);
   const [pendingSpoolAction, setPendingSpoolAction] = useState("");
   const addRollRequestId = useRef<string | null>(null);
@@ -1364,28 +1383,51 @@ export default function Home() {
 
   async function sendMagicLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!authEmail) return;
+    if (isSendingMagicLink) return;
 
-    if (!supabase) {
-      setAuthNote("Supabase no está configurado en este deployment.");
+    const email = authEmail.trim();
+
+    if (!isValidEmail(email)) {
+      setAuthNote("Escribí un correo válido para enviarte el enlace.");
       return;
     }
 
-    const emailRedirectTo = getAuthRedirectUrl();
-    setAuthRedirectUrl(emailRedirectTo);
+    setIsSendingMagicLink(true);
+    setAuthNote("Enviando enlace seguro...");
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: authEmail,
-      options: {
-        emailRedirectTo
+    try {
+      const client = supabase ?? await initializeSupabaseClient();
+      setSupabase(client);
+      setSupabaseConfig(getSupabaseConfigStatus());
+
+      if (!client) {
+        setAuthNote("Supabase no está configurado en este deployment.");
+        return;
       }
-    });
 
-    setAuthNote(
-      error
-        ? `No se pudo enviar el enlace: ${error.message}`
-        : "Listo. Revisá tu correo para abrir la sesión."
-    );
+      const emailRedirectTo = getAuthRedirectUrl();
+      setAuthRedirectUrl(emailRedirectTo);
+
+      const { error } = await withTimeout(
+        client.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo
+          }
+        }),
+        "Supabase no respondió a tiempo. Revisá conexión o probá abrir la app fuera de WhatsApp."
+      );
+
+      setAuthNote(
+        error
+          ? `No se pudo enviar el enlace: ${error.message}`
+          : `Listo. Revisá tu correo. El enlace vuelve a ${emailRedirectTo}`
+      );
+    } catch (error) {
+      setAuthNote(error instanceof Error ? error.message : "No se pudo enviar el enlace seguro.");
+    } finally {
+      setIsSendingMagicLink(false);
+    }
   }
 
   async function signOut() {
@@ -1493,7 +1535,7 @@ export default function Home() {
                 </button>
               </div>
               {supabaseConfig.isConfigured ? (
-                <form onSubmit={sendMagicLink}>
+                <form onSubmit={sendMagicLink} noValidate>
                   <label htmlFor="auth-email">Correo electrónico</label>
                   <input
                     id="auth-email"
@@ -1502,9 +1544,12 @@ export default function Home() {
                     onChange={(event) => setAuthEmail(event.target.value)}
                     placeholder="nombre@correo.com"
                     autoComplete="email"
+                    disabled={isSendingMagicLink}
                     required
                   />
-                  <button type="submit">Enviar enlace seguro</button>
+                  <button type="submit" disabled={isSendingMagicLink} aria-busy={isSendingMagicLink}>
+                    {isSendingMagicLink ? "Enviando..." : "Enviar enlace seguro"}
+                  </button>
                   <p className="auth-help">Enlace de un solo uso. Sin contraseña.</p>
                   <p className="auth-redirect">
                     El enlace vuelve a <code>{authRedirectUrl || "detectando URL..."}</code>
