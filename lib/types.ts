@@ -1,6 +1,7 @@
 export type RollStatus = "new" | "open" | "low" | "empty" | "archived";
 export type PackageType = "spooled" | "refill";
 export type SpoolStatus = "empty" | "in_use" | "reserved" | "retired";
+export type TareConfidence = "verified" | "estimated" | "unknown";
 
 export type FilamentRoll = {
   id: string;
@@ -50,7 +51,42 @@ export type Spool = {
   currency: string;
   status: SpoolStatus;
   notes: string | null;
+  spool_type_id?: string | null;
+  creation_request_id?: string | null;
+  last_update_request_id?: string | null;
   created_at?: string;
+};
+
+export type SpoolType = {
+  id: string;
+  user_id: string | null;
+  manufacturer: string;
+  name: string;
+  material: string;
+  spool_weight_g: number | null;
+  insert_weight_g: number | null;
+  total_tare_g: number;
+  photo_url: string | null;
+  notes: string | null;
+  weight_source: string | null;
+  tare_confidence: TareConfidence;
+  is_active: boolean;
+};
+
+export type WeighingEvent = {
+  id: string;
+  request_id: string;
+  roll_id: string;
+  spool_id: string | null;
+  spool_type_id: string | null;
+  measurement_kind: "scale" | "manual";
+  gross_weight_g: number | null;
+  tare_weight_g: number | null;
+  available_weight_g: number;
+  tare_confidence: TareConfidence;
+  weight_source: string | null;
+  notes: string | null;
+  measured_at: string;
 };
 
 export type PurchaseRecord = {

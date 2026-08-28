@@ -33,6 +33,9 @@ import type {
   RollDraft,
   RollStatus,
   Spool,
+  SpoolType,
+  TareConfidence,
+  WeighingEvent,
   Supplier
 } from "@/lib/types";
 
@@ -40,6 +43,7 @@ const LOCAL_ROLLS_KEY = "filament-vault-rolls";
 const LOCAL_LOGS_KEY = "filament-vault-logs";
 const LOCAL_SPOOLS_KEY = "spool-vault-spools";
 const LOCAL_PURCHASES_KEY = "spool-vault-purchases";
+const LOCAL_WEIGHINGS_KEY = "spool-vault-weighings";
 
 type DataMode = "authenticated" | "demo" | "local" | "error";
 type SpoolMutationResult = { roll: FilamentRoll | null; spool: Spool };
@@ -53,6 +57,16 @@ type ConsumptionMutationResult = {
   roll: FilamentRoll;
   log: ConsumptionLog;
   replayed: boolean;
+};
+type SpoolWriteResult = { spool: Spool; replayed: boolean };
+type WeightMutationResult = { roll: FilamentRoll; event: WeighingEvent; replayed: boolean };
+type WeightInput = {
+  kind: "scale" | "manual";
+  grossWeight: number | null;
+  tareWeight: number | null;
+  spoolTypeId: string | null;
+  confidence: TareConfidence;
+  source: string;
 };
 
 const brandOptions = ["Bambu Lab", "Pritonic", "Genérico", "Creality", "Polymaker", "eSUN"];
@@ -107,6 +121,58 @@ const spoolStatusLabels: Record<Spool["status"], string> = {
   reserved: "Reservado",
   retired: "Inactivo"
 };
+const tareConfidenceLabels: Record<TareConfidence, string> = {
+  verified: "Verificada",
+  estimated: "Estimada",
+  unknown: "Desconocida"
+};
+const fallbackSpoolTypes: SpoolType[] = [
+  {
+    id: "local-bambu-reusable",
+    user_id: null,
+    manufacturer: "Bambu Lab",
+    name: "Reusable Spool",
+    material: "Plástico reutilizable",
+    spool_weight_g: 213,
+    insert_weight_g: 41,
+    total_tare_g: 254,
+    photo_url: null,
+    notes: "213 g de spool + 41 g de cartón/RFID/NFC",
+    weight_source: "Medición física real",
+    tare_confidence: "verified",
+    is_active: true
+  },
+  {
+    id: "local-pritonic-plastic",
+    user_id: null,
+    manufacturer: "Pritonic",
+    name: "Spool plástico",
+    material: "Plástico",
+    spool_weight_g: null,
+    insert_weight_g: null,
+    total_tare_g: 250,
+    photo_url: null,
+    notes: "Pendiente de medición física individual",
+    weight_source: "Referencia provisional",
+    tare_confidence: "estimated",
+    is_active: true
+  },
+  {
+    id: "local-pritonic-cardboard",
+    user_id: null,
+    manufacturer: "Pritonic",
+    name: "Spool cartón",
+    material: "Cartón",
+    spool_weight_g: null,
+    insert_weight_g: null,
+    total_tare_g: 170,
+    photo_url: null,
+    notes: "Pendiente de medición física individual",
+    weight_source: "Referencia provisional",
+    tare_confidence: "estimated",
+    is_active: true
+  }
+];
 
 const initialDraft: RollDraft = {
   brand: "Bambu Lab",
@@ -187,6 +253,8 @@ export default function Home() {
   const [rolls, setRolls] = useState<FilamentRoll[]>([]);
   const [logs, setLogs] = useState<ConsumptionLog[]>([]);
   const [spools, setSpools] = useState<Spool[]>([]);
+  const [spoolTypes, setSpoolTypes] = useState<SpoolType[]>([]);
+  const [weighingEvents, setWeighingEvents] = useState<WeighingEvent[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -209,13 +277,20 @@ export default function Home() {
   const [nfcNote, setNfcNote] = useState("");
   const [measuredTotalWeight, setMeasuredTotalWeight] = useState("");
   const [weighingTare, setWeighingTare] = useState("");
+  const [weighingSpoolTypeId, setWeighingSpoolTypeId] = useState("");
+  const [weighingConfidence, setWeighingConfidence] = useState<TareConfidence>("unknown");
+  const [newSpoolTypeId, setNewSpoolTypeId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [dataMode, setDataMode] = useState<DataMode>("demo");
   const [isAddingRoll, setIsAddingRoll] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
+  const [pendingSpoolAction, setPendingSpoolAction] = useState("");
   const addRollRequestId = useRef<string | null>(null);
   const consumptionRequest = useRef<{ id: string; rollId: string } | null>(null);
+  const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
+  const createSpoolRequestId = useRef<string | null>(null);
+  const updateSpoolRequests = useRef<Record<string, string>>({});
 
   const supabase = useMemo(() => getSupabaseClient(), []);
   const usingSupabase = Boolean(supabase && signedInEmail);
@@ -242,6 +317,8 @@ export default function Home() {
           setRolls([]);
           setLogs([]);
           setSpools([]);
+          setSpoolTypes([]);
+          setWeighingEvents([]);
           setSuppliers([]);
           setPurchases([]);
           setSelectedId("");
@@ -257,10 +334,13 @@ export default function Home() {
           const localLogs = readLocal<ConsumptionLog[]>(LOCAL_LOGS_KEY, demoLogs);
           const localSpools = readLocal<Spool[]>(LOCAL_SPOOLS_KEY, []);
           const localPurchases = readLocal<PurchaseRecord[]>(LOCAL_PURCHASES_KEY, []);
+          const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
           setSignedInEmail("");
           setRolls(localRolls);
           setLogs(localLogs);
           setSpools(localSpools);
+          setSpoolTypes(fallbackSpoolTypes);
+          setWeighingEvents(localWeighings);
           setPurchases(localPurchases);
           setSelectedId(localRolls[0]?.id ?? "");
           setDataMode(hasLocalInventory ? "local" : "demo");
@@ -279,6 +359,8 @@ export default function Home() {
           { data: rollData, error: rollError },
           { data: logData, error: logError },
           { data: spoolData, error: spoolError },
+          { data: spoolTypeData, error: spoolTypeError },
+          { data: weighingData, error: weighingError },
           { data: supplierData, error: supplierError },
           { data: purchaseData, error: purchaseError }
         ] =
@@ -286,16 +368,21 @@ export default function Home() {
             supabase.from("filament_rolls").select("*").order("updated_at", { ascending: false }),
             supabase.from("consumption_logs").select("*").order("consumed_at", { ascending: false }),
             supabase.from("spools").select("*").order("code"),
+            supabase.from("spool_types").select("*").eq("is_active", true).order("manufacturer").order("name"),
+            supabase.from("weighing_events").select("*").order("measured_at", { ascending: false }),
             supabase.from("suppliers").select("*").order("name"),
             supabase.from("purchase_history").select("*").order("purchased_at", { ascending: false })
           ]);
 
         if (
-          !rollError && !logError && !spoolError && !supplierError && !purchaseError && rollData
+          !rollError && !logError && !spoolError && !spoolTypeError && !weighingError
+          && !supplierError && !purchaseError && rollData
         ) {
           setRolls(rollData as FilamentRoll[]);
           setLogs((logData ?? []) as ConsumptionLog[]);
           setSpools((spoolData ?? []) as Spool[]);
+          setSpoolTypes((spoolTypeData ?? []) as SpoolType[]);
+          setWeighingEvents((weighingData ?? []) as WeighingEvent[]);
           setSuppliers((supplierData ?? []) as Supplier[]);
           setPurchases((purchaseData ?? []) as PurchaseRecord[]);
           setSelectedId(rollData[0]?.id ?? "");
@@ -308,6 +395,8 @@ export default function Home() {
         setRolls([]);
         setLogs([]);
         setSpools([]);
+        setSpoolTypes([]);
+        setWeighingEvents([]);
         setSuppliers([]);
         setPurchases([]);
         setSelectedId("");
@@ -322,9 +411,12 @@ export default function Home() {
       const localLogs = readLocal<ConsumptionLog[]>(LOCAL_LOGS_KEY, demoLogs);
       const localSpools = readLocal<Spool[]>(LOCAL_SPOOLS_KEY, []);
       const localPurchases = readLocal<PurchaseRecord[]>(LOCAL_PURCHASES_KEY, []);
+      const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
       setRolls(localRolls);
       setLogs(localLogs);
       setSpools(localSpools);
+      setSpoolTypes(fallbackSpoolTypes);
+      setWeighingEvents(localWeighings);
       setPurchases(localPurchases);
       setSelectedId(localRolls[0]?.id ?? "");
       setDataMode(hasLocalInventory ? "local" : "demo");
@@ -370,6 +462,10 @@ export default function Home() {
   }, [dataMode, purchases, usingSupabase]);
 
   useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_WEIGHINGS_KEY, weighingEvents);
+  }, [dataMode, usingSupabase, weighingEvents]);
+
+  useEffect(() => {
     document.body.style.overflow = showAdd || showSpools || showProfile ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
@@ -377,6 +473,24 @@ export default function Home() {
   }, [showAdd, showSpools, showProfile]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
+  const selectedSpool = spools.find((spool) => spool.id === selectedRoll?.spool_id);
+  const recentWeighings = weighingEvents
+    .filter((event) => event.roll_id === selectedRoll?.id)
+    .slice(0, 3);
+
+  useEffect(() => {
+    if (!selectedRoll) return;
+    const preferredType = spoolTypes.find((type) => type.id === selectedSpool?.spool_type_id)
+      ?? (selectedRoll.brand === "Bambu Lab"
+        ? spoolTypes.find((type) => type.manufacturer === "Bambu Lab")
+        : undefined);
+
+    setWeighingSpoolTypeId(preferredType?.id ?? "");
+    setWeighingTare(preferredType ? String(preferredType.total_tare_g) : selectedSpool?.tare_weight_g ? String(selectedSpool.tare_weight_g) : "");
+    setWeighingConfidence(preferredType?.tare_confidence ?? "unknown");
+    setMeasuredTotalWeight("");
+    weightRequest.current = null;
+  }, [selectedRoll?.id, selectedRoll?.brand, selectedSpool?.spool_type_id, selectedSpool?.tare_weight_g, spoolTypes]);
 
   useEffect(() => {
     if (!selectedRoll) return;
@@ -688,7 +802,7 @@ export default function Home() {
     }
   }
 
-  async function saveAvailableWeight(availableWeight: number, successNote: string) {
+  async function saveAvailableWeight(availableWeight: number, successNote: string, input: WeightInput) {
     if (!selectedRoll || isSavingWeight) return false;
     activateLocalMode();
 
@@ -701,25 +815,70 @@ export default function Home() {
 
     try {
       if (usingSupabase && supabase) {
-        const { data, error } = await supabase
-          .from("filament_rolls")
-          .update({ available_weight_g: availableWeight, status })
-          .eq("id", selectedRoll.id)
-          .select()
-          .single();
+        const fingerprint = JSON.stringify({ availableWeight, ...input });
+        if (
+          !weightRequest.current
+          || weightRequest.current.rollId !== selectedRoll.id
+          || weightRequest.current.fingerprint !== fingerprint
+        ) {
+          weightRequest.current = {
+            id: crypto.randomUUID(),
+            rollId: selectedRoll.id,
+            fingerprint
+          };
+        }
 
-        if (error) {
-          setSyncNote(`No se pudo ajustar el peso: ${error.message}`);
+        const { data, error } = await supabase.rpc("record_roll_weight", {
+          p_request_id: weightRequest.current.id,
+          p_roll_id: selectedRoll.id,
+          p_measurement_kind: input.kind,
+          p_gross_weight_g: input.grossWeight,
+          p_tare_weight_g: input.tareWeight,
+          p_available_weight_g: availableWeight,
+          p_spool_type_id: input.spoolTypeId,
+          p_tare_confidence: input.confidence,
+          p_weight_source: input.source,
+          p_notes: null
+        });
+
+        if (error || !data) {
+          setSyncNote(
+            `No se pudo confirmar el pesaje. Podés reintentar sin duplicar el historial: ${error?.message ?? "respuesta vacía"}`
+          );
           return false;
         }
 
+        const result = data as WeightMutationResult;
+        const savedRoll = normalizeRollData(result.roll);
         setRolls((current) =>
-          current.map((roll) => (roll.id === selectedRoll.id ? (data as FilamentRoll) : roll))
+          current.map((roll) => (roll.id === savedRoll.id ? savedRoll : roll))
         );
-        setSyncNote(successNote);
+        setWeighingEvents((current) => [
+          result.event,
+          ...current.filter((event) => event.id !== result.event.id)
+        ]);
+        setSyncNote(result.replayed
+          ? "Este pesaje ya estaba guardado; recuperamos el resultado sin duplicarlo."
+          : successNote);
+        weightRequest.current = null;
         return true;
       }
 
+      const localEvent: WeighingEvent = {
+        id: crypto.randomUUID(),
+        request_id: crypto.randomUUID(),
+        roll_id: selectedRoll.id,
+        spool_id: selectedRoll.spool_id,
+        spool_type_id: input.spoolTypeId,
+        measurement_kind: input.kind,
+        gross_weight_g: input.grossWeight,
+        tare_weight_g: input.tareWeight,
+        available_weight_g: availableWeight,
+        tare_confidence: input.confidence,
+        weight_source: input.source,
+        notes: null,
+        measured_at: new Date().toISOString()
+      };
       setRolls((current) =>
         current.map((roll) =>
           roll.id === selectedRoll.id
@@ -727,6 +886,7 @@ export default function Home() {
             : roll
         )
       );
+      setWeighingEvents((current) => [localEvent, ...current]);
       setSyncNote(successNote);
       return true;
     } catch (error) {
@@ -748,7 +908,15 @@ export default function Home() {
     );
     await saveAvailableWeight(
       availableWeight,
-      usingSupabase ? "Peso actualizado en Supabase" : "Peso actualizado en el inventario local"
+      usingSupabase ? "Ajuste manual guardado con historial" : "Peso actualizado en el inventario local",
+      {
+        kind: "manual",
+        grossWeight: null,
+        tareWeight: null,
+        spoolTypeId: null,
+        confidence: "unknown",
+        source: "Ajuste manual"
+      }
     );
   }
 
@@ -771,177 +939,264 @@ export default function Home() {
 
     const saved = await saveAvailableWeight(
       calculatedWeight,
-      `Balanza: ${totalWeight} g − tara ${tareWeight} g = ${calculatedWeight} g disponibles`
+      `Balanza: ${totalWeight} g − tara ${tareWeight} g = ${calculatedWeight} g disponibles`,
+      {
+        kind: "scale",
+        grossWeight: totalWeight,
+        tareWeight,
+        spoolTypeId: weighingSpoolTypeId || null,
+        confidence: weighingConfidence,
+        source: spoolTypes.find((type) => type.id === weighingSpoolTypeId)?.weight_source ?? "Tara indicada manualmente"
+      }
     );
     if (saved) setMeasuredTotalWeight("");
   }
 
   async function addSpool(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pendingSpoolAction) return;
     activateLocalMode();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const spoolTypeId = String(form.get("spool_type_id") || "");
+    const spoolType = spoolTypes.find((type) => type.id === spoolTypeId);
     const spool: Spool = {
       id: crypto.randomUUID(),
       code: String(form.get("code") || `SP-${String(spools.length + 1).padStart(3, "0")}`),
-      brand: String(form.get("brand") || "Bambu Lab"),
-      spool_material: String(form.get("spool_material") || "Plástico reutilizable"),
-      tare_weight_g: form.get("tare_weight_g") ? parseNumber(form.get("tare_weight_g")) : null,
+      brand: spoolType?.manufacturer ?? String(form.get("brand") || "Bambu Lab"),
+      spool_material: spoolType?.material ?? String(form.get("spool_material") || "Plástico reutilizable"),
+      tare_weight_g: spoolType?.total_tare_g ?? (form.get("tare_weight_g") ? parseNumber(form.get("tare_weight_g")) : null),
       acquisition_cost: parseNumber(form.get("acquisition_cost"), 1000),
       currency: String(form.get("currency") || "CRC"),
       status: "empty",
-      notes: String(form.get("notes") || "")
+      notes: String(form.get("notes") || ""),
+      spool_type_id: spoolTypeId || null
     };
 
-    if (usingSupabase && supabase) {
-      const { data, error } = await supabase.from("spools").insert({
-        code: spool.code,
-        brand: spool.brand,
-        spool_material: spool.spool_material,
-        tare_weight_g: spool.tare_weight_g,
-        acquisition_cost: spool.acquisition_cost,
-        currency: spool.currency,
-        status: spool.status,
-        notes: spool.notes
-      }).select().single();
+    setPendingSpoolAction("create");
+    try {
+      if (usingSupabase && supabase) {
+        const requestId = createSpoolRequestId.current ?? crypto.randomUUID();
+        createSpoolRequestId.current = requestId;
+        const { data, error } = await supabase.rpc("create_spool", {
+          p_request_id: requestId,
+          p_code: spool.code,
+          p_spool_type_id: spool.spool_type_id || null,
+          p_brand: spool.brand,
+          p_spool_material: spool.spool_material,
+          p_tare_weight_g: spool.tare_weight_g,
+          p_acquisition_cost: spool.acquisition_cost,
+          p_currency: spool.currency,
+          p_notes: spool.notes || null
+        });
 
-      if (error) {
-        setSyncNote(`No se pudo guardar el spool: ${error.message}`);
-        return;
+        if (error || !data) {
+          setSyncNote(
+            `No se pudo confirmar el spool. Podés reintentar sin duplicarlo: ${error?.message ?? "respuesta vacía"}`
+          );
+          return;
+        }
+        const result = data as SpoolWriteResult;
+        setSpools((current) => [
+          result.spool,
+          ...current.filter((item) => item.id !== result.spool.id)
+        ].sort((a, b) => a.code.localeCompare(b.code)));
+        setSyncNote(result.replayed
+          ? `El spool ${result.spool.code} ya estaba guardado; recuperamos su resultado.`
+          : `Spool ${result.spool.code} agregado como vacío`);
+        createSpoolRequestId.current = null;
+      } else {
+        setSpools((current) => [...current, spool].sort((a, b) => a.code.localeCompare(b.code)));
+        setSyncNote(`Spool ${spool.code} agregado como vacío`);
       }
-      setSpools((current) => [...current, data as Spool].sort((a, b) => a.code.localeCompare(b.code)));
-    } else {
-      setSpools((current) => [...current, spool].sort((a, b) => a.code.localeCompare(b.code)));
-    }
 
-    formElement.reset();
-    setSyncNote(`Spool ${spool.code} agregado como vacío`);
+      formElement.reset();
+      setNewSpoolTypeId("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo confirmar el spool. Podés reintentar sin duplicarlo: ${message}`);
+    } finally {
+      setPendingSpoolAction("");
+    }
   }
 
   async function assignSpool(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pendingSpoolAction) return;
     activateLocalMode();
     const form = new FormData(event.currentTarget);
     const rollId = String(form.get("roll_id") || "");
     const spoolId = String(form.get("spool_id") || "");
     if (!rollId || !spoolId) return;
 
-    if (usingSupabase && supabase) {
-      const { data, error } = await supabase.rpc("assign_spool_to_roll", {
-        p_roll_id: rollId,
-        p_spool_id: spoolId
-      });
-      if (error) {
-        setSyncNote(`No se pudo asignar el spool: ${error.message}`);
-        return;
+    setPendingSpoolAction("assign");
+    try {
+      if (usingSupabase && supabase) {
+        const { data, error } = await supabase.rpc("assign_spool_to_roll", {
+          p_roll_id: rollId,
+          p_spool_id: spoolId
+        });
+        if (error) {
+          setSyncNote(`No se pudo asignar el spool: ${error.message}`);
+          return;
+        }
+
+        const result = data as SpoolMutationResult;
+        setRolls((current) => current.map((roll) => roll.id === rollId ? result.roll ?? roll : roll));
+        setSpools((current) => current.map((spool) => spool.id === spoolId ? result.spool : spool));
+      } else {
+        setRolls((current) => current.map((roll) => roll.id === rollId ? { ...roll, spool_id: spoolId } : roll));
+        setSpools((current) => current.map((spool) => spool.id === spoolId ? { ...spool, status: "in_use" } : spool));
       }
 
-      const result = data as SpoolMutationResult;
-      setRolls((current) => current.map((roll) => roll.id === rollId ? result.roll ?? roll : roll));
-      setSpools((current) => current.map((spool) => spool.id === spoolId ? result.spool : spool));
-    } else {
-      setRolls((current) => current.map((roll) => roll.id === rollId ? { ...roll, spool_id: spoolId } : roll));
-      setSpools((current) => current.map((spool) => spool.id === spoolId ? { ...spool, status: "in_use" } : spool));
+      const assignedSpool = spools.find((spool) => spool.id === spoolId);
+      setSyncNote(`Spool ${assignedSpool?.code ?? ""} asignado correctamente`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo asignar el spool: ${message}`);
+    } finally {
+      setPendingSpoolAction("");
     }
-
-    const assignedSpool = spools.find((spool) => spool.id === spoolId);
-    setSyncNote(`Spool ${assignedSpool?.code ?? ""} asignado correctamente`);
   }
 
   async function releaseSpool(roll: FilamentRoll) {
-    if (!roll.spool_id) return;
+    if (!roll.spool_id || pendingSpoolAction) return;
     activateLocalMode();
     const spoolId = roll.spool_id;
 
-    if (usingSupabase && supabase) {
-      const { data, error } = await supabase.rpc("release_spool_from_roll", {
-        p_roll_id: roll.id,
-        p_retire: false
-      });
-      if (error) {
-        setSyncNote(`No se pudo liberar el spool: ${error.message}`);
-        return;
+    setPendingSpoolAction(`release:${spoolId}`);
+    try {
+      if (usingSupabase && supabase) {
+        const { data, error } = await supabase.rpc("release_spool_from_roll", {
+          p_roll_id: roll.id,
+          p_retire: false
+        });
+        if (error) {
+          setSyncNote(`No se pudo liberar el spool: ${error.message}`);
+          return;
+        }
+        const result = data as SpoolMutationResult;
+        setRolls((current) => current.map((item) => item.id === roll.id ? result.roll ?? item : item));
+        setSpools((current) => current.map((spool) => spool.id === spoolId ? result.spool : spool));
+      } else {
+        setRolls((current) => current.map((item) => item.id === roll.id ? { ...item, spool_id: null } : item));
+        setSpools((current) => current.map((spool) => spool.id === spoolId ? { ...spool, status: "empty" } : spool));
       }
-      const result = data as SpoolMutationResult;
-      setRolls((current) => current.map((item) => item.id === roll.id ? result.roll ?? item : item));
-      setSpools((current) => current.map((spool) => spool.id === spoolId ? result.spool : spool));
-    } else {
-      setRolls((current) => current.map((item) => item.id === roll.id ? { ...item, spool_id: null } : item));
-      setSpools((current) => current.map((spool) => spool.id === spoolId ? { ...spool, status: "empty" } : spool));
+      setSyncNote("Spool liberado y disponible");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo liberar el spool: ${message}`);
+    } finally {
+      setPendingSpoolAction("");
     }
-    setSyncNote("Spool liberado y disponible");
   }
 
   async function updateSpool(event: React.FormEvent<HTMLFormElement>, spool: Spool) {
     event.preventDefault();
+    if (pendingSpoolAction) return;
     activateLocalMode();
     const form = new FormData(event.currentTarget);
+    const spoolTypeId = String(form.get("spool_type_id") || "");
+    const spoolType = spoolTypes.find((type) => type.id === spoolTypeId);
     const updates: Partial<Spool> = {
       code: String(form.get("code") || spool.code).trim(),
-      brand: String(form.get("brand") || "").trim() || null,
-      spool_material: String(form.get("spool_material") || spool.spool_material),
-      tare_weight_g: form.get("tare_weight_g") ? parseNumber(form.get("tare_weight_g")) : null,
+      brand: spoolType?.manufacturer ?? (String(form.get("brand") || "").trim() || null),
+      spool_material: spoolType?.material ?? String(form.get("spool_material") || spool.spool_material),
+      tare_weight_g: spoolType?.total_tare_g ?? (form.get("tare_weight_g") ? parseNumber(form.get("tare_weight_g")) : null),
       acquisition_cost: parseNumber(form.get("acquisition_cost"), 0),
       currency: String(form.get("currency") || spool.currency),
-      notes: String(form.get("notes") || "").trim() || null
+      notes: String(form.get("notes") || "").trim() || null,
+      spool_type_id: spoolTypeId || null
     };
 
-    if (usingSupabase && supabase) {
-      const { data, error } = await supabase
-        .from("spools")
-        .update(updates)
-        .eq("id", spool.id)
-        .select()
-        .single();
-      if (error) {
-        setSyncNote(`No se pudo modificar el spool: ${error.message}`);
-        return;
+    setPendingSpoolAction(`update:${spool.id}`);
+    try {
+      if (usingSupabase && supabase) {
+        const requestId = updateSpoolRequests.current[spool.id] ?? crypto.randomUUID();
+        updateSpoolRequests.current[spool.id] = requestId;
+        const { data, error } = await supabase.rpc("update_spool", {
+          p_request_id: requestId,
+          p_spool_id: spool.id,
+          p_code: updates.code,
+          p_spool_type_id: updates.spool_type_id || null,
+          p_brand: updates.brand,
+          p_spool_material: updates.spool_material,
+          p_tare_weight_g: updates.tare_weight_g,
+          p_acquisition_cost: updates.acquisition_cost,
+          p_currency: updates.currency,
+          p_notes: updates.notes
+        });
+        if (error || !data) {
+          setSyncNote(
+            `No se pudo confirmar la edición. Podés reintentar sin repetirla: ${error?.message ?? "respuesta vacía"}`
+          );
+          return;
+        }
+        const result = data as SpoolWriteResult;
+        setSpools((current) => current
+          .map((item) => item.id === spool.id ? result.spool : item)
+          .sort((a, b) => a.code.localeCompare(b.code)));
+        setSyncNote(result.replayed
+          ? `La edición del spool ${result.spool.code} ya estaba guardada.`
+          : `Spool ${result.spool.code} actualizado`);
+        delete updateSpoolRequests.current[spool.id];
+      } else {
+        setSpools((current) => current
+          .map((item) => item.id === spool.id ? { ...item, ...updates } : item)
+          .sort((a, b) => a.code.localeCompare(b.code)));
+        setSyncNote(`Spool ${updates.code} actualizado`);
       }
-      setSpools((current) => current
-        .map((item) => item.id === spool.id ? data as Spool : item)
-        .sort((a, b) => a.code.localeCompare(b.code)));
-    } else {
-      setSpools((current) => current
-        .map((item) => item.id === spool.id ? { ...item, ...updates } : item)
-        .sort((a, b) => a.code.localeCompare(b.code)));
-    }
 
-    setEditingSpoolId("");
-    setSyncNote(`Spool ${updates.code} actualizado`);
+      setEditingSpoolId("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo confirmar la edición. Podés reintentar sin repetirla: ${message}`);
+    } finally {
+      setPendingSpoolAction("");
+    }
   }
 
   async function toggleSpoolRetired(spool: Spool) {
+    if (pendingSpoolAction) return;
     activateLocalMode();
     const retiring = spool.status !== "retired";
     const assignedRoll = rolls.find((roll) => roll.spool_id === spool.id);
 
-    if (usingSupabase && supabase) {
-      const { data, error } = await supabase.rpc("set_spool_retired", {
-        p_spool_id: spool.id,
-        p_retired: retiring
-      });
-      if (error) {
-        setSyncNote(`No se pudo ${retiring ? "inactivar" : "reactivar"} el spool: ${error.message}`);
-        return;
+    setPendingSpoolAction(`retire:${spool.id}`);
+    try {
+      if (usingSupabase && supabase) {
+        const { data, error } = await supabase.rpc("set_spool_retired", {
+          p_spool_id: spool.id,
+          p_retired: retiring
+        });
+        if (error) {
+          setSyncNote(`No se pudo ${retiring ? "inactivar" : "reactivar"} el spool: ${error.message}`);
+          return;
+        }
+        const result = data as SpoolMutationResult;
+        setSpools((current) => current.map((item) => item.id === spool.id ? result.spool : item));
+        if (result.roll) {
+          setRolls((current) => current.map((roll) => roll.id === result.roll?.id ? result.roll : roll));
+        }
+      } else {
+        if (assignedRoll) {
+          setRolls((current) => current.map((roll) => roll.id === assignedRoll.id ? { ...roll, spool_id: null } : roll));
+        }
+        setSpools((current) => current.map((item) => item.id === spool.id
+          ? { ...item, status: retiring ? "retired" : "empty" }
+          : item));
       }
-      const result = data as SpoolMutationResult;
-      setSpools((current) => current.map((item) => item.id === spool.id ? result.spool : item));
-      if (result.roll) {
-        setRolls((current) => current.map((roll) => roll.id === result.roll?.id ? result.roll : roll));
-      }
-    } else {
-      if (assignedRoll) {
-        setRolls((current) => current.map((roll) => roll.id === assignedRoll.id ? { ...roll, spool_id: null } : roll));
-      }
-      setSpools((current) => current.map((item) => item.id === spool.id
-        ? { ...item, status: retiring ? "retired" : "empty" }
-        : item));
-    }
 
-    setEditingSpoolId("");
-    setSyncNote(retiring
-      ? `Spool ${spool.code} inactivado${assignedRoll ? " y filamento liberado" : ""}`
-      : `Spool ${spool.code} reactivado como vacío`);
+      setEditingSpoolId("");
+      setSyncNote(retiring
+        ? `Spool ${spool.code} inactivado${assignedRoll ? " y filamento liberado" : ""}`
+        : `Spool ${spool.code} reactivado como vacío`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo ${retiring ? "inactivar" : "reactivar"} el spool: ${message}`);
+    } finally {
+      setPendingSpoolAction("");
+    }
   }
 
   async function writeNfcTag() {
@@ -1058,23 +1313,12 @@ export default function Home() {
     ...Array.from(new Set([...materialOptions, ...rolls.map((roll) => roll.material)]))
   ];
   const availableLineOptions = lineOptionsByMaterial[draft.material] ?? ["Genérico"];
-  const selectedSpool = selectedRoll?.spool_id
-    ? spools.find((spool) => spool.id === selectedRoll.spool_id)
-    : undefined;
-  const suggestedTare = selectedSpool?.tare_weight_g != null
-    ? Number(selectedSpool.tare_weight_g) + (selectedRoll?.brand === "Bambu Lab" ? 41 : 0)
-    : selectedRoll?.brand === "Bambu Lab" ? 254 : null;
   const measuredRemaining = measuredTotalWeight !== "" && weighingTare !== ""
     ? Math.round((Number(measuredTotalWeight) - Number(weighingTare)) * 100) / 100
     : null;
   const selectedCostPerGram = selectedRoll?.filament_cost_amount && selectedRoll.initial_weight_g
     ? Number(selectedRoll.filament_cost_amount) / Number(selectedRoll.initial_weight_g)
     : null;
-
-  useEffect(() => {
-    setMeasuredTotalWeight("");
-    setWeighingTare(suggestedTare == null ? "" : String(suggestedTare));
-  }, [selectedRoll?.id, suggestedTare]);
 
   if (isLoading) {
     return (
@@ -1452,7 +1696,7 @@ export default function Home() {
           className="modal-backdrop"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setShowSpools(false);
+            if (event.target === event.currentTarget && !pendingSpoolAction) setShowSpools(false);
           }}
         >
           <section
@@ -1466,7 +1710,13 @@ export default function Home() {
                 <p className="eyebrow">Spools reutilizables</p>
                 <h2 id="spool-modal-title">Asignar y controlar spools</h2>
               </div>
-              <button className="modal-close" type="button" onClick={() => setShowSpools(false)} aria-label="Cerrar spools">
+              <button
+                className="modal-close"
+                type="button"
+                onClick={() => setShowSpools(false)}
+                disabled={Boolean(pendingSpoolAction)}
+                aria-label="Cerrar spools"
+              >
                 <X size={20} aria-hidden="true" />
               </button>
             </div>
@@ -1478,21 +1728,46 @@ export default function Home() {
               <article><strong>{spools.filter((spool) => spool.status === "retired").length}</strong><span>inactivos</span></article>
             </div>
 
-            <form className="form-grid compact-form" onSubmit={addSpool}>
+            <form className="form-grid compact-form" onSubmit={addSpool} aria-busy={pendingSpoolAction === "create"}>
               <h3 className="wide">Registrar spool vacío</h3>
+              <label className="wide">
+                Tipo de spool
+                <select
+                  name="spool_type_id"
+                  value={newSpoolTypeId}
+                  onChange={(event) => setNewSpoolTypeId(event.target.value)}
+                  disabled={Boolean(pendingSpoolAction)}
+                >
+                  <option value="">Personalizado · indicar tara manualmente</option>
+                  {spoolTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.manufacturer} · {type.name} · {type.total_tare_g} g ({tareConfidenceLabels[type.tare_confidence].toLowerCase()})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {newSpoolTypeId && (() => {
+                const type = spoolTypes.find((item) => item.id === newSpoolTypeId);
+                return type ? (
+                  <p className="spool-type-reference wide">
+                    <strong>{type.total_tare_g} g de tara · {tareConfidenceLabels[type.tare_confidence]}</strong>
+                    <span>{type.weight_source || "Sin fuente indicada"}{type.notes ? ` · ${type.notes}` : ""}</span>
+                  </p>
+                ) : null;
+              })()}
               <label>
                 Código
-                <input name="code" required defaultValue={`SP-${String(spools.length + 1).padStart(3, "0")}`} />
+                <input name="code" required defaultValue={`SP-${String(spools.length + 1).padStart(3, "0")}`} disabled={Boolean(pendingSpoolAction)} />
               </label>
               <label>
                 Marca / compatibilidad
-                <select name="brand" defaultValue="Bambu Lab">
+                <select name="brand" defaultValue="Bambu Lab" disabled={Boolean(newSpoolTypeId) || Boolean(pendingSpoolAction)}>
                   {brandOptions.map((brand) => <option key={brand}>{brand}</option>)}
                 </select>
               </label>
               <label>
                 Material del spool
-                <select name="spool_material" defaultValue="Plástico reutilizable">
+                <select name="spool_material" defaultValue="Plástico reutilizable" disabled={Boolean(newSpoolTypeId) || Boolean(pendingSpoolAction)}>
                   <option>Plástico reutilizable</option>
                   <option>Cartón</option>
                   <option>Otro</option>
@@ -1500,25 +1775,27 @@ export default function Home() {
               </label>
               <label>
                 Tara en gramos
-                <input name="tare_weight_g" type="number" min="0" step="0.01" placeholder="Peso vacío opcional" />
+                <input name="tare_weight_g" type="number" min="0" step="0.01" placeholder="Peso vacío opcional" disabled={Boolean(newSpoolTypeId) || Boolean(pendingSpoolAction)} />
               </label>
               <label>
                 Costo
-                <input name="acquisition_cost" type="number" min="0" defaultValue="1000" />
+                <input name="acquisition_cost" type="number" min="0" defaultValue="1000" disabled={Boolean(pendingSpoolAction)} />
               </label>
               <input name="currency" type="hidden" value="CRC" />
               <label>
                 Notas
-                <input name="notes" placeholder="Estado, origen..." />
+                <input name="notes" placeholder="Estado, origen..." disabled={Boolean(pendingSpoolAction)} />
               </label>
-              <button className="primary-action wide" type="submit">Agregar spool vacío</button>
+              <button className="primary-action wide" type="submit" disabled={Boolean(pendingSpoolAction)}>
+                {pendingSpoolAction === "create" ? "Guardando sin duplicar…" : "Agregar spool vacío"}
+              </button>
             </form>
 
-            <form className="form-grid compact-form" onSubmit={assignSpool}>
+            <form className="form-grid compact-form" onSubmit={assignSpool} aria-busy={pendingSpoolAction === "assign"}>
               <h3 className="wide">Asignar spool a un filamento</h3>
               <label>
                 Filamento sin spool
-                <select name="roll_id" required disabled={!unassignedRolls.length}>
+                <select name="roll_id" required disabled={!unassignedRolls.length || Boolean(pendingSpoolAction)}>
                   <option value="">Seleccionar filamento</option>
                   {unassignedRolls.map((roll) => (
                     <option key={roll.id} value={roll.id}>{roll.brand} · {roll.product_line} · {roll.color_name}</option>
@@ -1527,15 +1804,15 @@ export default function Home() {
               </label>
               <label>
                 Spool vacío
-                <select name="spool_id" required disabled={!emptySpools.length}>
+                <select name="spool_id" required disabled={!emptySpools.length || Boolean(pendingSpoolAction)}>
                   <option value="">Seleccionar spool</option>
                   {emptySpools.map((spool) => (
                     <option key={spool.id} value={spool.id}>{spool.code} · {spool.brand || "Sin marca"}</option>
                   ))}
                 </select>
               </label>
-              <button className="primary-action wide" type="submit" disabled={!unassignedRolls.length || !emptySpools.length}>
-                Asignar spool
+              <button className="primary-action wide" type="submit" disabled={!unassignedRolls.length || !emptySpools.length || Boolean(pendingSpoolAction)}>
+                {pendingSpoolAction === "assign" ? "Asignando…" : "Asignar spool"}
               </button>
             </form>
 
@@ -1548,23 +1825,39 @@ export default function Home() {
                     <div className="spool-item-info"><strong>{spool.code}</strong><span>{spool.brand || "Sin marca"} · {spool.spool_material}</span></div>
                     <div className="spool-item-status"><strong>{spoolStatusLabels[spool.status]}</strong><span>{assignedRoll ? `${assignedRoll.product_line || assignedRoll.material} · ${assignedRoll.color_name}` : spool.tare_weight_g ? `Tara ${spool.tare_weight_g} g` : "Sin tara"}</span></div>
                     <div className="spool-actions">
-                      <button type="button" onClick={() => setEditingSpoolId((current) => current === spool.id ? "" : spool.id)}>
+                      <button type="button" disabled={Boolean(pendingSpoolAction)} onClick={() => setEditingSpoolId((current) => current === spool.id ? "" : spool.id)}>
                         {editingSpoolId === spool.id ? "Cancelar" : "Editar"}
                       </button>
                       {assignedRoll && (
-                        <button type="button" onClick={() => releaseSpool(assignedRoll)}>Quitar filamento</button>
+                        <button type="button" disabled={Boolean(pendingSpoolAction)} onClick={() => releaseSpool(assignedRoll)}>
+                          {pendingSpoolAction === `release:${spool.id}` ? "Liberando…" : "Quitar filamento"}
+                        </button>
                       )}
                       <button
                         className={spool.status === "retired" ? "restore" : "danger"}
                         type="button"
+                        disabled={Boolean(pendingSpoolAction)}
                         onClick={() => toggleSpoolRetired(spool)}
                       >
-                        {spool.status === "retired" ? "Reactivar" : "Inactivar"}
+                        {pendingSpoolAction === `retire:${spool.id}`
+                          ? (spool.status === "retired" ? "Reactivando…" : "Inactivando…")
+                          : (spool.status === "retired" ? "Reactivar" : "Inactivar")}
                       </button>
                     </div>
                     {editingSpoolId === spool.id && (
                       <form className="spool-edit-form" onSubmit={(event) => updateSpool(event, spool)}>
                         <label>Código<input name="code" required defaultValue={spool.code} /></label>
+                        <label className="wide">
+                          Tipo de spool
+                          <select name="spool_type_id" defaultValue={spool.spool_type_id || ""}>
+                            <option value="">Personalizado</option>
+                            {spoolTypes.map((type) => (
+                              <option key={type.id} value={type.id}>
+                                {type.manufacturer} · {type.name} · {type.total_tare_g} g
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                         <label>
                           Marca / compatibilidad
                           <select name="brand" defaultValue={spool.brand || "Bambu Lab"}>
@@ -1585,7 +1878,10 @@ export default function Home() {
                         <label>Costo<input name="acquisition_cost" type="number" min="0" defaultValue={spool.acquisition_cost} /></label>
                         <label>Notas<input name="notes" defaultValue={spool.notes || ""} /></label>
                         <input name="currency" type="hidden" value={spool.currency} />
-                        <button className="primary-action wide" type="submit">Guardar cambios</button>
+                        <p className="form-help wide">Si elegís un tipo de referencia, su marca, material y tara reemplazan los valores manuales al guardar.</p>
+                        <button className="primary-action wide" type="submit" disabled={Boolean(pendingSpoolAction)}>
+                          {pendingSpoolAction === `update:${spool.id}` ? "Guardando sin repetir…" : "Guardar cambios"}
+                        </button>
                       </form>
                     )}
                   </article>
@@ -1714,8 +2010,15 @@ export default function Home() {
             </div>
 
             {selectedSpool && (
-              <button className="secondary-action" type="button" onClick={() => releaseSpool(selectedRoll)}>
-                Liberar {selectedSpool.code} como spool vacío
+              <button
+                className="secondary-action"
+                type="button"
+                disabled={Boolean(pendingSpoolAction)}
+                onClick={() => releaseSpool(selectedRoll)}
+              >
+                {pendingSpoolAction === `release:${selectedSpool.id}`
+                  ? `Liberando ${selectedSpool.code}…`
+                  : `Liberar ${selectedSpool.code} como spool vacío`}
               </button>
             )}
 
@@ -1724,6 +2027,32 @@ export default function Home() {
             <form className="consume-form weighing-form" id="quick-weigh" onSubmit={adjustFromMeasuredWeight}>
               <h3>Actualizar con balanza</h3>
               <p className="form-help">Ingresá el peso completo. Restamos la tara antes de guardar el filamento disponible.</p>
+              <label className="weighing-type-field">
+                Referencia de tara
+                <select
+                  value={weighingSpoolTypeId}
+                  disabled={isSavingWeight}
+                  onChange={(event) => {
+                    const typeId = event.target.value;
+                    const type = spoolTypes.find((item) => item.id === typeId);
+                    setWeighingSpoolTypeId(typeId);
+                    if (type) {
+                      setWeighingTare(String(type.total_tare_g));
+                      setWeighingConfidence(type.tare_confidence);
+                    } else {
+                      setWeighingConfidence("unknown");
+                    }
+                    weightRequest.current = null;
+                  }}
+                >
+                  <option value="">Tara manual</option>
+                  {spoolTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.manufacturer} · {type.name} · {type.total_tare_g} g
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="weighing-fields">
                 <label>
                   Peso total medido
@@ -1751,6 +2080,21 @@ export default function Home() {
                     onChange={(event) => setWeighingTare(event.target.value)}
                   />
                 </label>
+                <label>
+                  Confianza de la tara
+                  <select
+                    value={weighingConfidence}
+                    disabled={isSavingWeight}
+                    onChange={(event) => {
+                      setWeighingConfidence(event.target.value as TareConfidence);
+                      weightRequest.current = null;
+                    }}
+                  >
+                    <option value="verified">Verificada · la pesé</option>
+                    <option value="estimated">Estimada · referencia</option>
+                    <option value="unknown">Desconocida</option>
+                  </select>
+                </label>
               </div>
               {selectedRoll.brand === "Bambu Lab" && (
                 <p className="tare-hint">Referencia Bambu: 213 g del spool + 41 g del cartón/NFC = 254 g. Podés corregirla si tu montaje es distinto.</p>
@@ -1765,6 +2109,32 @@ export default function Home() {
                 {isSavingWeight ? "Guardando peso…" : "Guardar peso calculado"}
               </button>
             </form>
+
+            <section className="weighing-history" aria-label="Historial reciente de pesajes">
+              <div className="weighing-history-head">
+                <h3>Pesajes recientes</h3>
+                <span>{weighingEvents.filter((event) => event.roll_id === selectedRoll.id).length} registros</span>
+              </div>
+              {recentWeighings.length ? recentWeighings.map((event) => (
+                <article key={event.id}>
+                  <div>
+                    <strong>{event.measurement_kind === "scale" ? "Balanza" : "Ajuste manual"}</strong>
+                    <span>{new Date(event.measured_at).toLocaleString("es-CR", { dateStyle: "medium", timeStyle: "short" })}</span>
+                  </div>
+                  <div className="weighing-history-values">
+                    {event.measurement_kind === "scale" && (
+                      <span>{Number(event.gross_weight_g).toLocaleString("es-CR")} g − {Number(event.tare_weight_g).toLocaleString("es-CR")} g</span>
+                    )}
+                    <strong>{Number(event.available_weight_g).toLocaleString("es-CR")} g</strong>
+                  </div>
+                  <span className={`confidence-badge confidence-${event.tare_confidence}`}>
+                    {tareConfidenceLabels[event.tare_confidence]}
+                  </span>
+                </article>
+              )) : (
+                <p className="empty-state">El primer pesaje quedará guardado acá con la tara que usaste.</p>
+              )}
+            </section>
 
             <details className="manual-weight">
               <summary>Ajuste manual de gramos</summary>
