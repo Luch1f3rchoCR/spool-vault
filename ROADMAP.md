@@ -8,6 +8,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Alta de filamentos con marca, material, línea, color, compra y costos.
 - [x] Edición segura de la ficha del filamento sin reescribir compras, consumos ni pesajes históricos.
 - [x] Historial de compras y precios por rollo.
+- [x] Corrección trazable de compras desde modal, conservando el registro original.
 - [x] Registro de consumo con costo calculado y descuento de inventario.
 - [x] QR y respaldo NFC cuando el navegador lo permite.
 - [x] Separación entre filamento y spool físico reutilizable.
@@ -27,6 +28,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Bloquear temporalmente los botones de alta, consumo y peso, mostrando el estado en curso.
 - [x] Eliminar los éxitos parciales del alta de rollos y recuperar operaciones cuyo resultado era incierto.
 - [x] Guardar pesaje + actualización del saldo del rollo en una sola transacción.
+- [x] Corregir una compra + actualizar el costo vigente del rollo en una sola transacción idempotente.
 - [ ] Impedir desde la base de datos que `filament_rolls.spool_id` y el estado del spool puedan quedar desincronizados.
 - [ ] Centralizar en la base de datos el estado derivado del rollo según gramos y porcentaje.
 - [ ] Servir reportes financieros desde una vista o función consistente, evitando lecturas parciales entre varias tablas.
@@ -81,7 +83,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Permitir el supuesto histórico visible de ₡3.000 por orden y ₡1.000 por rollo cuando falte el express.
 - [ ] Mantener historial de proveedor y precio por compra, aunque el mismo filamento cambie de proveedor o costo.
 - [x] Mantener el historial de compras inmutable desde el cliente.
-- [ ] Diseñar una corrección financiera trazable sin reescribir el registro original.
+- [x] Diseñar una corrección financiera trazable sin reescribir el registro original.
 
 ## Multimoneda y perfil
 
