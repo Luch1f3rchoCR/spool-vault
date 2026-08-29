@@ -1,6 +1,6 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
-Fecha de revisión: 28 de agosto de 2026.
+Fecha de revisión: 29 de agosto de 2026.
 
 ## Qué significa “atómica” en Spool Vault
 
@@ -15,6 +15,7 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Asignar spool a rollo | Atómico | Bajo | Mantener la función transaccional y sus bloqueos de filas. |
 | Liberar spool | Atómico | Bajo | Mantener la función transaccional. |
 | Inactivar/reactivar spool | Atómico | Bajo | Mantener la función transaccional y validaciones. |
+| Consistencia entre rollo y spool | Invariante diferida en base de datos | Bajo | La transacción solo se confirma si un spool `in_use` pertenece exactamente a un rollo y todo rollo asignado apunta a un spool `in_use`. |
 | Registrar consumo y descontar gramos | Atómico e idempotente | Bajo | Mantener la función transaccional y probar reintentos en cada cambio del flujo. |
 | Agregar spool vacío | Atómico e idempotente | Bajo | Mantener `create_spool` como único punto de escritura y conservar la clave durante reintentos. |
 | Editar spool | Atómico e idempotente | Bajo | Mantener `update_spool`, bloqueo de fila y estado pendiente. |
@@ -25,6 +26,8 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Para reportes financieros, usar una vista o función que produzca una lectura consistente. |
 
 La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
+
+Desde el 29 de agosto, la base también valida la relación rollo-spool al confirmar cada transacción. Las funciones pueden cambiar ambas tablas juntas, pero una escritura parcial se rechaza. Un índice único impide reutilizar el mismo spool físico en otra ficha, incluso si una de las fichas está archivada; además, el cliente autenticado ya no puede borrar directamente rollos o spools.
 
 ## Riesgos transversales
 
@@ -86,6 +89,7 @@ Mensajes recomendados:
 4. [Completado] Cerrar permisos innecesarios de funciones internas y agregar índices de relaciones.
 5. [Completado] Probar RLS, reversión completa, reintentos y compilación.
 6. [Completado] Extender el mismo contrato al catálogo de spools y al historial de pesajes.
+7. [Completado] Proteger en base de datos la consistencia entre `filament_rolls.spool_id` y `spools.status`.
 
 ### Fase 1 — Tara y pesajes históricos
 
