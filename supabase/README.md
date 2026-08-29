@@ -23,6 +23,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 - `public.weighing_events`: historial inmutable por rollo con peso bruto, tara aplicada y saldo calculado.
 - `public.purchase_history`: historial inmutable de precios y costo por gramo.
 - `public.purchase_corrections`: revisiones inmutables con motivo y valores corregidos; el original nunca se reemplaza.
+- `public.filament_balance_report`: vista financiera consistente por usuario con saldo, compra, proveedor, spool y valor restante, sin mezclar monedas.
 
 The schema uses RLS, authenticated-only access, and explicit grants so the inventory is ready for Supabase Data API access without exposing it publicly.
 

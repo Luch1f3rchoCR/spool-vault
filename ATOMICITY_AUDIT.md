@@ -24,7 +24,8 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Corregir proveedor, fecha o costo de una compra | Atómico, trazable e idempotente | Bajo | Mantener `correct_purchase`, la revisión append-only y la sincronización del costo vigente del rollo. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
 | Derivar estado del rollo | Regla central en base de datos | Bajo | `Nuevo`, `Abierto`, `Bajo` y `Agotado` se recalculan desde pesos y umbral; `Archivado` continúa siendo explícito. |
-| Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Para reportes financieros, usar una vista o función que produzca una lectura consistente. |
+| Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Mantener estas lecturas solo para la interfaz operativa. |
+| Reporte de saldo financiero | Vista consistente con RLS | Bajo | Mantener `filament_balance_report` como fuente única; no sumar CRC y USD entre sí. |
 
 La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
 
@@ -115,7 +116,7 @@ Mensajes recomendados:
 1. Agregar procedencia del HEX.
 2. Configurar CRC como moneda base inicial del perfil.
 3. Derivar estados por gramos y porcentaje.
-4. Crear el reporte de saldo con valores originales y convertidos separados.
+4. [Parcial] El reporte de saldo ya usa una vista consistente, conserva monedas originales y exporta CSV; falta agregar conversiones históricas cuando exista moneda base.
 
 ## Criterio de terminación por fase
 
