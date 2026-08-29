@@ -30,7 +30,12 @@ import {
 } from "@/components/purchase-correction-modal";
 import { RollEditModal, type EditableRollValues } from "@/components/roll-edit-modal";
 import { demoLogs, demoRolls } from "@/lib/demo-data";
-import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  getAuthRedirectUrl,
+  getSupabaseClient,
+  getSupabaseConfigStatus,
+  initializeSupabaseClient
+} from "@/lib/supabase";
 import type {
   ConsumptionLog,
   FilamentRoll,
@@ -52,6 +57,7 @@ const LOCAL_SPOOLS_KEY = "spool-vault-spools";
 const LOCAL_PURCHASES_KEY = "spool-vault-purchases";
 const LOCAL_PURCHASE_CORRECTIONS_KEY = "spool-vault-purchase-corrections";
 const LOCAL_WEIGHINGS_KEY = "spool-vault-weighings";
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
 type DataMode = "authenticated" | "demo" | "local" | "error";
 type SpoolMutationResult = { roll: FilamentRoll | null; spool: Spool };
@@ -225,6 +231,23 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMessage: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, AUTH_REQUEST_TIMEOUT_MS);
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => window.clearTimeout(timeoutId));
+  });
+}
+
 function payloadForRoll(roll: Pick<FilamentRoll, "id" | "qr_payload">) {
   if (roll.qr_payload) return roll.qr_payload;
   if (typeof window === "undefined") return `filament-roll:${roll.id}`;
@@ -285,6 +308,7 @@ export default function Home() {
   const [materialFilter, setMaterialFilter] = useState("Todos");
   const [lowOnly, setLowOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showQuickWeigh, setShowQuickWeigh] = useState(false);
   const [editingRollId, setEditingRollId] = useState("");
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
@@ -296,6 +320,7 @@ export default function Home() {
   const [syncNote, setSyncNote] = useState("Modo demo local");
   const [authEmail, setAuthEmail] = useState("");
   const [authNote, setAuthNote] = useState("");
+  const [authRedirectUrl, setAuthRedirectUrl] = useState("");
   const [signedInEmail, setSignedInEmail] = useState("");
   const [authVersion, setAuthVersion] = useState(0);
   const [nfcNote, setNfcNote] = useState("");
@@ -311,6 +336,8 @@ export default function Home() {
   const [isCorrectingPurchase, setIsCorrectingPurchase] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+  const [isWeighingHighlighted, setIsWeighingHighlighted] = useState(false);
   const [pendingSpoolAction, setPendingSpoolAction] = useState("");
   const addRollRequestId = useRef<string | null>(null);
   const updateRollRequests = useRef<Record<string, string>>({});
@@ -319,9 +346,29 @@ export default function Home() {
   const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
   const createSpoolRequestId = useRef<string | null>(null);
   const updateSpoolRequests = useRef<Record<string, string>>({});
+  const quickWeighInputRef = useRef<HTMLInputElement | null>(null);
 
-  const supabase = useMemo(() => getSupabaseClient(), []);
+  const [supabase, setSupabase] = useState(() => getSupabaseClient());
+  const [supabaseConfig, setSupabaseConfig] = useState(() => getSupabaseConfigStatus());
   const usingSupabase = Boolean(supabase && signedInEmail);
+
+  useEffect(() => {
+    setAuthRedirectUrl(getAuthRedirectUrl());
+    setSupabaseConfig(getSupabaseConfigStatus());
+
+    let isActive = true;
+
+    initializeSupabaseClient().then((client) => {
+      if (!isActive) return;
+      setSupabase(client);
+      setSupabaseConfig(getSupabaseConfigStatus());
+      setAuthRedirectUrl(getAuthRedirectUrl());
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   function activateLocalMode() {
     if (!usingSupabase) {
@@ -514,12 +561,12 @@ export default function Home() {
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showSpools || showProfile
+    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showProfile
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [correctingPurchaseId, editingRollId, showAdd, showSpools, showProfile]);
+  }, [correctingPurchaseId, editingRollId, showAdd, showQuickWeigh, showSpools, showProfile]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
   const editingRoll = rolls.find((roll) => roll.id === editingRollId);
@@ -582,6 +629,11 @@ export default function Home() {
       }
     }).then(setQrDataUrl);
   }, [selectedRoll]);
+
+  useEffect(() => {
+    if (!showQuickWeigh) return;
+    window.setTimeout(() => quickWeighInputRef.current?.focus(), 120);
+  }, [showQuickWeigh, selectedRoll?.id]);
 
   const dashboard = useMemo(() => {
     const totalWeight = rolls.reduce((sum, roll) => sum + Number(roll.available_weight_g), 0);
@@ -1226,7 +1278,10 @@ export default function Home() {
         source: spoolTypes.find((type) => type.id === weighingSpoolTypeId)?.weight_source ?? "Tara indicada manualmente"
       }
     );
-    if (saved) setMeasuredTotalWeight("");
+    if (saved) {
+      setMeasuredTotalWeight("");
+      if (event.currentTarget.id === "quick-weigh-sheet") setShowQuickWeigh(false);
+    }
   }
 
   async function addSpool(event: React.FormEvent<HTMLFormElement>) {
@@ -1529,20 +1584,51 @@ export default function Home() {
 
   async function sendMagicLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !authEmail) return;
+    if (isSendingMagicLink) return;
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: authEmail,
-      options: {
-        emailRedirectTo: window.location.origin
+    const email = authEmail.trim();
+
+    if (!isValidEmail(email)) {
+      setAuthNote("Escribí un correo válido para enviarte el enlace.");
+      return;
+    }
+
+    setIsSendingMagicLink(true);
+    setAuthNote("Enviando enlace seguro...");
+
+    try {
+      const client = supabase ?? await initializeSupabaseClient();
+      setSupabase(client);
+      setSupabaseConfig(getSupabaseConfigStatus());
+
+      if (!client) {
+        setAuthNote("Supabase no está configurado en este deployment.");
+        return;
       }
-    });
 
-    setAuthNote(
-      error
-        ? `No se pudo enviar el enlace: ${error.message}`
-        : "Listo. Revisá tu correo para abrir la sesión."
-    );
+      const emailRedirectTo = getAuthRedirectUrl();
+      setAuthRedirectUrl(emailRedirectTo);
+
+      const { error } = await withTimeout(
+        client.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo
+          }
+        }),
+        "Supabase no respondió a tiempo. Revisá conexión o probá abrir la app fuera de WhatsApp."
+      );
+
+      setAuthNote(
+        error
+          ? `No se pudo enviar el enlace: ${error.message}`
+          : `Listo. Revisá tu correo. El enlace vuelve a ${emailRedirectTo}`
+      );
+    } catch (error) {
+      setAuthNote(error instanceof Error ? error.message : "No se pudo enviar el enlace seguro.");
+    } finally {
+      setIsSendingMagicLink(false);
+    }
   }
 
   async function signOut() {
@@ -1554,11 +1640,13 @@ export default function Home() {
   }
 
   function goToWeighing() {
-    const target = document.getElementById("quick-weigh");
-    target?.scrollIntoView({ behavior: "smooth", block: "center" });
-    window.setTimeout(() => {
-      target?.querySelector<HTMLInputElement>('input[name="available_weight_g"]')?.focus();
-    }, 450);
+    if (!selectedRoll) {
+      setSyncNote("Agregá o seleccioná un rollo antes de pesar.");
+      return;
+    }
+    setShowQuickWeigh(true);
+    setIsWeighingHighlighted(true);
+    window.setTimeout(() => setIsWeighingHighlighted(false), 1800);
   }
 
   function openAccount() {
@@ -1593,9 +1681,15 @@ export default function Home() {
   const measuredRemaining = measuredTotalWeight !== "" && weighingTare !== ""
     ? Math.round((Number(measuredTotalWeight) - Number(weighingTare)) * 100) / 100
     : null;
+  const measuredDelta = selectedRoll && measuredRemaining !== null
+    ? Math.round((measuredRemaining - Number(selectedRoll.available_weight_g)) * 100) / 100
+    : null;
   const selectedCostPerGram = selectedRoll?.filament_cost_amount && selectedRoll.initial_weight_g
     ? Number(selectedRoll.filament_cost_amount) / Number(selectedRoll.initial_weight_g)
     : null;
+  const isDemoMode = dataMode === "demo";
+  const isAuthRedirectLocal =
+    authRedirectUrl.includes("localhost") || authRedirectUrl.includes("127.0.0.1");
 
   if (isLoading) {
     return (
@@ -1630,32 +1724,61 @@ export default function Home() {
             </span>
           </button>
 
-          {isSupabaseConfigured() && !signedInEmail && showLogin && (
+          {!signedInEmail && showLogin && (
             <section className="panel auth-panel auth-popover" id="login-panel" aria-label="Iniciar sesión">
               <div className="auth-panel-head">
                 <div>
-                  <p className="eyebrow">Cuenta segura</p>
-                  <h2>Entrá a Spool Vault</h2>
+                  <p className="eyebrow">{supabaseConfig.isConfigured ? "Cuenta segura" : "Configuración"}</p>
+                  <h2>{supabaseConfig.isConfigured ? "Entrá a Spool Vault" : "Conectá Supabase"}</h2>
                 </div>
                 <button className="modal-close" type="button" onClick={() => setShowLogin(false)} aria-label="Cerrar inicio de sesión">
                   <X size={17} aria-hidden="true" />
                 </button>
               </div>
-              <form onSubmit={sendMagicLink}>
-                <label htmlFor="auth-email">Correo electrónico</label>
-                <input
-                  id="auth-email"
-                  type="email"
-                  value={authEmail}
-                  onChange={(event) => setAuthEmail(event.target.value)}
-                  placeholder="nombre@correo.com"
-                  autoComplete="email"
-                  required
-                />
-                <button type="submit">Enviar enlace seguro</button>
-                <p className="auth-help">Enlace de un solo uso. Sin contraseña.</p>
-                {authNote && <p className="auth-result" role="status">{authNote}</p>}
-              </form>
+              {supabaseConfig.isConfigured ? (
+                <form onSubmit={sendMagicLink} noValidate>
+                  <label htmlFor="auth-email">Correo electrónico</label>
+                  <input
+                    id="auth-email"
+                    type="email"
+                    value={authEmail}
+                    onChange={(event) => setAuthEmail(event.target.value)}
+                    placeholder="nombre@correo.com"
+                    autoComplete="email"
+                    disabled={isSendingMagicLink}
+                    required
+                  />
+                  <button type="submit" disabled={isSendingMagicLink} aria-busy={isSendingMagicLink}>
+                    {isSendingMagicLink ? "Enviando..." : "Enviar enlace seguro"}
+                  </button>
+                  <p className="auth-help">Enlace de un solo uso. Sin contraseña.</p>
+                  <p className="auth-redirect">
+                    El enlace vuelve a <code>{authRedirectUrl || "detectando URL..."}</code>
+                  </p>
+                  {isAuthRedirectLocal && (
+                    <p className="auth-warning">
+                      Desde celular no usés localhost. Abrí el preview de Vercel para que el enlace vuelva al teléfono.
+                    </p>
+                  )}
+                  {authNote && <p className="auth-result" role="status">{authNote}</p>}
+                </form>
+              ) : (
+                <div className="auth-config-missing">
+                  <p>Supabase no está configurado para este deployment.</p>
+                  <ul>
+                    {!supabaseConfig.hasUrl && <li>Falta URL: NEXT_PUBLIC_SUPABASE_URL o SUPABASE_URL</li>}
+                    {!supabaseConfig.hasPublishableKey && (
+                      <li>Falta public key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY o SUPABASE_ANON_KEY</li>
+                    )}
+                  </ul>
+                  <p>
+                    Para magic links desde el cel, el redirect autorizado debe incluir el dominio donde abriste la app.
+                  </p>
+                  <p className="auth-redirect">
+                    URL actual: <code>{authRedirectUrl || "detectando URL..."}</code>
+                  </p>
+                </div>
+              )}
             </section>
           )}
         </div>
@@ -1722,6 +1845,18 @@ export default function Home() {
         )}
         {syncNote}
       </p>
+
+      {isDemoMode && (
+        <section className="panel demo-banner" aria-label="Datos de demostración">
+          <div>
+            <strong>Datos de muestra</strong>
+            <p>Estos rollos son ejemplos para probar la app. Al iniciar sesión, se carga solamente tu inventario real de Supabase.</p>
+          </div>
+          <button type="button" onClick={openAccount}>
+            {supabaseConfig.isConfigured ? "Entrar" : "Configurar Supabase"}
+          </button>
+        </section>
+      )}
 
       {dataMode === "error" && (
         <section className="panel data-error" aria-label="Error de conexión">
@@ -1964,6 +2099,175 @@ export default function Home() {
                 <option key={supplier} value={supplier} />
               ))}
             </datalist>
+          </section>
+        </div>
+      )}
+
+      {showQuickWeigh && selectedRoll && (
+        <div
+          className="modal-backdrop quick-weigh-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSavingWeight) setShowQuickWeigh(false);
+          }}
+        >
+          <section
+            className="panel modal-panel quick-weigh-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quick-weigh-title"
+          >
+            <div className="modal-head quick-weigh-head">
+              <div>
+                <p className="eyebrow">Balanza</p>
+                <h2 id="quick-weigh-title">Actualizar peso</h2>
+              </div>
+              <button
+                className="modal-close"
+                type="button"
+                onClick={() => setShowQuickWeigh(false)}
+                disabled={isSavingWeight}
+                aria-label="Cerrar pesaje"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+
+            <form className="quick-weigh-form" id="quick-weigh-sheet" onSubmit={adjustFromMeasuredWeight}>
+              <label className="quick-roll-picker">
+                Rollo
+                <select
+                  value={selectedRoll.id}
+                  disabled={isSavingWeight}
+                  onChange={(event) => {
+                    setSelectedId(event.target.value);
+                    setMeasuredTotalWeight("");
+                    weightRequest.current = null;
+                  }}
+                >
+                  {rolls.map((roll) => (
+                    <option key={roll.id} value={roll.id}>
+                      {roll.color_name} · {roll.brand} · {Math.round(Number(roll.available_weight_g))} g
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="quick-weigh-card">
+                <span className="quick-weigh-swatch" style={{ backgroundColor: selectedRoll.color_hex }} />
+                <div>
+                  {isDemoMode && <span className="demo-pill">Muestra</span>}
+                  <strong>{selectedRoll.color_name}</strong>
+                  <span>{selectedRoll.brand} · {selectedRoll.product_line || "Sin línea"} · {selectedRoll.material}</span>
+                  <small>{Math.round(Number(selectedRoll.available_weight_g))} g guardados ahora</small>
+                </div>
+              </div>
+
+              {isDemoMode && (
+                <p className="demo-weigh-note">
+                  Si guardás este pesaje, la app pasa a modo local en esta PC. No afecta tu inventario real.
+                </p>
+              )}
+
+              <label>
+                Peso total medido
+                <input
+                  ref={quickWeighInputRef}
+                  name="measured_total_weight_g"
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  placeholder="Ej. 469"
+                  value={measuredTotalWeight}
+                  disabled={isSavingWeight}
+                  onChange={(event) => setMeasuredTotalWeight(event.target.value)}
+                />
+              </label>
+
+              <label>
+                Referencia de tara
+                <select
+                  value={weighingSpoolTypeId}
+                  disabled={isSavingWeight}
+                  onChange={(event) => {
+                    const typeId = event.target.value;
+                    const type = spoolTypes.find((item) => item.id === typeId);
+                    setWeighingSpoolTypeId(typeId);
+                    if (type) {
+                      setWeighingTare(String(type.total_tare_g));
+                      setWeighingConfidence(type.tare_confidence);
+                    } else {
+                      setWeighingConfidence("unknown");
+                    }
+                    weightRequest.current = null;
+                  }}
+                >
+                  <option value="">Tara manual</option>
+                  {spoolTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.manufacturer} · {type.name} · {type.total_tare_g} g
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="quick-weigh-row">
+                <label>
+                  Tara
+                  <input
+                    name="tare_weight_g"
+                    required
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    placeholder="Ej. 254"
+                    value={weighingTare}
+                    disabled={isSavingWeight}
+                    onChange={(event) => {
+                      setWeighingTare(event.target.value);
+                      weightRequest.current = null;
+                    }}
+                  />
+                </label>
+                <label>
+                  Confianza
+                  <select
+                    value={weighingConfidence}
+                    disabled={isSavingWeight}
+                    onChange={(event) => {
+                      setWeighingConfidence(event.target.value as TareConfidence);
+                      weightRequest.current = null;
+                    }}
+                  >
+                    <option value="verified">Verificada</option>
+                    <option value="estimated">Estimada</option>
+                    <option value="unknown">Desconocida</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className={measuredRemaining != null && measuredRemaining < 0 ? "quick-weigh-result invalid" : "quick-weigh-result"}>
+                <span>Disponible calculado</span>
+                <strong>{measuredRemaining == null ? "—" : `${measuredRemaining.toLocaleString("es-CR")} g`}</strong>
+                <small>
+                  {measuredDelta == null
+                    ? "Peso total menos tara"
+                    : `${measuredDelta >= 0 ? "+" : ""}${measuredDelta.toLocaleString("es-CR")} g vs registro actual`}
+                </small>
+              </div>
+
+              <button
+                className="primary-action"
+                type="submit"
+                disabled={isSavingWeight || measuredRemaining == null || measuredRemaining < 0}
+              >
+                <Weight size={18} aria-hidden="true" />
+                {isSavingWeight ? "Guardando pesaje..." : "Guardar pesaje"}
+              </button>
+            </form>
           </section>
         </div>
       )}
@@ -2266,6 +2570,7 @@ export default function Home() {
                 </span>
                 <span className="roll-side">
                   <span className={statusClass(roll.status)}>{statusLabels[roll.status]}</span>
+                  {isDemoMode && <span className="demo-pill">Muestra</span>}
                   <strong>{Math.round(roll.available_weight_g)} g</strong>
                 </span>
               </button>
@@ -2282,7 +2587,10 @@ export default function Home() {
             <div className="detail-head">
               <span className="detail-swatch" style={{ backgroundColor: selectedRoll.color_hex }} />
               <div>
-                <p className={statusClass(selectedRoll.status)}>{statusLabels[selectedRoll.status]}</p>
+                <div className="detail-badges">
+                  <p className={statusClass(selectedRoll.status)}>{statusLabels[selectedRoll.status]}</p>
+                  {isDemoMode && <span className="demo-pill">Muestra</span>}
+                </div>
                 <h2>{selectedRoll.color_name}</h2>
                 <p>
                   {selectedRoll.brand} · {selectedRoll.product_line || "Sin línea"} ·{" "}
@@ -2338,7 +2646,11 @@ export default function Home() {
 
             {selectedRoll.drying_notes && <p className="notes">{selectedRoll.drying_notes}</p>}
 
-            <form className="consume-form weighing-form" id="quick-weigh" onSubmit={adjustFromMeasuredWeight}>
+            <form
+              className={isWeighingHighlighted ? "consume-form weighing-form weighing-form-active" : "consume-form weighing-form"}
+              id="quick-weigh"
+              onSubmit={adjustFromMeasuredWeight}
+            >
               <h3>Actualizar con balanza</h3>
               <p className="form-help">Ingresá el peso completo. Restamos la tara antes de guardar el filamento disponible.</p>
               <label className="weighing-type-field">
