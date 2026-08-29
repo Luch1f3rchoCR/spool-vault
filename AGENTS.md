@@ -1,46 +1,58 @@
-# ChatGPT project context
+# Spool Vault — guía de trabajo
 
-This directory is a local mirror of the ChatGPT project “Impresión 3D”.
+Esta carpeta contiene la aplicación real de Spool Vault. Es un proyecto Next.js con Supabase y despliegue automático en Vercel.
 
-- Treat every file under `sources/` as read-only reference material.
-- Do not edit, rename, move, or delete synced project files.
-- These files may be replaced the next time a task is created from this ChatGPT project.
+## Antes de cambiar algo
 
+1. Leer únicamente las secciones relevantes de `ROADMAP.md` y `ATOMICITY_AUDIT.md`.
+2. Revisar el estado de Git y conservar cualquier cambio ajeno a la tarea.
+3. Buscar primero con `rg`; no releer archivos completos cuando una búsqueda dirigida sea suficiente.
+4. Usar una rama corta por bloque estable. No trabajar directamente en `main`.
 
-## Project instructions
+## Contratos que no se pueden romper
 
-En esta carpeta voy a consultar temas relacionados con impresión 3D y pintura de modelos o figuras impresas.
+- El inventario autenticado pertenece al usuario y está protegido con RLS.
+- Los datos demo o locales nunca deben presentarse como inventario sincronizado.
+- Las operaciones que modifican más de una tabla deben vivir en una función transaccional de Supabase.
+- Reintentos del navegador no deben duplicar rollos, compras, consumos, spools, pesajes ni correcciones.
+- Compras, correcciones, consumos y pesajes son históricos; no se reescriben ni eliminan desde el cliente.
+- `filament_rolls.spool_id` y `spools.status` deben confirmar juntos una misma realidad física.
+- El estado del rollo se deriva en la base desde peso inicial, disponible, umbral bajo y archivo explícito.
+- Un spool físico solo puede pertenecer a una ficha de rollo a la vez, incluso si la ficha está archivada.
+- No sumar monedas distintas ni recalcular silenciosamente costos o taras históricos.
 
-🧠 Estoy aprendiendo sobre ambos temas por hobby y me siento muy feliz haciéndolo.
-🎯 Mis objetivos principales son mejorar mis conocimientos, calidad de impresión y habilidades de pintura.
-Equipos que tengo:
+## Supabase
 
-🖨️ Impresora 3D de filamento:
+- Proyecto de producción: `xbeqmfgiekcyoqevlypi`.
+- Todo cambio de esquema va en una migración nueva y aditiva dentro de `supabase/migrations/`.
+- No modificar una migración que ya fue aplicada; crear otra que avance o corrija.
+- Validar la migración dentro de una transacción revertida antes de aplicarla cuando sea posible.
+- Probar éxito, rechazo y reintento con datos temporales o transacciones que terminen en rollback.
+- Después de DDL, revisar los asesores de seguridad y rendimiento.
+- Nunca guardar claves privadas, tokens o secretos en el repositorio.
 
-   1) Modelo: Creality Ender 3 V2. (Banqueada)
+## Interfaz
 
-    Extras instalados:
+- Mantener español claro, tono amigable y diseño móvil primero.
+- Los modales deben cerrar únicamente después de una confirmación real.
+- Durante una escritura crítica, bloquear el doble envío y mostrar el estado en curso.
+- No afirmar éxito cuando el resultado sea incierto; recuperar por la clave de idempotencia.
+- Conservar compatibilidad con el modo local/demo sin confundirlo con datos reales.
 
-       - 2 camas ultra flexibles magnéticas y removibles de Creality.
+## Verificación y publicación
 
-      -  Kit de nivelación automática CR Touch (sensor instalado).
-      
-      -  Secador de filamento SUNLU 
+1. Ejecutar `npm run build` y `git diff --check`.
+2. Añadir al commit solo las rutas del bloque actual; no usar `git add .` ni variantes globales.
+3. Subir la rama y abrir un PR borrador contra `main`.
+4. Revisar diff, comentarios y controles automáticos; fusionar únicamente cuando estén verdes.
+5. Sincronizar la copia local con `main` y verificar el despliegue exacto de Vercel.
+6. Hacer una prueba de humo en `https://spool-vault.vercel.app/` y comprobar la consola.
+7. Aplicar cambios en Supabase solo cuando el bloque realmente los requiera.
 
-    Conforme vaya cambiando o agregando mejoras, te avisaré.
+## Uso eficiente del contexto
 
-*Nueva*
-
-Modelo: Bambu P1S.
-
-   Sin Extras Aún.
-
-Secador de filamento SUNLU 
-
-🧪 Impresora 3D de resina:
-
-    Modelo: Creality HALOT-MAGE S 14K.
-
-    Incluye estación de curado.
-
-📌 Siempre que consulte aquí, asumí que se trata de dudas relacionadas con estos equipos o con técnicas de pintura/modelado. Podés darme tips, sugerencias o advertencias cuando creás que me pueden ayudar.
+- Continuar desde el último commit y el checklist; no reconstruir decisiones ya documentadas.
+- Agrupar comprobaciones de solo lectura independientes.
+- Preferir cambios pequeños y terminados a ramas grandes con varios objetivos.
+- Usar subagentes solo para trabajos realmente independientes, como auditorías separadas de seguridad, UX móvil o costos. Paralelizar puede acelerar, pero normalmente aumenta los tokens totales.
+- Actualizar `ROADMAP.md` y `ATOMICITY_AUDIT.md` cuando una decisión material quede implementada.
