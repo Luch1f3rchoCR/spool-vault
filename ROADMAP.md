@@ -31,7 +31,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Guardar pesaje + actualización del saldo del rollo en una sola transacción.
 - [x] Corregir una compra + actualizar el costo vigente del rollo en una sola transacción idempotente.
 - [x] Impedir desde la base de datos que `filament_rolls.spool_id` y el estado del spool puedan quedar desincronizados.
-- [ ] Centralizar en la base de datos el estado derivado del rollo según gramos y porcentaje.
+- [x] Centralizar en la base de datos el estado derivado del rollo según gramos y umbral bajo.
 - [ ] Servir reportes financieros desde una vista o función consistente, evitando lecturas parciales entre varias tablas.
 - [x] Revocar ejecución pública innecesaria de funciones internas y resolver esos avisos del asesor de seguridad.
 - [x] Agregar índices faltantes para las relaciones de consumos, compras y proveedores.

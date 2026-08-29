@@ -36,6 +36,7 @@ The schema uses RLS, authenticated-only access, and explicit grants so the inven
 - `correct_purchase`: appends an audited correction and updates the roll's current cost in one retry-safe transaction.
 - Deferred database checks keep `filament_rolls.spool_id` and `spools.status` synchronized at commit time; partial assignments are rejected.
 - A physical spool can belong to only one roll record at a time, including archived records, and clients cannot directly delete roll or spool history.
+- Roll status is derived in the database whenever its weights, low threshold or archive state changes; weight bounds are enforced independently of the client.
 - These critical functions accept a request UUID so browser retries return the original result instead of duplicating data.
 - Price history can be selected and inserted by the app, but not updated or deleted directly.
 - Purchase corrections can be selected and appended through the safe operation, but never updated or deleted.
