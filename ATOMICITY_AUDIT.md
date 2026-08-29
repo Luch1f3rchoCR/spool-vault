@@ -23,11 +23,14 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Editar ficha del filamento | Atómico e idempotente | Bajo | Mantener `update_filament_roll`; no reescribir compras, consumos ni pesajes desde este modal. |
 | Corregir proveedor, fecha o costo de una compra | Atómico, trazable e idempotente | Bajo | Mantener `correct_purchase`, la revisión append-only y la sincronización del costo vigente del rollo. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
+| Derivar estado del rollo | Regla central en base de datos | Bajo | `Nuevo`, `Abierto`, `Bajo` y `Agotado` se recalculan desde pesos y umbral; `Archivado` continúa siendo explícito. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Para reportes financieros, usar una vista o función que produzca una lectura consistente. |
 
 La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
 
 Desde el 29 de agosto, la base también valida la relación rollo-spool al confirmar cada transacción. Las funciones pueden cambiar ambas tablas juntas, pero una escritura parcial se rechaza. Un índice único impide reutilizar el mismo spool físico en otra ficha, incluso si una de las fichas está archivada; además, el cliente autenticado ya no puede borrar directamente rollos o spools.
+
+La misma revisión centralizó el estado operativo del rollo. Se corrigieron diez etiquetas antiguas de `new` a `open` sin cambiar sus gramos, compras, consumos ni pesajes. Desde entonces, cualquier modificación de peso, peso inicial o umbral pasa por un trigger y los límites físicos también están protegidos por una restricción de tabla.
 
 ## Riesgos transversales
 
@@ -90,6 +93,7 @@ Mensajes recomendados:
 5. [Completado] Probar RLS, reversión completa, reintentos y compilación.
 6. [Completado] Extender el mismo contrato al catálogo de spools y al historial de pesajes.
 7. [Completado] Proteger en base de datos la consistencia entre `filament_rolls.spool_id` y `spools.status`.
+8. [Completado] Derivar el estado operativo del rollo desde sus pesos y umbral en un único punto de la base.
 
 ### Fase 1 — Tara y pesajes históricos
 
