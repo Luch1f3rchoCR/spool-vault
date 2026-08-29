@@ -24,6 +24,10 @@ import {
 } from "lucide-react";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { ProfilePanel } from "@/components/profile-panel";
+import {
+  PurchaseCorrectionModal,
+  type PurchaseCorrectionValues
+} from "@/components/purchase-correction-modal";
 import { RollEditModal, type EditableRollValues } from "@/components/roll-edit-modal";
 import { demoLogs, demoRolls } from "@/lib/demo-data";
 import {
@@ -36,6 +40,7 @@ import type {
   ConsumptionLog,
   FilamentRoll,
   PackageType,
+  PurchaseCorrection,
   PurchaseRecord,
   RollDraft,
   RollStatus,
@@ -50,6 +55,7 @@ const LOCAL_ROLLS_KEY = "filament-vault-rolls";
 const LOCAL_LOGS_KEY = "filament-vault-logs";
 const LOCAL_SPOOLS_KEY = "spool-vault-spools";
 const LOCAL_PURCHASES_KEY = "spool-vault-purchases";
+const LOCAL_PURCHASE_CORRECTIONS_KEY = "spool-vault-purchase-corrections";
 const LOCAL_WEIGHINGS_KEY = "spool-vault-weighings";
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
@@ -69,6 +75,18 @@ type ConsumptionMutationResult = {
 type SpoolWriteResult = { spool: Spool; replayed: boolean };
 type WeightMutationResult = { roll: FilamentRoll; event: WeighingEvent; replayed: boolean };
 type RollUpdateResult = { roll: FilamentRoll; replayed: boolean };
+type PurchaseCorrectionResult = {
+  correction: PurchaseCorrection;
+  roll: FilamentRoll | null;
+  supplier?: Supplier;
+  replayed: boolean;
+};
+type PurchaseView = {
+  original: PurchaseRecord;
+  effective: PurchaseRecord;
+  latestCorrection: PurchaseCorrection | null;
+  correctionCount: number;
+};
 type WeightInput = {
   kind: "scale" | "manual";
   grossWeight: number | null;
@@ -283,6 +301,7 @@ export default function Home() {
   const [weighingEvents, setWeighingEvents] = useState<WeighingEvent[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
+  const [purchaseCorrections, setPurchaseCorrections] = useState<PurchaseCorrection[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [query, setQuery] = useState("");
   const [brandFilter, setBrandFilter] = useState("Todos");
@@ -291,6 +310,7 @@ export default function Home() {
   const [showAdd, setShowAdd] = useState(false);
   const [showQuickWeigh, setShowQuickWeigh] = useState(false);
   const [editingRollId, setEditingRollId] = useState("");
+  const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
   const [editingSpoolId, setEditingSpoolId] = useState("");
   const [showProfile, setShowProfile] = useState(false);
@@ -313,6 +333,7 @@ export default function Home() {
   const [dataMode, setDataMode] = useState<DataMode>("demo");
   const [isAddingRoll, setIsAddingRoll] = useState(false);
   const [isUpdatingRoll, setIsUpdatingRoll] = useState(false);
+  const [isCorrectingPurchase, setIsCorrectingPurchase] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
@@ -320,6 +341,7 @@ export default function Home() {
   const [pendingSpoolAction, setPendingSpoolAction] = useState("");
   const addRollRequestId = useRef<string | null>(null);
   const updateRollRequests = useRef<Record<string, string>>({});
+  const purchaseCorrectionRequests = useRef<Record<string, { id: string; fingerprint: string }>>({});
   const consumptionRequest = useRef<{ id: string; rollId: string } | null>(null);
   const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
   const createSpoolRequestId = useRef<string | null>(null);
@@ -374,6 +396,7 @@ export default function Home() {
           setWeighingEvents([]);
           setSuppliers([]);
           setPurchases([]);
+          setPurchaseCorrections([]);
           setSelectedId("");
           setDataMode("error");
           setSyncNote("No se pudo comprobar la sesión. No se muestran datos demo.");
@@ -387,6 +410,7 @@ export default function Home() {
           const localLogs = readLocal<ConsumptionLog[]>(LOCAL_LOGS_KEY, demoLogs);
           const localSpools = readLocal<Spool[]>(LOCAL_SPOOLS_KEY, []);
           const localPurchases = readLocal<PurchaseRecord[]>(LOCAL_PURCHASES_KEY, []);
+          const localPurchaseCorrections = readLocal<PurchaseCorrection[]>(LOCAL_PURCHASE_CORRECTIONS_KEY, []);
           const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
           setSignedInEmail("");
           setRolls(localRolls);
@@ -395,6 +419,7 @@ export default function Home() {
           setSpoolTypes(fallbackSpoolTypes);
           setWeighingEvents(localWeighings);
           setPurchases(localPurchases);
+          setPurchaseCorrections(localPurchaseCorrections);
           setSelectedId(localRolls[0]?.id ?? "");
           setDataMode(hasLocalInventory ? "local" : "demo");
           setSyncNote(
@@ -415,7 +440,8 @@ export default function Home() {
           { data: spoolTypeData, error: spoolTypeError },
           { data: weighingData, error: weighingError },
           { data: supplierData, error: supplierError },
-          { data: purchaseData, error: purchaseError }
+          { data: purchaseData, error: purchaseError },
+          { data: purchaseCorrectionData, error: purchaseCorrectionError }
         ] =
           await Promise.all([
             supabase.from("filament_rolls").select("*").order("updated_at", { ascending: false }),
@@ -424,21 +450,28 @@ export default function Home() {
             supabase.from("spool_types").select("*").eq("is_active", true).order("manufacturer").order("name"),
             supabase.from("weighing_events").select("*").order("measured_at", { ascending: false }),
             supabase.from("suppliers").select("*").order("name"),
-            supabase.from("purchase_history").select("*").order("purchased_at", { ascending: false })
+            supabase.from("purchase_history").select("*").order("purchased_at", { ascending: false }),
+            supabase.from("purchase_corrections").select("*").order("corrected_at", { ascending: false })
           ]);
 
         if (
           !rollError && !logError && !spoolError && !spoolTypeError && !weighingError
-          && !supplierError && !purchaseError && rollData
+          && !supplierError && !purchaseError && !purchaseCorrectionError && rollData
         ) {
-          setRolls(rollData as FilamentRoll[]);
+          const loadedSuppliers = (supplierData ?? []) as Supplier[];
+          const loadedRolls = (rollData as FilamentRoll[]).map((roll) => ({
+            ...normalizeRollData(roll),
+            supplier_name: loadedSuppliers.find((supplier) => supplier.id === roll.supplier_id)?.name ?? null
+          }));
+          setRolls(loadedRolls);
           setLogs((logData ?? []) as ConsumptionLog[]);
           setSpools((spoolData ?? []) as Spool[]);
           setSpoolTypes((spoolTypeData ?? []) as SpoolType[]);
           setWeighingEvents((weighingData ?? []) as WeighingEvent[]);
-          setSuppliers((supplierData ?? []) as Supplier[]);
+          setSuppliers(loadedSuppliers);
           setPurchases((purchaseData ?? []) as PurchaseRecord[]);
-          setSelectedId(rollData[0]?.id ?? "");
+          setPurchaseCorrections((purchaseCorrectionData ?? []) as PurchaseCorrection[]);
+          setSelectedId(loadedRolls[0]?.id ?? "");
           setDataMode("authenticated");
           setSyncNote("Conectado a Supabase · inventario real");
           setIsLoading(false);
@@ -452,6 +485,7 @@ export default function Home() {
         setWeighingEvents([]);
         setSuppliers([]);
         setPurchases([]);
+        setPurchaseCorrections([]);
         setSelectedId("");
         setDataMode("error");
         setSyncNote("No se pudo cargar el inventario real. No se muestran datos demo.");
@@ -464,6 +498,7 @@ export default function Home() {
       const localLogs = readLocal<ConsumptionLog[]>(LOCAL_LOGS_KEY, demoLogs);
       const localSpools = readLocal<Spool[]>(LOCAL_SPOOLS_KEY, []);
       const localPurchases = readLocal<PurchaseRecord[]>(LOCAL_PURCHASES_KEY, []);
+      const localPurchaseCorrections = readLocal<PurchaseCorrection[]>(LOCAL_PURCHASE_CORRECTIONS_KEY, []);
       const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
       setRolls(localRolls);
       setLogs(localLogs);
@@ -471,6 +506,7 @@ export default function Home() {
       setSpoolTypes(fallbackSpoolTypes);
       setWeighingEvents(localWeighings);
       setPurchases(localPurchases);
+      setPurchaseCorrections(localPurchaseCorrections);
       setSelectedId(localRolls[0]?.id ?? "");
       setDataMode(hasLocalInventory ? "local" : "demo");
       setSyncNote(
@@ -515,18 +551,53 @@ export default function Home() {
   }, [dataMode, purchases, usingSupabase]);
 
   useEffect(() => {
+    if (!usingSupabase && dataMode === "local") {
+      saveLocal(LOCAL_PURCHASE_CORRECTIONS_KEY, purchaseCorrections);
+    }
+  }, [dataMode, purchaseCorrections, usingSupabase]);
+
+  useEffect(() => {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_WEIGHINGS_KEY, weighingEvents);
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showProfile || Boolean(editingRollId) ? "hidden" : "";
+    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showProfile
+      || Boolean(editingRollId) || Boolean(correctingPurchaseId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [editingRollId, showAdd, showQuickWeigh, showSpools, showProfile]);
+  }, [correctingPurchaseId, editingRollId, showAdd, showQuickWeigh, showSpools, showProfile]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
   const editingRoll = rolls.find((roll) => roll.id === editingRollId);
+  const purchaseViews = useMemo<PurchaseView[]>(() => purchases.map((purchase) => {
+    const relatedCorrections = purchaseCorrections
+      .filter((correction) => correction.purchase_id === purchase.id)
+      .sort((a, b) => b.corrected_at.localeCompare(a.corrected_at));
+    const latestCorrection = relatedCorrections[0] ?? null;
+    const effective = latestCorrection
+      ? {
+          ...purchase,
+          supplier_id: latestCorrection.supplier_id,
+          supplier_name: latestCorrection.supplier_name,
+          purchased_at: latestCorrection.purchased_at,
+          package_type: latestCorrection.package_type,
+          total_price: Number(latestCorrection.total_price),
+          spool_cost: Number(latestCorrection.spool_cost),
+          filament_cost: Number(latestCorrection.filament_cost),
+          currency: latestCorrection.currency,
+          quantity_g: Number(latestCorrection.quantity_g)
+        }
+      : purchase;
+
+    return {
+      original: purchase,
+      effective,
+      latestCorrection,
+      correctionCount: relatedCorrections.length
+    };
+  }), [purchaseCorrections, purchases]);
+  const correctingPurchase = purchaseViews.find((view) => view.original.id === correctingPurchaseId);
   const selectedSpool = spools.find((spool) => spool.id === selectedRoll?.spool_id);
   const recentWeighings = weighingEvents
     .filter((event) => event.roll_id === selectedRoll?.id)
@@ -838,6 +909,136 @@ export default function Home() {
       setSyncNote(`No se pudo confirmar la edición. Podés reintentar sin repetirla: ${message}`);
     } finally {
       setIsUpdatingRoll(false);
+    }
+  }
+
+  async function correctPurchase(values: PurchaseCorrectionValues) {
+    if (!correctingPurchase || isCorrectingPurchase) return;
+    activateLocalMode();
+
+    if (!values.supplier_name.trim()) {
+      setSyncNote("El proveedor es requerido para corregir la compra.");
+      return;
+    }
+    if (!values.purchased_at) {
+      setSyncNote("La fecha de compra es requerida.");
+      return;
+    }
+    if (values.total_price < 0 || values.spool_cost < 0 || values.spool_cost > values.total_price) {
+      setSyncNote("El costo del spool debe estar entre cero y el precio total.");
+      return;
+    }
+    if (values.reason.trim().length < 3) {
+      setSyncNote("Indicá brevemente por qué se corrige esta compra.");
+      return;
+    }
+
+    const purchase = correctingPurchase.original;
+    const fingerprint = JSON.stringify(values);
+    setIsCorrectingPurchase(true);
+
+    try {
+      if (usingSupabase && supabase) {
+        const pending = purchaseCorrectionRequests.current[purchase.id];
+        const request = pending?.fingerprint === fingerprint
+          ? pending
+          : { id: crypto.randomUUID(), fingerprint };
+        purchaseCorrectionRequests.current[purchase.id] = request;
+
+        const { data, error } = await supabase.rpc("correct_purchase", {
+          p_request_id: request.id,
+          p_purchase_id: purchase.id,
+          p_supplier_name: values.supplier_name.trim(),
+          p_purchased_at: values.purchased_at,
+          p_package_type: values.package_type,
+          p_total_price: values.total_price,
+          p_spool_cost: values.spool_cost,
+          p_currency: values.currency,
+          p_reason: values.reason.trim()
+        });
+
+        if (error || !data) {
+          setSyncNote(
+            `No se pudo confirmar la corrección. Podés reintentar sin duplicarla: ${error?.message ?? "respuesta vacía"}`
+          );
+          return;
+        }
+
+        const result = data as PurchaseCorrectionResult;
+        const savedCorrection = {
+          ...result.correction,
+          total_price: Number(result.correction.total_price),
+          spool_cost: Number(result.correction.spool_cost),
+          filament_cost: Number(result.correction.filament_cost),
+          quantity_g: Number(result.correction.quantity_g)
+        };
+        setPurchaseCorrections((current) => [
+          savedCorrection,
+          ...current.filter((correction) => correction.id !== savedCorrection.id)
+        ]);
+
+        if (result.roll) {
+          const savedRoll = normalizeRollData({
+            ...result.roll,
+            supplier_name: result.supplier?.name ?? values.supplier_name.trim()
+          });
+          setRolls((current) => current.map((roll) => roll.id === savedRoll.id ? savedRoll : roll));
+        }
+        if (result.supplier) {
+          setSuppliers((current) => [
+            result.supplier as Supplier,
+            ...current.filter((supplier) => supplier.id !== result.supplier?.id)
+          ]);
+        }
+
+        setSyncNote(result.replayed
+          ? "Esta corrección ya estaba guardada; recuperamos el resultado sin duplicarla."
+          : "Compra corregida y costo vigente actualizado en una sola operación.");
+        delete purchaseCorrectionRequests.current[purchase.id];
+      } else {
+        const requestId = crypto.randomUUID();
+        const correction: PurchaseCorrection = {
+          id: crypto.randomUUID(),
+          request_id: requestId,
+          purchase_id: purchase.id,
+          roll_id: purchase.roll_id,
+          supplier_id: null,
+          supplier_name: values.supplier_name.trim(),
+          purchased_at: values.purchased_at,
+          package_type: values.package_type,
+          total_price: values.total_price,
+          spool_cost: values.spool_cost,
+          filament_cost: values.total_price - values.spool_cost,
+          currency: values.currency,
+          quantity_g: Number(correctingPurchase.effective.quantity_g),
+          reason: values.reason.trim(),
+          corrected_at: new Date().toISOString()
+        };
+        setPurchaseCorrections((current) => [correction, ...current]);
+        if (purchase.roll_id) {
+          setRolls((current) => current.map((roll) => roll.id === purchase.roll_id
+            ? {
+                ...roll,
+                supplier_name: correction.supplier_name,
+                supplier_id: correction.supplier_id,
+                purchase_date: correction.purchased_at,
+                price_amount: correction.total_price,
+                currency: correction.currency,
+                package_type: correction.package_type,
+                spool_cost_amount: correction.spool_cost,
+                filament_cost_amount: correction.filament_cost
+              }
+            : roll));
+        }
+        setSyncNote("Compra corregida en el inventario local con su registro de auditoría.");
+      }
+
+      setCorrectingPurchaseId("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo confirmar la corrección. Podés reintentar sin duplicarla: ${message}`);
+    } finally {
+      setIsCorrectingPurchase(false);
     }
   }
 
@@ -2084,6 +2285,21 @@ export default function Home() {
         />
       )}
 
+      {correctingPurchase && (
+        <PurchaseCorrectionModal
+          originalPurchase={correctingPurchase.original}
+          effectivePurchase={correctingPurchase.effective}
+          correctionCount={correctingPurchase.correctionCount}
+          supplierOptions={Array.from(new Set([
+            ...supplierOptions,
+            ...suppliers.map((supplier) => supplier.name)
+          ]))}
+          isSaving={isCorrectingPurchase}
+          onClose={() => setCorrectingPurchaseId("")}
+          onSave={correctPurchase}
+        />
+      )}
+
       {showSpools && (
         <div
           className="modal-backdrop"
@@ -2648,20 +2864,31 @@ export default function Home() {
             <p className="eyebrow">Compras</p>
             <h2>Histórico de precios</h2>
           </div>
-          <span>{purchases.length} registros</span>
+          <span>{purchaseViews.length} registros</span>
         </div>
-        {purchases.length ? (
+        {purchaseViews.length ? (
           <div className="history-list">
-            {purchases.map((purchase) => (
-              <article key={purchase.id}>
-                <span className="mini-swatch" style={{ backgroundColor: purchase.color_hex }} />
-                <div>
-                  <strong>{purchase.brand} · {purchase.product_line} · {purchase.color_name}</strong>
-                  <span>{purchase.supplier_name} · {purchase.purchased_at} · {purchase.package_type === "spooled" ? "Con spool" : "Refill"}</span>
+            {purchaseViews.map(({ original, effective, latestCorrection, correctionCount }) => (
+              <article key={original.id} className={latestCorrection ? "corrected" : ""}>
+                <span className="mini-swatch" style={{ backgroundColor: original.color_hex }} />
+                <div className="history-copy">
+                  <strong>{effective.brand} · {effective.product_line} · {effective.color_name}</strong>
+                  <span>{effective.supplier_name} · {effective.purchased_at} · {effective.package_type === "spooled" ? "Con spool" : "Refill"}</span>
+                  {latestCorrection && (
+                    <small className="correction-badge" title={latestCorrection.reason}>
+                      Corregida · {correctionCount} revisión{correctionCount === 1 ? "" : "es"}
+                    </small>
+                  )}
                 </div>
-                <div className="history-price">
-                  <strong>{purchase.currency} {Number(purchase.total_price).toLocaleString("es-CR")}</strong>
-                  <span>{purchase.currency} {(Number(purchase.filament_cost) / Number(purchase.quantity_g)).toLocaleString("es-CR")} / g</span>
+                <div className="history-actions">
+                  <div className="history-price">
+                    <strong>{effective.currency} {Number(effective.total_price).toLocaleString("es-CR")}</strong>
+                    <span>{effective.currency} {(Number(effective.filament_cost) / Number(effective.quantity_g)).toLocaleString("es-CR")} / g</span>
+                  </div>
+                  <button type="button" onClick={() => setCorrectingPurchaseId(original.id)}>
+                    <Pencil size={15} aria-hidden="true" />
+                    Corregir
+                  </button>
                 </div>
               </article>
             ))}

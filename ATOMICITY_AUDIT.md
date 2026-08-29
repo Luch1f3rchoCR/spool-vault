@@ -20,6 +20,7 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Editar spool | Atómico e idempotente | Bajo | Mantener `update_spool`, bloqueo de fila y estado pendiente. |
 | Agregar rollo, proveedor e historial de compra | Atómico e idempotente | Bajo | Mantener la función `create_roll_with_purchase` como único punto de escritura del formulario. |
 | Editar ficha del filamento | Atómico e idempotente | Bajo | Mantener `update_filament_roll`; no reescribir compras, consumos ni pesajes desde este modal. |
+| Corregir proveedor, fecha o costo de una compra | Atómico, trazable e idempotente | Bajo | Mantener `correct_purchase`, la revisión append-only y la sincronización del costo vigente del rollo. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Para reportes financieros, usar una vista o función que produzca una lectura consistente. |
 
@@ -99,6 +100,7 @@ Mensajes recomendados:
 2. Agregar express, otros cargos, prorrateo y confianza del costo.
 3. Conservar moneda original, moneda pagada y conversión histórica.
 4. Migrar datos existentes con valores incompletos o estimados explícitos, sin inventar facturas.
+5. [Completado] Permitir correcciones append-only del registro actual mientras se diseña el modelo de órdenes y partidas.
 
 ### Fase 3 — Color, perfil y reportes
 

@@ -109,6 +109,24 @@ export type PurchaseRecord = {
   quantity_g: number;
 };
 
+export type PurchaseCorrection = {
+  id: string;
+  request_id: string;
+  purchase_id: string;
+  roll_id: string | null;
+  supplier_id: string | null;
+  supplier_name: string;
+  purchased_at: string;
+  package_type: PackageType;
+  total_price: number;
+  spool_cost: number;
+  filament_cost: number;
+  currency: string;
+  quantity_g: number;
+  reason: string;
+  corrected_at: string;
+};
+
 export type ConsumptionLog = {
   id: string;
   roll_id: string;

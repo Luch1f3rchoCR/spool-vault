@@ -10,7 +10,8 @@ Incluye:
 - filtros por búsqueda, marca, material y lista de compra;
 - registro de consumo por proyecto que descuenta gramos del rollo;
 - ajuste manual de gramos disponibles para corregir pesajes o recargas;
-- compras por proveedor con precio histórico inmutable;
+- compras por proveedor con precio histórico inmutable y correcciones trazables;
+- modal para corregir proveedor, fecha, presentación, precio, spool y moneda sin borrar el registro original;
 - separación entre precio total, costo reutilizable del spool y costo consumible por gramo;
 - inventario de spools numerados, vacíos y en uso;
 - edición, asignación, liberación, inactivación y reactivación de spools;

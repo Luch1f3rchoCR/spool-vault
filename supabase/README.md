@@ -22,6 +22,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 - `public.spool_types`: catálogo global o propio de modelos de spool, componentes de tara, fuente y confianza.
 - `public.weighing_events`: historial inmutable por rollo con peso bruto, tara aplicada y saldo calculado.
 - `public.purchase_history`: historial inmutable de precios y costo por gramo.
+- `public.purchase_corrections`: revisiones inmutables con motivo y valores corregidos; el original nunca se reemplaza.
 
 The schema uses RLS, authenticated-only access, and explicit grants so the inventory is ready for Supabase Data API access without exposing it publicly.
 
@@ -32,6 +33,8 @@ The schema uses RLS, authenticated-only access, and explicit grants so the inven
 - `create_spool` and `update_spool`: create or edit a physical spool with retry-safe request UUIDs.
 - `record_roll_weight`: stores the weighing snapshot and updates the roll balance in one transaction.
 - `update_filament_roll`: edits the operational roll card without rewriting financial or measurement history.
+- `correct_purchase`: appends an audited correction and updates the roll's current cost in one retry-safe transaction.
 - These critical functions accept a request UUID so browser retries return the original result instead of duplicating data.
 - Price history can be selected and inserted by the app, but not updated or deleted directly.
+- Purchase corrections can be selected and appended through the safe operation, but never updated or deleted.
 - Weighing history can be selected and inserted by the safe function, but cannot be updated or deleted by the client.
