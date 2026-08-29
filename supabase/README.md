@@ -34,6 +34,8 @@ The schema uses RLS, authenticated-only access, and explicit grants so the inven
 - `record_roll_weight`: stores the weighing snapshot and updates the roll balance in one transaction.
 - `update_filament_roll`: edits the operational roll card without rewriting financial or measurement history.
 - `correct_purchase`: appends an audited correction and updates the roll's current cost in one retry-safe transaction.
+- Deferred database checks keep `filament_rolls.spool_id` and `spools.status` synchronized at commit time; partial assignments are rejected.
+- A physical spool can belong to only one roll record at a time, including archived records, and clients cannot directly delete roll or spool history.
 - These critical functions accept a request UUID so browser retries return the original result instead of duplicating data.
 - Price history can be selected and inserted by the app, but not updated or deleted directly.
 - Purchase corrections can be selected and appended through the safe operation, but never updated or deleted.
