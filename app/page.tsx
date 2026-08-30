@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { InventoryReportModal } from "@/components/inventory-report-modal";
 import { MobileNavigation } from "@/components/mobile-navigation";
-import { ProfilePanel } from "@/components/profile-panel";
+import { ProfilePanel, type ProfileValues } from "@/components/profile-panel";
 import {
   PurchaseOrdersModal,
   type PurchaseOrderValues
@@ -51,12 +51,14 @@ import type {
   PurchaseCorrection,
   PurchaseOrder,
   PurchaseOrderItem,
+  PurchaseOrderPayment,
   PurchaseRecord,
   RollDraft,
   RollStatus,
   Spool,
   SpoolType,
   TareConfidence,
+  UserProfile,
   WeighingEvent,
   Supplier
 } from "@/lib/types";
@@ -68,6 +70,8 @@ const LOCAL_PURCHASES_KEY = "spool-vault-purchases";
 const LOCAL_PURCHASE_CORRECTIONS_KEY = "spool-vault-purchase-corrections";
 const LOCAL_PURCHASE_ORDERS_KEY = "spool-vault-purchase-orders";
 const LOCAL_PURCHASE_ORDER_ITEMS_KEY = "spool-vault-purchase-order-items";
+const LOCAL_PURCHASE_ORDER_PAYMENTS_KEY = "spool-vault-purchase-order-payments";
+const LOCAL_PROFILE_KEY = "spool-vault-user-profile";
 const LOCAL_WEIGHINGS_KEY = "spool-vault-weighings";
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
@@ -96,6 +100,7 @@ type PurchaseCorrectionResult = {
 type PurchaseOrderMutationResult = {
   order: PurchaseOrder;
   items: PurchaseOrderItem[];
+  payment: PurchaseOrderPayment | null;
   replayed: boolean;
 };
 type PurchaseView = {
@@ -239,6 +244,19 @@ const initialDraft: RollDraft = {
   purchase_url: ""
 };
 
+function defaultUserProfile(userId = "local", email = ""): UserProfile {
+  return {
+    user_id: userId,
+    display_name: null,
+    base_currency: "CRC",
+    billing_name: null,
+    billing_tax_id: null,
+    billing_email: email || null,
+    billing_address: null,
+    membership_status: "early_access"
+  };
+}
+
 function parseNumber(value: FormDataEntryValue | null, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -246,6 +264,14 @@ function parseNumber(value: FormDataEntryValue | null, fallback = 0) {
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatMoney(currency: string, value: number) {
+  return new Intl.NumberFormat("es-CR", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: currency === "CRC" ? 0 : 2
+  }).format(value);
 }
 
 function isValidEmail(value: string) {
@@ -424,7 +450,23 @@ function buildLocalPurchaseOrder(
       created_at: new Date().toISOString()
     } satisfies PurchaseOrderItem;
   });
-  return { order, items, replayed: false };
+  const payment = values.paid_amount !== null
+    && values.paid_currency
+    && values.exchange_rate !== null
+    && values.exchange_rate_date
+    && values.exchange_rate_kind
+    ? {
+        order_id: orderId,
+        paid_amount: values.paid_amount,
+        paid_currency: values.paid_currency,
+        exchange_rate: values.exchange_rate,
+        exchange_rate_date: values.exchange_rate_date,
+        exchange_rate_kind: values.exchange_rate_kind,
+        exchange_rate_source: values.exchange_rate_source.trim() || null,
+        created_at: new Date().toISOString()
+      } satisfies PurchaseOrderPayment
+    : null;
+  return { order, items, payment, replayed: false };
 }
 
 export default function Home() {
@@ -438,6 +480,8 @@ export default function Home() {
   const [purchaseCorrections, setPurchaseCorrections] = useState<PurchaseCorrection[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([]);
+  const [purchaseOrderPayments, setPurchaseOrderPayments] = useState<PurchaseOrderPayment[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => defaultUserProfile());
   const [selectedId, setSelectedId] = useState<string>("");
   const [query, setQuery] = useState("");
   const [brandFilter, setBrandFilter] = useState("Todos");
@@ -463,6 +507,7 @@ export default function Home() {
   const [authNote, setAuthNote] = useState("");
   const [authRedirectUrl, setAuthRedirectUrl] = useState("");
   const [signedInEmail, setSignedInEmail] = useState("");
+  const [signedInUserId, setSignedInUserId] = useState("");
   const [authVersion, setAuthVersion] = useState(0);
   const [nfcNote, setNfcNote] = useState("");
   const [measuredTotalWeight, setMeasuredTotalWeight] = useState("");
@@ -476,6 +521,7 @@ export default function Home() {
   const [isUpdatingRoll, setIsUpdatingRoll] = useState(false);
   const [isCorrectingPurchase, setIsCorrectingPurchase] = useState(false);
   const [isSavingPurchaseOrder, setIsSavingPurchaseOrder] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
@@ -542,6 +588,9 @@ export default function Home() {
           setPurchaseCorrections([]);
           setPurchaseOrders([]);
           setPurchaseOrderItems([]);
+          setPurchaseOrderPayments([]);
+          setUserProfile(defaultUserProfile());
+          setSignedInUserId("");
           setSelectedId("");
           setDataMode("error");
           setSyncNote("No se pudo comprobar la sesión. No se muestran datos demo.");
@@ -558,8 +607,11 @@ export default function Home() {
           const localPurchaseCorrections = readLocal<PurchaseCorrection[]>(LOCAL_PURCHASE_CORRECTIONS_KEY, []);
           const localPurchaseOrders = readLocal<PurchaseOrder[]>(LOCAL_PURCHASE_ORDERS_KEY, []);
           const localPurchaseOrderItems = readLocal<PurchaseOrderItem[]>(LOCAL_PURCHASE_ORDER_ITEMS_KEY, []);
+          const localPurchaseOrderPayments = readLocal<PurchaseOrderPayment[]>(LOCAL_PURCHASE_ORDER_PAYMENTS_KEY, []);
+          const localProfile = readLocal<UserProfile>(LOCAL_PROFILE_KEY, defaultUserProfile());
           const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
           setSignedInEmail("");
+          setSignedInUserId("");
           setRolls(localRolls);
           setLogs(localLogs);
           setSpools(localSpools);
@@ -569,6 +621,8 @@ export default function Home() {
           setPurchaseCorrections(localPurchaseCorrections);
           setPurchaseOrders(localPurchaseOrders);
           setPurchaseOrderItems(localPurchaseOrderItems);
+          setPurchaseOrderPayments(localPurchaseOrderPayments);
+          setUserProfile(localProfile);
           setSelectedId(localRolls[0]?.id ?? "");
           setDataMode(hasLocalInventory ? "local" : "demo");
           setSyncNote(
@@ -581,6 +635,7 @@ export default function Home() {
         }
 
         setSignedInEmail(user.email ?? "Sesión activa");
+        setSignedInUserId(user.id);
 
         const [
           { data: rollData, error: rollError },
@@ -592,7 +647,9 @@ export default function Home() {
           { data: purchaseData, error: purchaseError },
           { data: purchaseCorrectionData, error: purchaseCorrectionError },
           { data: purchaseOrderData, error: purchaseOrderError },
-          { data: purchaseOrderItemData, error: purchaseOrderItemError }
+          { data: purchaseOrderItemData, error: purchaseOrderItemError },
+          { data: purchaseOrderPaymentData, error: purchaseOrderPaymentError },
+          { data: profileData, error: profileError }
         ] =
           await Promise.all([
             supabase.from("filament_rolls").select("*").order("updated_at", { ascending: false }),
@@ -604,13 +661,16 @@ export default function Home() {
             supabase.from("purchase_history").select("*").order("purchased_at", { ascending: false }),
             supabase.from("purchase_corrections").select("*").order("corrected_at", { ascending: false }),
             supabase.from("purchase_orders").select("*").order("purchased_at", { ascending: false }),
-            supabase.from("purchase_order_items").select("*").order("created_at", { ascending: false })
+            supabase.from("purchase_order_items").select("*").order("created_at", { ascending: false }),
+            supabase.from("purchase_order_payments").select("*").order("created_at", { ascending: false }),
+            supabase.from("user_profiles").select("*").maybeSingle()
           ]);
 
         if (
           !rollError && !logError && !spoolError && !spoolTypeError && !weighingError
           && !supplierError && !purchaseError && !purchaseCorrectionError
-          && !purchaseOrderError && !purchaseOrderItemError && rollData
+          && !purchaseOrderError && !purchaseOrderItemError && !purchaseOrderPaymentError
+          && !profileError && rollData
         ) {
           const loadedSuppliers = (supplierData ?? []) as Supplier[];
           const loadedRolls = (rollData as FilamentRoll[]).map((roll) => ({
@@ -627,6 +687,8 @@ export default function Home() {
           setPurchaseCorrections((purchaseCorrectionData ?? []) as PurchaseCorrection[]);
           setPurchaseOrders((purchaseOrderData ?? []) as PurchaseOrder[]);
           setPurchaseOrderItems((purchaseOrderItemData ?? []) as PurchaseOrderItem[]);
+          setPurchaseOrderPayments((purchaseOrderPaymentData ?? []) as PurchaseOrderPayment[]);
+          setUserProfile((profileData as UserProfile | null) ?? defaultUserProfile(user.id, user.email ?? ""));
           setSelectedId(loadedRolls[0]?.id ?? "");
           setDataMode("authenticated");
           setSyncNote("Conectado a Supabase · inventario real");
@@ -644,6 +706,8 @@ export default function Home() {
         setPurchaseCorrections([]);
         setPurchaseOrders([]);
         setPurchaseOrderItems([]);
+        setPurchaseOrderPayments([]);
+        setUserProfile(defaultUserProfile(user.id, user.email ?? ""));
         setSelectedId("");
         setDataMode("error");
         setSyncNote("No se pudo cargar el inventario real. No se muestran datos demo.");
@@ -659,6 +723,8 @@ export default function Home() {
       const localPurchaseCorrections = readLocal<PurchaseCorrection[]>(LOCAL_PURCHASE_CORRECTIONS_KEY, []);
       const localPurchaseOrders = readLocal<PurchaseOrder[]>(LOCAL_PURCHASE_ORDERS_KEY, []);
       const localPurchaseOrderItems = readLocal<PurchaseOrderItem[]>(LOCAL_PURCHASE_ORDER_ITEMS_KEY, []);
+      const localPurchaseOrderPayments = readLocal<PurchaseOrderPayment[]>(LOCAL_PURCHASE_ORDER_PAYMENTS_KEY, []);
+      const localProfile = readLocal<UserProfile>(LOCAL_PROFILE_KEY, defaultUserProfile());
       const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
       setRolls(localRolls);
       setLogs(localLogs);
@@ -669,6 +735,8 @@ export default function Home() {
       setPurchaseCorrections(localPurchaseCorrections);
       setPurchaseOrders(localPurchaseOrders);
       setPurchaseOrderItems(localPurchaseOrderItems);
+      setPurchaseOrderPayments(localPurchaseOrderPayments);
+      setUserProfile(localProfile);
       setSelectedId(localRolls[0]?.id ?? "");
       setDataMode(hasLocalInventory ? "local" : "demo");
       setSyncNote(
@@ -689,6 +757,7 @@ export default function Home() {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSignedInEmail(session?.user.email ?? "");
+      setSignedInUserId(session?.user.id ?? "");
       if (session?.user) setShowLogin(false);
       setAuthVersion((value) => value + 1);
     });
@@ -725,6 +794,14 @@ export default function Home() {
   useEffect(() => {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PURCHASE_ORDER_ITEMS_KEY, purchaseOrderItems);
   }, [dataMode, purchaseOrderItems, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PURCHASE_ORDER_PAYMENTS_KEY, purchaseOrderPayments);
+  }, [dataMode, purchaseOrderPayments, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PROFILE_KEY, userProfile);
+  }, [dataMode, userProfile, usingSupabase]);
 
   useEffect(() => {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_WEIGHINGS_KEY, weighingEvents);
@@ -814,7 +891,7 @@ export default function Home() {
     const lowRolls = rolls.filter((roll) => roll.status === "low" || roll.status === "empty");
     const materials = new Set(rolls.map((roll) => roll.material));
     const inventoryCost = rolls.reduce((sum, roll) => {
-      if (roll.currency !== "CRC" || roll.filament_cost_amount == null || !roll.initial_weight_g) return sum;
+      if (roll.currency !== userProfile.base_currency || roll.filament_cost_amount == null || !roll.initial_weight_g) return sum;
       return sum + (Number(roll.available_weight_g) / Number(roll.initial_weight_g)) * Number(roll.filament_cost_amount);
     }, 0);
 
@@ -825,7 +902,7 @@ export default function Home() {
       materialCount: materials.size,
       inventoryCost
     };
-  }, [rolls]);
+  }, [rolls, userProfile.base_currency]);
 
   const filteredRolls = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
@@ -912,7 +989,7 @@ export default function Home() {
           ? pending
           : { id: crypto.randomUUID(), fingerprint };
         purchaseOrderRequest.current = request;
-        const { data, error } = await supabase.rpc("create_purchase_order", {
+        const { data, error } = await supabase.rpc("create_purchase_order_v2", {
           p_request_id: request.id,
           p_purchase_ids: values.purchase_ids,
           p_purchased_at: values.purchased_at,
@@ -921,7 +998,13 @@ export default function Home() {
           p_allocation_method: values.allocation_method,
           p_cost_confidence: values.cost_confidence,
           p_notes: values.notes || null,
-          p_manual_allocations: values.manual_allocations
+          p_manual_allocations: values.manual_allocations,
+          p_paid_amount: values.paid_amount,
+          p_paid_currency: values.paid_currency,
+          p_exchange_rate: values.exchange_rate,
+          p_exchange_rate_date: values.exchange_rate_date,
+          p_exchange_rate_kind: values.exchange_rate_kind,
+          p_exchange_rate_source: values.exchange_rate_source || null
         });
         if (error || !data) {
           setSyncNote(`No se pudo confirmar la orden. Podés reintentar sin duplicarla: ${error?.message ?? "respuesta vacía"}`);
@@ -933,6 +1016,12 @@ export default function Home() {
           ...result.items,
           ...current.filter((item) => !result.items.some((saved) => saved.id === item.id))
         ]);
+        if (result.payment) {
+          setPurchaseOrderPayments((current) => [
+            result.payment as PurchaseOrderPayment,
+            ...current.filter((payment) => payment.order_id !== result.payment?.order_id)
+          ]);
+        }
         purchaseOrderRequest.current = null;
         setSyncNote(result.replayed ? "Esta orden ya estaba guardada; recuperamos su resultado." : "Orden y prorrateo guardados correctamente.");
         return true;
@@ -942,6 +1031,7 @@ export default function Home() {
       const result = buildLocalPurchaseOrder(requestId, values, selectedPurchases);
       setPurchaseOrders((current) => [result.order, ...current]);
       setPurchaseOrderItems((current) => [...result.items, ...current]);
+      if (result.payment) setPurchaseOrderPayments((current) => [result.payment as PurchaseOrderPayment, ...current]);
       setSyncNote("Orden guardada en este dispositivo.");
       return true;
     } catch (error) {
@@ -950,6 +1040,54 @@ export default function Home() {
       return false;
     } finally {
       setIsSavingPurchaseOrder(false);
+    }
+  }
+
+  async function saveProfile(values: ProfileValues) {
+    if (isSavingProfile) return false;
+    setIsSavingProfile(true);
+
+    try {
+      if (usingSupabase && supabase) {
+        const { data, error } = await supabase.rpc("save_user_profile", {
+          p_display_name: values.display_name || null,
+          p_base_currency: values.base_currency,
+          p_billing_name: values.billing_name || null,
+          p_billing_tax_id: values.billing_tax_id || null,
+          p_billing_email: values.billing_email || null,
+          p_billing_address: values.billing_address || null
+        });
+
+        if (error || !data) {
+          setSyncNote(`No se pudo guardar el perfil: ${error?.message ?? "respuesta vacía"}`);
+          return false;
+        }
+
+        setUserProfile(data as UserProfile);
+        setSyncNote("Perfil y preferencias financieras guardados.");
+        return true;
+      }
+
+      const localProfile: UserProfile = {
+        ...userProfile,
+        user_id: signedInUserId || "local",
+        display_name: values.display_name.trim() || null,
+        base_currency: values.base_currency,
+        billing_name: values.billing_name.trim() || null,
+        billing_tax_id: values.billing_tax_id.trim() || null,
+        billing_email: values.billing_email.trim() || null,
+        billing_address: values.billing_address.trim() || null,
+        updated_at: new Date().toISOString()
+      };
+      setUserProfile(localProfile);
+      setDataMode("local");
+      setSyncNote("Perfil guardado en este dispositivo.");
+      return true;
+    } catch (error) {
+      setSyncNote(`No se pudo guardar el perfil: ${error instanceof Error ? error.message : "error inesperado"}`);
+      return false;
+    } finally {
+      setIsSavingProfile(false);
     }
   }
 
@@ -1898,6 +2036,8 @@ export default function Home() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setSignedInEmail("");
+    setSignedInUserId("");
+    setUserProfile(defaultUserProfile());
     setSyncNote("Sesión cerrada");
     setShowProfile(false);
   }
@@ -2103,8 +2243,8 @@ export default function Home() {
         </article>
         <article>
           <Weight size={18} aria-hidden="true" />
-          <strong>₡{Math.round(dashboard.inventoryCost).toLocaleString("es-CR")}</strong>
-          <span>inventario actual</span>
+          <strong>{formatMoney(userProfile.base_currency, dashboard.inventoryCost)}</strong>
+          <span>inventario en {userProfile.base_currency}</span>
         </article>
       </section>
 
@@ -2773,7 +2913,14 @@ export default function Home() {
       )}
 
       {showProfile && (
-        <ProfilePanel email={signedInEmail} onClose={() => setShowProfile(false)} onSignOut={signOut} />
+        <ProfilePanel
+          email={signedInEmail}
+          profile={userProfile}
+          isSaving={isSavingProfile}
+          onClose={() => setShowProfile(false)}
+          onSave={saveProfile}
+          onSignOut={signOut}
+        />
       )}
 
       {showReport && (
@@ -2791,6 +2938,8 @@ export default function Home() {
           purchases={effectivePurchases}
           orders={purchaseOrders}
           items={purchaseOrderItems}
+          payments={purchaseOrderPayments}
+          baseCurrency={userProfile.base_currency}
           mode={dataMode}
           isSaving={isSavingPurchaseOrder}
           onClose={() => setShowPurchaseOrders(false)}

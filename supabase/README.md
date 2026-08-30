@@ -25,6 +25,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 - `public.purchase_corrections`: revisiones inmutables con motivo y valores corregidos; el original nunca se reemplaza.
 - `public.purchase_orders`: encabezados inmutables con proveedor, moneda, envío, otros cargos, método de prorrateo y confianza.
 - `public.purchase_order_items`: partidas inmutables que congelan el precio y los cargos asignados por rollo.
+- `public.purchase_order_payments`: pago real inmutable con moneda, tipo de cambio, fecha, clase y fuente.
+- `public.user_profiles`: moneda base, datos opcionales de facturación y estado de membresía por usuario.
 - `public.filament_balance_report`: vista financiera consistente por usuario con saldo, compra, proveedor, spool y valor restante, sin mezclar monedas.
 
 The schema uses RLS, authenticated-only access, and explicit grants so the inventory is ready for Supabase Data API access without exposing it publicly.
@@ -38,6 +40,8 @@ The schema uses RLS, authenticated-only access, and explicit grants so the inven
 - `update_filament_roll`: edits the operational roll card without rewriting financial or measurement history.
 - `correct_purchase`: appends an audited correction and updates the roll's current cost in one retry-safe transaction.
 - `create_purchase_order`: groups existing purchase history into an immutable order and allocates shipping/other charges in one retry-safe transaction.
+- `create_purchase_order_v2`: creates the order, items and optional multi-currency payment in one retry-safe transaction.
+- `save_user_profile`: upserts the signed-in user's financial preferences without accepting another user's id.
 - Deferred database checks keep `filament_rolls.spool_id` and `spools.status` synchronized at commit time; partial assignments are rejected.
 - A physical spool can belong to only one roll record at a time, including archived records, and clients cannot directly delete roll or spool history.
 - Roll status is derived in the database whenever its weights, low threshold or archive state changes; weight bounds are enforced independently of the client.
