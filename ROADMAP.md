@@ -32,7 +32,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Corregir una compra + actualizar el costo vigente del rollo en una sola transacción idempotente.
 - [x] Impedir desde la base de datos que `filament_rolls.spool_id` y el estado del spool puedan quedar desincronizados.
 - [x] Centralizar en la base de datos el estado derivado del rollo según gramos y umbral bajo.
-- [ ] Servir reportes financieros desde una vista o función consistente, evitando lecturas parciales entre varias tablas.
+- [x] Servir reportes financieros desde una vista consistente y protegida por RLS, evitando lecturas parciales entre varias tablas.
 - [x] Revocar ejecución pública innecesaria de funciones internas y resolver esos avisos del asesor de seguridad.
 - [x] Agregar índices faltantes para las relaciones de consumos, compras y proveedores.
 
@@ -113,9 +113,9 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 ## Reportería
 
-- [ ] Crear el reporte “Saldo de filamentos” con inventario, tara, compra, proveedor, moneda, confianza, ubicación y etiquetas QR/NFC.
+- [x] Crear el reporte “Saldo de filamentos” con inventario, tara, compra, proveedor, moneda, ubicación y etiquetas QR/NFC.
 - [ ] Mostrar valores originales y convertidos como columnas separadas.
-- [ ] Preparar exportación CSV como primer formato.
+- [x] Preparar exportación CSV como primer formato, con protección contra fórmulas maliciosas.
 - [ ] Agregar posteriormente exportación Excel y PDF.
 
 ## Migración segura del inventario existente
@@ -125,12 +125,12 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Mantener compatibilidad temporal con `purchase_history`, `tare_weight_g` y los formularios actuales.
 - [ ] Respaldar la tara y el costo utilizados históricamente antes de introducir catálogos o conversiones.
 - [x] Probar políticas RLS y permisos de cada tabla y función nueva.
-- [ ] Ejecutar build, pruebas locales y humo en producción en cada fase.
+- [x] Ejecutar build, pruebas locales y humo en producción en cada fase cerrada.
 
 ## Orden incremental recomendado
 
 - [x] Fase 0: cerrar permisos internos, índices, idempotencia y la creación atómica de rollo + compra.
-- [ ] Fase 1: catálogo de tipos de spool, pesajes históricos y tara congelada por medición.
+- [x] Fase 1: catálogo de tipos de spool, pesajes históricos y tara congelada por medición.
 - [ ] Fase 2: compras con partidas, express prorrateado, confianza de costos y multimoneda.
 - [ ] Fase 3: fuente HEX, moneda base, estados derivados y reporte de saldo.
 - [ ] Fase 4: retomar experiencia de producto y módulos de crecimiento.

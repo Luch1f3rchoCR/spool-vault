@@ -139,6 +139,39 @@ export type ConsumptionLog = {
   request_id?: string | null;
 };
 
+export type InventoryBalanceRow = {
+  roll_id: string;
+  user_id?: string;
+  brand: string;
+  material: string;
+  product_line: string | null;
+  color_name: string;
+  color_hex: string;
+  initial_weight_g: number;
+  available_weight_g: number;
+  remaining_percent: number;
+  low_threshold_g: number;
+  status: RollStatus;
+  location: string | null;
+  package_type: PackageType;
+  supplier_name: string | null;
+  purchase_date: string | null;
+  purchase_total: number | null;
+  spool_cost_amount: number;
+  filament_cost_amount: number | null;
+  currency: string;
+  filament_cost_per_g: number | null;
+  remaining_filament_value: number | null;
+  cost_status: "recorded" | "incomplete";
+  spool_code: string | null;
+  spool_tare_weight_g: number | null;
+  spool_status: SpoolStatus | null;
+  qr_payload: string | null;
+  nfc_tag_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type RollDraft = Omit<
   FilamentRoll,
   "id" | "available_weight_g" | "status" | "nfc_tag_id" | "qr_payload" | "created_at" | "updated_at" | "spool_id" | "supplier_id"

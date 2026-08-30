@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
   AlertTriangle,
+  BarChart3,
   Camera,
   Check,
   Filter,
@@ -22,6 +23,7 @@ import {
   Weight,
   X
 } from "lucide-react";
+import { InventoryReportModal } from "@/components/inventory-report-modal";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { ProfilePanel } from "@/components/profile-panel";
 import {
@@ -39,6 +41,7 @@ import {
 import type {
   ConsumptionLog,
   FilamentRoll,
+  InventoryBalanceRow,
   PackageType,
   PurchaseCorrection,
   PurchaseRecord,
@@ -293,6 +296,46 @@ function normalizeRollData(roll: FilamentRoll): FilamentRoll {
   };
 }
 
+function buildLocalBalanceReport(rolls: FilamentRoll[], spools: Spool[]): InventoryBalanceRow[] {
+  return rolls.map((roll) => {
+    const initialWeight = Number(roll.initial_weight_g);
+    const availableWeight = Number(roll.available_weight_g);
+    const filamentCost = roll.filament_cost_amount == null ? null : Number(roll.filament_cost_amount);
+    const spool = spools.find((item) => item.id === roll.spool_id);
+    return {
+      roll_id: roll.id,
+      brand: roll.brand,
+      material: roll.material,
+      product_line: roll.product_line,
+      color_name: roll.color_name,
+      color_hex: roll.color_hex,
+      initial_weight_g: initialWeight,
+      available_weight_g: availableWeight,
+      remaining_percent: initialWeight > 0 ? Math.round(availableWeight / initialWeight * 10000) / 100 : 0,
+      low_threshold_g: Number(roll.low_threshold_g),
+      status: roll.status,
+      location: roll.location,
+      package_type: roll.package_type,
+      supplier_name: roll.supplier_name ?? null,
+      purchase_date: roll.purchase_date,
+      purchase_total: roll.price_amount,
+      spool_cost_amount: Number(roll.spool_cost_amount),
+      filament_cost_amount: filamentCost,
+      currency: roll.currency,
+      filament_cost_per_g: filamentCost == null || initialWeight <= 0 ? null : filamentCost / initialWeight,
+      remaining_filament_value: filamentCost == null || initialWeight <= 0 ? null : availableWeight / initialWeight * filamentCost,
+      cost_status: filamentCost == null ? "incomplete" : "recorded",
+      spool_code: spool?.code ?? null,
+      spool_tare_weight_g: spool?.tare_weight_g ?? null,
+      spool_status: spool?.status ?? null,
+      qr_payload: roll.qr_payload,
+      nfc_tag_id: roll.nfc_tag_id,
+      created_at: roll.created_at,
+      updated_at: roll.updated_at
+    };
+  });
+}
+
 export default function Home() {
   const [rolls, setRolls] = useState<FilamentRoll[]>([]);
   const [logs, setLogs] = useState<ConsumptionLog[]>([]);
@@ -312,6 +355,10 @@ export default function Home() {
   const [editingRollId, setEditingRollId] = useState("");
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportRows, setReportRows] = useState<InventoryBalanceRow[]>([]);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [reportError, setReportError] = useState("");
   const [editingSpoolId, setEditingSpoolId] = useState("");
   const [showProfile, setShowProfile] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -561,12 +608,12 @@ export default function Home() {
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showProfile
+    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showReport || showProfile
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [correctingPurchaseId, editingRollId, showAdd, showQuickWeigh, showSpools, showProfile]);
+  }, [correctingPurchaseId, editingRollId, showAdd, showQuickWeigh, showSpools, showReport, showProfile]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
   const editingRoll = rolls.find((roll) => roll.id === editingRollId);
@@ -689,6 +736,28 @@ export default function Home() {
   const unassignedRolls = rolls.filter(
     (roll) => !roll.spool_id && roll.status !== "archived" && roll.status !== "empty"
   );
+
+  async function openReport() {
+    setShowReport(true);
+    setReportError("");
+    if (!usingSupabase || !supabase) {
+      setReportRows(buildLocalBalanceReport(rolls, spools));
+      return;
+    }
+
+    setIsLoadingReport(true);
+    const { data, error } = await supabase
+      .from("filament_balance_report")
+      .select("*")
+      .order("available_weight_g", { ascending: true });
+    setIsLoadingReport(false);
+    if (error) {
+      setReportRows([]);
+      setReportError("No se pudo cargar el reporte. Tu inventario principal no fue modificado.");
+      return;
+    }
+    setReportRows((data ?? []) as InventoryBalanceRow[]);
+  }
 
   async function addRoll(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1793,6 +1862,10 @@ export default function Home() {
           </p>
         </div>
         <div className="hero-actions">
+          <button className="icon-action secondary" type="button" onClick={openReport}>
+            <BarChart3 size={20} aria-hidden="true" />
+            <span>Reportes</span>
+          </button>
           <button className="icon-action secondary" type="button" onClick={() => setShowSpools(true)}>
             <PackagePlus size={20} aria-hidden="true" />
             <span>Spools</span>
@@ -2503,6 +2576,16 @@ export default function Home() {
 
       {showProfile && (
         <ProfilePanel email={signedInEmail} onClose={() => setShowProfile(false)} onSignOut={signOut} />
+      )}
+
+      {showReport && (
+        <InventoryReportModal
+          rows={reportRows}
+          mode={dataMode}
+          isLoading={isLoadingReport}
+          error={reportError}
+          onClose={() => setShowReport(false)}
+        />
       )}
 
       <section className="filters" id="inventario" aria-label="Filtros">

@@ -56,3 +56,13 @@ Esta carpeta contiene la aplicación real de Spool Vault. Es un proyecto Next.js
 - Preferir cambios pequeños y terminados a ramas grandes con varios objetivos.
 - Usar subagentes solo para trabajos realmente independientes, como auditorías separadas de seguridad, UX móvil o costos. Paralelizar puede acelerar, pero normalmente aumenta los tokens totales.
 - Actualizar `ROADMAP.md` y `ATOMICITY_AUDIT.md` cuando una decisión material quede implementada.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
