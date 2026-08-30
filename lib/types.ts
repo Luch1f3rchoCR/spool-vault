@@ -2,6 +2,8 @@ export type RollStatus = "new" | "open" | "low" | "empty" | "archived";
 export type PackageType = "spooled" | "refill";
 export type SpoolStatus = "empty" | "in_use" | "reserved" | "retired";
 export type TareConfidence = "verified" | "estimated" | "unknown";
+export type PurchaseAllocationMethod = "per_unit" | "by_value" | "manual";
+export type CostConfidence = "actual" | "estimated" | "incomplete";
 
 export type FilamentRoll = {
   id: string;
@@ -125,6 +127,47 @@ export type PurchaseCorrection = {
   quantity_g: number;
   reason: string;
   corrected_at: string;
+};
+
+export type PurchaseOrder = {
+  id: string;
+  request_id: string;
+  supplier_id: string | null;
+  supplier_name: string;
+  purchased_at: string;
+  currency: string;
+  subtotal_amount: number;
+  shipping_amount: number;
+  other_charges_amount: number;
+  total_amount: number;
+  allocation_method: PurchaseAllocationMethod;
+  cost_confidence: CostConfidence;
+  notes: string | null;
+  created_at?: string;
+};
+
+export type PurchaseOrderItem = {
+  id: string;
+  order_id: string;
+  purchase_history_id: string;
+  roll_id: string | null;
+  brand: string;
+  material: string;
+  product_line: string | null;
+  color_name: string;
+  color_hex: string;
+  package_type: PackageType;
+  quantity_g: number;
+  base_amount: number;
+  spool_cost: number;
+  filament_base_cost: number;
+  allocated_shipping: number;
+  allocated_other_charges: number;
+  landed_total: number;
+  filament_landed_cost: number;
+  currency: string;
+  cost_confidence: CostConfidence;
+  created_at?: string;
 };
 
 export type ConsumptionLog = {

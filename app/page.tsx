@@ -15,6 +15,7 @@ import {
   Pencil,
   Plus,
   QrCode,
+  ReceiptText,
   ScanLine,
   Search,
   ShoppingCart,
@@ -26,6 +27,10 @@ import {
 import { InventoryReportModal } from "@/components/inventory-report-modal";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { ProfilePanel } from "@/components/profile-panel";
+import {
+  PurchaseOrdersModal,
+  type PurchaseOrderValues
+} from "@/components/purchase-orders-modal";
 import {
   PurchaseCorrectionModal,
   type PurchaseCorrectionValues
@@ -44,6 +49,8 @@ import type {
   InventoryBalanceRow,
   PackageType,
   PurchaseCorrection,
+  PurchaseOrder,
+  PurchaseOrderItem,
   PurchaseRecord,
   RollDraft,
   RollStatus,
@@ -59,6 +66,8 @@ const LOCAL_LOGS_KEY = "filament-vault-logs";
 const LOCAL_SPOOLS_KEY = "spool-vault-spools";
 const LOCAL_PURCHASES_KEY = "spool-vault-purchases";
 const LOCAL_PURCHASE_CORRECTIONS_KEY = "spool-vault-purchase-corrections";
+const LOCAL_PURCHASE_ORDERS_KEY = "spool-vault-purchase-orders";
+const LOCAL_PURCHASE_ORDER_ITEMS_KEY = "spool-vault-purchase-order-items";
 const LOCAL_WEIGHINGS_KEY = "spool-vault-weighings";
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
@@ -82,6 +91,11 @@ type PurchaseCorrectionResult = {
   correction: PurchaseCorrection;
   roll: FilamentRoll | null;
   supplier?: Supplier;
+  replayed: boolean;
+};
+type PurchaseOrderMutationResult = {
+  order: PurchaseOrder;
+  items: PurchaseOrderItem[];
   replayed: boolean;
 };
 type PurchaseView = {
@@ -336,6 +350,83 @@ function buildLocalBalanceReport(rolls: FilamentRoll[], spools: Spool[]): Invent
   });
 }
 
+function allocateLocalOrderCharge(
+  total: number,
+  purchases: PurchaseRecord[],
+  method: PurchaseOrderValues["allocation_method"],
+  manual: PurchaseOrderValues["manual_allocations"],
+  field: "shipping" | "other"
+) {
+  const allocations = new Map<string, number>();
+  const subtotal = purchases.reduce((sum, purchase) => sum + Number(purchase.total_price), 0);
+  let running = 0;
+  purchases.forEach((purchase, index) => {
+    let amount = 0;
+    if (method === "manual") amount = Number(manual[purchase.id]?.[field] ?? 0);
+    else if (index === purchases.length - 1) amount = Math.round((total - running) * 100) / 100;
+    else if (method === "by_value" && subtotal > 0) amount = Math.round(total * Number(purchase.total_price) / subtotal * 100) / 100;
+    else amount = Math.round(total / purchases.length * 100) / 100;
+    running += amount;
+    allocations.set(purchase.id, amount);
+  });
+  return allocations;
+}
+
+function buildLocalPurchaseOrder(
+  requestId: string,
+  values: PurchaseOrderValues,
+  purchases: PurchaseRecord[]
+): PurchaseOrderMutationResult {
+  const orderId = crypto.randomUUID();
+  const subtotal = purchases.reduce((sum, purchase) => sum + Number(purchase.total_price), 0);
+  const shipping = allocateLocalOrderCharge(values.shipping_amount, purchases, values.allocation_method, values.manual_allocations, "shipping");
+  const other = allocateLocalOrderCharge(values.other_charges_amount, purchases, values.allocation_method, values.manual_allocations, "other");
+  const order: PurchaseOrder = {
+    id: orderId,
+    request_id: requestId,
+    supplier_id: purchases[0]?.supplier_id ?? null,
+    supplier_name: purchases[0]?.supplier_name.trim() || "Sin proveedor",
+    purchased_at: values.purchased_at,
+    currency: purchases[0]?.currency ?? "CRC",
+    subtotal_amount: subtotal,
+    shipping_amount: values.shipping_amount,
+    other_charges_amount: values.other_charges_amount,
+    total_amount: subtotal + values.shipping_amount + values.other_charges_amount,
+    allocation_method: values.allocation_method,
+    cost_confidence: values.cost_confidence,
+    notes: values.notes.trim() || null,
+    created_at: new Date().toISOString()
+  };
+  const items = purchases.map((purchase) => {
+    const allocatedShipping = shipping.get(purchase.id) ?? 0;
+    const allocatedOther = other.get(purchase.id) ?? 0;
+    return {
+      id: crypto.randomUUID(),
+      order_id: orderId,
+      purchase_history_id: purchase.id,
+      roll_id: purchase.roll_id,
+      brand: purchase.brand,
+      material: purchase.material,
+      product_line: purchase.product_line,
+      color_name: purchase.color_name,
+      color_hex: purchase.color_hex,
+      package_type: purchase.package_type,
+      quantity_g: Number(purchase.quantity_g),
+      base_amount: Number(purchase.total_price),
+      spool_cost: Number(purchase.spool_cost),
+      filament_base_cost: Number(purchase.filament_cost),
+      allocated_shipping: allocatedShipping,
+      allocated_other_charges: allocatedOther,
+      landed_total: Number(purchase.total_price) + allocatedShipping + allocatedOther,
+      filament_landed_cost: Number(purchase.filament_cost) + allocatedShipping + allocatedOther,
+      currency: purchase.currency,
+      cost_confidence: values.cost_confidence,
+      created_at: new Date().toISOString()
+    } satisfies PurchaseOrderItem;
+  });
+  return { order, items, replayed: false };
+}
+
 export default function Home() {
   const [rolls, setRolls] = useState<FilamentRoll[]>([]);
   const [logs, setLogs] = useState<ConsumptionLog[]>([]);
@@ -345,6 +436,8 @@ export default function Home() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [purchaseCorrections, setPurchaseCorrections] = useState<PurchaseCorrection[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [query, setQuery] = useState("");
   const [brandFilter, setBrandFilter] = useState("Todos");
@@ -356,6 +449,7 @@ export default function Home() {
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showPurchaseOrders, setShowPurchaseOrders] = useState(false);
   const [reportRows, setReportRows] = useState<InventoryBalanceRow[]>([]);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [reportError, setReportError] = useState("");
@@ -381,6 +475,7 @@ export default function Home() {
   const [isAddingRoll, setIsAddingRoll] = useState(false);
   const [isUpdatingRoll, setIsUpdatingRoll] = useState(false);
   const [isCorrectingPurchase, setIsCorrectingPurchase] = useState(false);
+  const [isSavingPurchaseOrder, setIsSavingPurchaseOrder] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
@@ -389,6 +484,7 @@ export default function Home() {
   const addRollRequestId = useRef<string | null>(null);
   const updateRollRequests = useRef<Record<string, string>>({});
   const purchaseCorrectionRequests = useRef<Record<string, { id: string; fingerprint: string }>>({});
+  const purchaseOrderRequest = useRef<{ id: string; fingerprint: string } | null>(null);
   const consumptionRequest = useRef<{ id: string; rollId: string } | null>(null);
   const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
   const createSpoolRequestId = useRef<string | null>(null);
@@ -444,6 +540,8 @@ export default function Home() {
           setSuppliers([]);
           setPurchases([]);
           setPurchaseCorrections([]);
+          setPurchaseOrders([]);
+          setPurchaseOrderItems([]);
           setSelectedId("");
           setDataMode("error");
           setSyncNote("No se pudo comprobar la sesión. No se muestran datos demo.");
@@ -458,6 +556,8 @@ export default function Home() {
           const localSpools = readLocal<Spool[]>(LOCAL_SPOOLS_KEY, []);
           const localPurchases = readLocal<PurchaseRecord[]>(LOCAL_PURCHASES_KEY, []);
           const localPurchaseCorrections = readLocal<PurchaseCorrection[]>(LOCAL_PURCHASE_CORRECTIONS_KEY, []);
+          const localPurchaseOrders = readLocal<PurchaseOrder[]>(LOCAL_PURCHASE_ORDERS_KEY, []);
+          const localPurchaseOrderItems = readLocal<PurchaseOrderItem[]>(LOCAL_PURCHASE_ORDER_ITEMS_KEY, []);
           const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
           setSignedInEmail("");
           setRolls(localRolls);
@@ -467,6 +567,8 @@ export default function Home() {
           setWeighingEvents(localWeighings);
           setPurchases(localPurchases);
           setPurchaseCorrections(localPurchaseCorrections);
+          setPurchaseOrders(localPurchaseOrders);
+          setPurchaseOrderItems(localPurchaseOrderItems);
           setSelectedId(localRolls[0]?.id ?? "");
           setDataMode(hasLocalInventory ? "local" : "demo");
           setSyncNote(
@@ -488,7 +590,9 @@ export default function Home() {
           { data: weighingData, error: weighingError },
           { data: supplierData, error: supplierError },
           { data: purchaseData, error: purchaseError },
-          { data: purchaseCorrectionData, error: purchaseCorrectionError }
+          { data: purchaseCorrectionData, error: purchaseCorrectionError },
+          { data: purchaseOrderData, error: purchaseOrderError },
+          { data: purchaseOrderItemData, error: purchaseOrderItemError }
         ] =
           await Promise.all([
             supabase.from("filament_rolls").select("*").order("updated_at", { ascending: false }),
@@ -498,12 +602,15 @@ export default function Home() {
             supabase.from("weighing_events").select("*").order("measured_at", { ascending: false }),
             supabase.from("suppliers").select("*").order("name"),
             supabase.from("purchase_history").select("*").order("purchased_at", { ascending: false }),
-            supabase.from("purchase_corrections").select("*").order("corrected_at", { ascending: false })
+            supabase.from("purchase_corrections").select("*").order("corrected_at", { ascending: false }),
+            supabase.from("purchase_orders").select("*").order("purchased_at", { ascending: false }),
+            supabase.from("purchase_order_items").select("*").order("created_at", { ascending: false })
           ]);
 
         if (
           !rollError && !logError && !spoolError && !spoolTypeError && !weighingError
-          && !supplierError && !purchaseError && !purchaseCorrectionError && rollData
+          && !supplierError && !purchaseError && !purchaseCorrectionError
+          && !purchaseOrderError && !purchaseOrderItemError && rollData
         ) {
           const loadedSuppliers = (supplierData ?? []) as Supplier[];
           const loadedRolls = (rollData as FilamentRoll[]).map((roll) => ({
@@ -518,6 +625,8 @@ export default function Home() {
           setSuppliers(loadedSuppliers);
           setPurchases((purchaseData ?? []) as PurchaseRecord[]);
           setPurchaseCorrections((purchaseCorrectionData ?? []) as PurchaseCorrection[]);
+          setPurchaseOrders((purchaseOrderData ?? []) as PurchaseOrder[]);
+          setPurchaseOrderItems((purchaseOrderItemData ?? []) as PurchaseOrderItem[]);
           setSelectedId(loadedRolls[0]?.id ?? "");
           setDataMode("authenticated");
           setSyncNote("Conectado a Supabase · inventario real");
@@ -533,6 +642,8 @@ export default function Home() {
         setSuppliers([]);
         setPurchases([]);
         setPurchaseCorrections([]);
+        setPurchaseOrders([]);
+        setPurchaseOrderItems([]);
         setSelectedId("");
         setDataMode("error");
         setSyncNote("No se pudo cargar el inventario real. No se muestran datos demo.");
@@ -546,6 +657,8 @@ export default function Home() {
       const localSpools = readLocal<Spool[]>(LOCAL_SPOOLS_KEY, []);
       const localPurchases = readLocal<PurchaseRecord[]>(LOCAL_PURCHASES_KEY, []);
       const localPurchaseCorrections = readLocal<PurchaseCorrection[]>(LOCAL_PURCHASE_CORRECTIONS_KEY, []);
+      const localPurchaseOrders = readLocal<PurchaseOrder[]>(LOCAL_PURCHASE_ORDERS_KEY, []);
+      const localPurchaseOrderItems = readLocal<PurchaseOrderItem[]>(LOCAL_PURCHASE_ORDER_ITEMS_KEY, []);
       const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
       setRolls(localRolls);
       setLogs(localLogs);
@@ -554,6 +667,8 @@ export default function Home() {
       setWeighingEvents(localWeighings);
       setPurchases(localPurchases);
       setPurchaseCorrections(localPurchaseCorrections);
+      setPurchaseOrders(localPurchaseOrders);
+      setPurchaseOrderItems(localPurchaseOrderItems);
       setSelectedId(localRolls[0]?.id ?? "");
       setDataMode(hasLocalInventory ? "local" : "demo");
       setSyncNote(
@@ -604,16 +719,24 @@ export default function Home() {
   }, [dataMode, purchaseCorrections, usingSupabase]);
 
   useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PURCHASE_ORDERS_KEY, purchaseOrders);
+  }, [dataMode, purchaseOrders, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PURCHASE_ORDER_ITEMS_KEY, purchaseOrderItems);
+  }, [dataMode, purchaseOrderItems, usingSupabase]);
+
+  useEffect(() => {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_WEIGHINGS_KEY, weighingEvents);
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showReport || showProfile
+    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showReport || showPurchaseOrders || showProfile
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [correctingPurchaseId, editingRollId, showAdd, showQuickWeigh, showSpools, showReport, showProfile]);
+  }, [correctingPurchaseId, editingRollId, showAdd, showQuickWeigh, showSpools, showReport, showPurchaseOrders, showProfile]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
   const editingRoll = rolls.find((roll) => roll.id === editingRollId);
@@ -644,6 +767,10 @@ export default function Home() {
       correctionCount: relatedCorrections.length
     };
   }), [purchaseCorrections, purchases]);
+  const effectivePurchases = useMemo(
+    () => purchaseViews.map((view) => view.effective),
+    [purchaseViews]
+  );
   const correctingPurchase = purchaseViews.find((view) => view.original.id === correctingPurchaseId);
   const selectedSpool = spools.find((spool) => spool.id === selectedRoll?.spool_id);
   const recentWeighings = weighingEvents
@@ -757,6 +884,73 @@ export default function Home() {
       return;
     }
     setReportRows((data ?? []) as InventoryBalanceRow[]);
+  }
+
+  async function createPurchaseOrder(values: PurchaseOrderValues) {
+    if (isSavingPurchaseOrder) return false;
+    activateLocalMode();
+    const selectedPurchases = values.purchase_ids
+      .map((id) => effectivePurchases.find((purchase) => purchase.id === id))
+      .filter(Boolean) as PurchaseRecord[];
+    if (!selectedPurchases.length) {
+      setSyncNote("Seleccioná al menos una compra para crear la orden.");
+      return false;
+    }
+    const supplierKey = selectedPurchases[0].supplier_name.trim().toLowerCase();
+    const currency = selectedPurchases[0].currency;
+    if (selectedPurchases.some((purchase) => purchase.supplier_name.trim().toLowerCase() !== supplierKey || purchase.currency !== currency)) {
+      setSyncNote("Una orden solo puede agrupar compras del mismo proveedor y moneda.");
+      return false;
+    }
+
+    setIsSavingPurchaseOrder(true);
+    const fingerprint = JSON.stringify({ ...values, purchase_ids: [...values.purchase_ids].sort() });
+    try {
+      if (usingSupabase && supabase) {
+        const pending = purchaseOrderRequest.current;
+        const request = pending?.fingerprint === fingerprint
+          ? pending
+          : { id: crypto.randomUUID(), fingerprint };
+        purchaseOrderRequest.current = request;
+        const { data, error } = await supabase.rpc("create_purchase_order", {
+          p_request_id: request.id,
+          p_purchase_ids: values.purchase_ids,
+          p_purchased_at: values.purchased_at,
+          p_shipping_amount: values.shipping_amount,
+          p_other_charges_amount: values.other_charges_amount,
+          p_allocation_method: values.allocation_method,
+          p_cost_confidence: values.cost_confidence,
+          p_notes: values.notes || null,
+          p_manual_allocations: values.manual_allocations
+        });
+        if (error || !data) {
+          setSyncNote(`No se pudo confirmar la orden. Podés reintentar sin duplicarla: ${error?.message ?? "respuesta vacía"}`);
+          return false;
+        }
+        const result = data as PurchaseOrderMutationResult;
+        setPurchaseOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+        setPurchaseOrderItems((current) => [
+          ...result.items,
+          ...current.filter((item) => !result.items.some((saved) => saved.id === item.id))
+        ]);
+        purchaseOrderRequest.current = null;
+        setSyncNote(result.replayed ? "Esta orden ya estaba guardada; recuperamos su resultado." : "Orden y prorrateo guardados correctamente.");
+        return true;
+      }
+
+      const requestId = crypto.randomUUID();
+      const result = buildLocalPurchaseOrder(requestId, values, selectedPurchases);
+      setPurchaseOrders((current) => [result.order, ...current]);
+      setPurchaseOrderItems((current) => [...result.items, ...current]);
+      setSyncNote("Orden guardada en este dispositivo.");
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo confirmar la orden. Podés reintentar sin duplicarla: ${message}`);
+      return false;
+    } finally {
+      setIsSavingPurchaseOrder(false);
+    }
   }
 
   async function addRoll(event: React.FormEvent<HTMLFormElement>) {
@@ -1862,6 +2056,10 @@ export default function Home() {
           </p>
         </div>
         <div className="hero-actions">
+          <button className="icon-action secondary" type="button" onClick={() => setShowPurchaseOrders(true)}>
+            <ReceiptText size={20} aria-hidden="true" />
+            <span>Compras</span>
+          </button>
           <button className="icon-action secondary" type="button" onClick={openReport}>
             <BarChart3 size={20} aria-hidden="true" />
             <span>Reportes</span>
@@ -2585,6 +2783,18 @@ export default function Home() {
           isLoading={isLoadingReport}
           error={reportError}
           onClose={() => setShowReport(false)}
+        />
+      )}
+
+      {showPurchaseOrders && (
+        <PurchaseOrdersModal
+          purchases={effectivePurchases}
+          orders={purchaseOrders}
+          items={purchaseOrderItems}
+          mode={dataMode}
+          isSaving={isSavingPurchaseOrder}
+          onClose={() => setShowPurchaseOrders(false)}
+          onCreate={createPurchaseOrder}
         />
       )}
 

@@ -79,12 +79,12 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 ## Compras, proveedores y costos
 
-- [ ] Separar la compra/orden de sus productos mediante encabezado y partidas.
-- [ ] Guardar envío/express y otros cargos en la compra, no directamente en el filamento.
-- [ ] Prorratear envío por unidad, por valor o manualmente; usar por unidad como valor inicial.
-- [ ] Marcar confianza del costo como Real, Estimado o Incompleto.
-- [ ] Permitir el supuesto histórico visible de ₡3.000 por orden y ₡1.000 por rollo cuando falte el express.
-- [ ] Mantener historial de proveedor y precio por compra, aunque el mismo filamento cambie de proveedor o costo.
+- [x] Separar la compra/orden de sus productos mediante encabezado y partidas.
+- [x] Guardar envío/express y otros cargos en la compra, no directamente en el filamento.
+- [x] Prorratear envío por unidad, por valor o manualmente; usar por unidad como valor inicial.
+- [x] Marcar confianza del costo como Real, Estimado o Incompleto.
+- [x] Permitir el supuesto histórico visible de ₡3.000 por orden y ₡1.000 por rollo cuando falte el express.
+- [x] Mantener historial de proveedor y precio por compra, aunque el mismo filamento cambie de proveedor o costo.
 - [x] Mantener el historial de compras inmutable desde el cliente.
 - [x] Diseñar una corrección financiera trazable sin reescribir el registro original.
 
@@ -131,7 +131,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 - [x] Fase 0: cerrar permisos internos, índices, idempotencia y la creación atómica de rollo + compra.
 - [x] Fase 1: catálogo de tipos de spool, pesajes históricos y tara congelada por medición.
-- [ ] Fase 2: compras con partidas, express prorrateado, confianza de costos y multimoneda.
+- [ ] Fase 2 (parcial): órdenes, partidas, express prorrateado y confianza listos; conversión multimoneda pendiente.
 - [ ] Fase 3: fuente HEX, moneda base, estados derivados y reporte de saldo.
 - [ ] Fase 4: retomar experiencia de producto y módulos de crecimiento.
 
