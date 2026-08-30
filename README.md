@@ -12,6 +12,8 @@ Incluye:
 - ajuste manual de gramos disponibles para corregir pesajes o recargas;
 - compras por proveedor con precio histórico inmutable y correcciones trazables;
 - órdenes de compra con partidas, envío/express, otros cargos, prorrateo y confianza del costo;
+- perfil con moneda base CRC y datos opcionales de facturación;
+- pago real por orden con moneda, tipo de cambio, fecha, clase y fuente congelados;
 - modal para corregir proveedor, fecha, presentación, precio, spool y moneda sin borrar el registro original;
 - separación entre precio total, costo reutilizable del spool y costo consumible por gramo;
 - inventario de spools numerados, vacíos y en uso;

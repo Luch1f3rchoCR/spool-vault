@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calculator, PackageCheck, Plus, ReceiptText, Save, Truck, X } from "lucide-react";
+import { Calculator, CreditCard, PackageCheck, Plus, ReceiptText, Save, Truck, X } from "lucide-react";
 import type {
   CostConfidence,
+  ExchangeRateKind,
   PurchaseAllocationMethod,
   PurchaseOrder,
   PurchaseOrderItem,
+  PurchaseOrderPayment,
   PurchaseRecord
 } from "@/lib/types";
 
@@ -19,12 +21,20 @@ export type PurchaseOrderValues = {
   cost_confidence: CostConfidence;
   notes: string;
   manual_allocations: Record<string, { shipping: number; other: number }>;
+  paid_amount: number | null;
+  paid_currency: string | null;
+  exchange_rate: number | null;
+  exchange_rate_date: string | null;
+  exchange_rate_kind: ExchangeRateKind | null;
+  exchange_rate_source: string;
 };
 
 type Props = {
   purchases: PurchaseRecord[];
   orders: PurchaseOrder[];
   items: PurchaseOrderItem[];
+  payments: PurchaseOrderPayment[];
+  baseCurrency: string;
   mode: "authenticated" | "demo" | "local" | "error";
   isSaving: boolean;
   onClose: () => void;
@@ -43,6 +53,14 @@ const confidenceLabels: Record<CostConfidence, string> = {
   actual: "Real",
   estimated: "Estimado",
   incomplete: "Incompleto"
+};
+
+const exchangeRateLabels: Record<ExchangeRateKind, string> = {
+  paid: "Real pagado",
+  historical: "Histórico",
+  current: "Actual del día",
+  manual: "Manual",
+  estimated: "Estimado"
 };
 
 function money(currency: string, value: number) {
@@ -82,7 +100,7 @@ function allocate(
   return result;
 }
 
-export function PurchaseOrdersModal({ purchases, orders, items, mode, isSaving, onClose, onCreate }: Props) {
+export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCurrency, mode, isSaving, onClose, onCreate }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [purchasedAt, setPurchasedAt] = useState(new Date().toISOString().slice(0, 10));
@@ -92,6 +110,13 @@ export function PurchaseOrdersModal({ purchases, orders, items, mode, isSaving, 
   const [confidence, setConfidence] = useState<CostConfidence>("actual");
   const [notes, setNotes] = useState("");
   const [manual, setManual] = useState<ManualDraft>({});
+  const [includePayment, setIncludePayment] = useState(false);
+  const [paidAmount, setPaidAmount] = useState("");
+  const [paidCurrency, setPaidCurrency] = useState(baseCurrency);
+  const [exchangeRate, setExchangeRate] = useState("");
+  const [exchangeRateDate, setExchangeRateDate] = useState(new Date().toISOString().slice(0, 10));
+  const [exchangeRateKind, setExchangeRateKind] = useState<ExchangeRateKind>("paid");
+  const [exchangeRateSource, setExchangeRateSource] = useState("");
   const assignedPurchaseIds = useMemo(
     () => new Set(items.map((item) => item.purchase_history_id)),
     [items]
@@ -119,6 +144,38 @@ export function PurchaseOrdersModal({ purchases, orders, items, mode, isSaving, 
   const manualMatches = allocationMethod !== "manual"
     || (Math.abs(manualShippingTotal - shipping) < 0.005 && Math.abs(manualOtherTotal - otherCharges) < 0.005);
   const sortedOrders = [...orders].sort((a, b) => b.purchased_at.localeCompare(a.purchased_at));
+  const orderTotal = subtotal + shipping + otherCharges;
+  const parsedPaidAmount = paidAmount === "" ? null : Number(paidAmount);
+  const parsedExchangeRate = exchangeRate === "" ? null : Number(exchangeRate);
+  const paymentValid = !includePayment || (
+    parsedPaidAmount !== null && parsedPaidAmount >= 0
+    && parsedExchangeRate !== null && parsedExchangeRate > 0
+    && Boolean(exchangeRateDate)
+    && (paidCurrency !== anchor?.currency || parsedExchangeRate === 1)
+  );
+  const expectedPaid = parsedExchangeRate === null ? null : orderTotal * parsedExchangeRate;
+  const paymentCurrencies = Array.from(new Set([baseCurrency, anchor?.currency, "CRC", "USD", "EUR"].filter(Boolean) as string[]));
+
+  function togglePayment(enabled: boolean) {
+    setIncludePayment(enabled);
+    if (!enabled) return;
+    const originalCurrency = anchor?.currency ?? baseCurrency;
+    setPaidCurrency(baseCurrency);
+    setExchangeRateDate(purchasedAt);
+    if (baseCurrency === originalCurrency) {
+      setExchangeRate("1");
+      setPaidAmount(String(orderTotal));
+    } else {
+      setExchangeRate("");
+      setPaidAmount("");
+    }
+  }
+
+  function changePaidCurrency(currency: string) {
+    setPaidCurrency(currency);
+    if (currency === anchor?.currency) setExchangeRate("1");
+    else if (exchangeRate === "1") setExchangeRate("");
+  }
 
   function togglePurchase(purchase: PurchaseRecord) {
     if (selectedIds.includes(purchase.id)) {
@@ -138,11 +195,18 @@ export function PurchaseOrdersModal({ purchases, orders, items, mode, isSaving, 
     setConfidence("actual");
     setNotes("");
     setManual({});
+    setIncludePayment(false);
+    setPaidAmount("");
+    setPaidCurrency(baseCurrency);
+    setExchangeRate("");
+    setExchangeRateDate(new Date().toISOString().slice(0, 10));
+    setExchangeRateKind("paid");
+    setExchangeRateSource("");
   }
 
   async function submitOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedPurchases.length || !manualMatches) return;
+    if (!selectedPurchases.length || !manualMatches || !paymentValid) return;
     const manualAllocations = Object.fromEntries(selectedPurchases.map((purchase) => [purchase.id, {
       shipping: shippingAllocation.get(purchase.id) ?? 0,
       other: otherAllocation.get(purchase.id) ?? 0
@@ -155,7 +219,13 @@ export function PurchaseOrdersModal({ purchases, orders, items, mode, isSaving, 
       allocation_method: allocationMethod,
       cost_confidence: confidence,
       notes,
-      manual_allocations: manualAllocations
+      manual_allocations: manualAllocations,
+      paid_amount: includePayment ? parsedPaidAmount : null,
+      paid_currency: includePayment ? paidCurrency : null,
+      exchange_rate: includePayment ? parsedExchangeRate : null,
+      exchange_rate_date: includePayment ? exchangeRateDate : null,
+      exchange_rate_kind: includePayment ? exchangeRateKind : null,
+      exchange_rate_source: includePayment ? exchangeRateSource : ""
     });
     if (saved) resetForm();
   }
@@ -227,9 +297,30 @@ export function PurchaseOrdersModal({ purchases, orders, items, mode, isSaving, 
                 </div>
               )}
 
+              <div className="payment-capture">
+                <label className="payment-toggle">
+                  <input type="checkbox" checked={includePayment} disabled={isSaving || !anchor} onChange={(event) => togglePayment(event.target.checked)} />
+                  <span><CreditCard size={18} aria-hidden="true" /><span><strong>Registrar lo realmente pagado</strong><small>Opcional · conserva monto, moneda y tipo de cambio usados.</small></span></span>
+                </label>
+                {includePayment && (
+                  <div className="form-grid payment-grid">
+                    <label>Monto pagado<input required type="number" min="0" step="0.01" value={paidAmount} disabled={isSaving} onChange={(event) => setPaidAmount(event.target.value)} /></label>
+                    <label>Moneda pagada<select value={paidCurrency} disabled={isSaving} onChange={(event) => changePaidCurrency(event.target.value)}>{paymentCurrencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label>
+                    <label>Tipo de cambio<input required type="number" min="0.00000001" step="0.00000001" value={exchangeRate} disabled={isSaving || paidCurrency === anchor?.currency} onChange={(event) => setExchangeRate(event.target.value)} /><small>1 {anchor?.currency} = {exchangeRate || "—"} {paidCurrency}</small></label>
+                    <label>Fecha del tipo de cambio<input required type="date" value={exchangeRateDate} disabled={isSaving} onChange={(event) => setExchangeRateDate(event.target.value)} /></label>
+                    <label>Clase<select value={exchangeRateKind} disabled={isSaving} onChange={(event) => setExchangeRateKind(event.target.value as ExchangeRateKind)}>{Object.entries(exchangeRateLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                    <label>Fuente<input maxLength={200} value={exchangeRateSource} disabled={isSaving} placeholder="Estado de cuenta, BCCR, banco…" onChange={(event) => setExchangeRateSource(event.target.value)} /></label>
+                    {expectedPaid !== null && (
+                      <p className="payment-preview wide">Conversión de referencia: <strong>{money(paidCurrency, expectedPaid)}</strong>{parsedPaidAmount !== null && Math.abs(parsedPaidAmount - expectedPaid) >= 0.01 ? ` · diferencia real ${money(paidCurrency, parsedPaidAmount - expectedPaid)}` : ""}</p>
+                    )}
+                    {!paymentValid && <p className="payment-error wide" role="alert">Completá el pago y usá tipo de cambio 1 cuando la moneda original y la pagada sean iguales.</p>}
+                  </div>
+                )}
+              </div>
+
               <label className="order-notes">Notas<textarea maxLength={1000} value={notes} disabled={isSaving} placeholder="Factura, número de pedido o aclaración del supuesto usado…" onChange={(event) => setNotes(event.target.value)} /></label>
               <div className="purchase-order-total"><span>Subtotal {money(anchor?.currency ?? "CRC", subtotal)} + cargos {money(anchor?.currency ?? "CRC", shipping + otherCharges)}</span><strong>{money(anchor?.currency ?? "CRC", subtotal + shipping + otherCharges)}</strong></div>
-              <button className="primary-action" type="submit" disabled={isSaving || !selectedPurchases.length || !manualMatches}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando orden completa…" : "Guardar orden"}</button>
+              <button className="primary-action" type="submit" disabled={isSaving || !selectedPurchases.length || !manualMatches || !paymentValid}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando orden completa…" : "Guardar orden"}</button>
             </div>
           </form>
         )}
@@ -237,10 +328,11 @@ export function PurchaseOrdersModal({ purchases, orders, items, mode, isSaving, 
         <div className="purchase-order-list">
           {sortedOrders.length ? sortedOrders.map((order) => {
             const orderItems = items.filter((item) => item.order_id === order.id);
+            const payment = payments.find((candidate) => candidate.order_id === order.id);
             return (
               <article key={order.id}>
                 <div><span className={`cost-confidence ${order.cost_confidence}`}>{confidenceLabels[order.cost_confidence]}</span><strong>{order.supplier_name}</strong><small>{order.purchased_at} · {orderItems.length} partida{orderItems.length === 1 ? "" : "s"} · {allocationLabels[order.allocation_method]}</small></div>
-                <div className="order-cost"><strong>{money(order.currency, order.total_amount)}</strong><small>{money(order.currency, order.shipping_amount + order.other_charges_amount)} en cargos</small></div>
+                <div className="order-cost"><strong>{money(order.currency, order.total_amount)}</strong><small>{money(order.currency, order.shipping_amount + order.other_charges_amount)} en cargos</small>{payment && <small>Pagado: {money(payment.paid_currency, payment.paid_amount)} · {exchangeRateLabels[payment.exchange_rate_kind]}</small>}</div>
               </article>
             );
           }) : <p className="empty-state">Todavía no hay órdenes agrupadas. Tus compras históricas siguen intactas.</p>}

@@ -4,6 +4,7 @@ export type SpoolStatus = "empty" | "in_use" | "reserved" | "retired";
 export type TareConfidence = "verified" | "estimated" | "unknown";
 export type PurchaseAllocationMethod = "per_unit" | "by_value" | "manual";
 export type CostConfidence = "actual" | "estimated" | "incomplete";
+export type ExchangeRateKind = "paid" | "historical" | "current" | "manual" | "estimated";
 
 export type FilamentRoll = {
   id: string;
@@ -168,6 +169,30 @@ export type PurchaseOrderItem = {
   currency: string;
   cost_confidence: CostConfidence;
   created_at?: string;
+};
+
+export type PurchaseOrderPayment = {
+  order_id: string;
+  paid_amount: number;
+  paid_currency: string;
+  exchange_rate: number;
+  exchange_rate_date: string;
+  exchange_rate_kind: ExchangeRateKind;
+  exchange_rate_source: string | null;
+  created_at?: string;
+};
+
+export type UserProfile = {
+  user_id: string;
+  display_name: string | null;
+  base_currency: string;
+  billing_name: string | null;
+  billing_tax_id: string | null;
+  billing_email: string | null;
+  billing_address: string | null;
+  membership_status: "early_access" | "active" | "past_due" | "paused" | "cancelled";
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type ConsumptionLog = {

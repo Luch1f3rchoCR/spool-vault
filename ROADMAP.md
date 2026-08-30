@@ -90,13 +90,13 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 ## Multimoneda y perfil
 
-- [ ] Agregar moneda base al perfil; usar CRC como preferencia inicial.
-- [ ] Conservar monto y moneda originales, monto y moneda realmente pagados y su relación cambiaria.
-- [ ] Guardar tipo de cambio, fecha, fuente y clase: Real, Histórico, Actual, Manual o Estimado.
-- [ ] Dar prioridad al monto realmente pagado sobre una conversión calculada.
-- [ ] Evitar cualquier suma directa entre CRC y USD.
-- [ ] Mostrar totales separados por moneda o un total convertido claramente identificado.
-- [ ] Mantener fijo el costo histórico aunque cambie el tipo de cambio actual.
+- [x] Agregar moneda base al perfil; usar CRC como preferencia inicial.
+- [x] Conservar monto y moneda originales, monto y moneda realmente pagados y su relación cambiaria.
+- [x] Guardar tipo de cambio, fecha, fuente y clase: Real, Histórico, Actual, Manual o Estimado.
+- [x] Dar prioridad al monto realmente pagado sobre una conversión calculada.
+- [x] Evitar cualquier suma directa entre CRC y USD.
+- [x] Mostrar totales separados por moneda o un total convertido claramente identificado.
+- [x] Mantener fijo el costo histórico aunque cambie el tipo de cambio actual.
 
 ## Color y procedencia
 
@@ -131,7 +131,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 - [x] Fase 0: cerrar permisos internos, índices, idempotencia y la creación atómica de rollo + compra.
 - [x] Fase 1: catálogo de tipos de spool, pesajes históricos y tara congelada por medición.
-- [ ] Fase 2 (parcial): órdenes, partidas, express prorrateado y confianza listos; conversión multimoneda pendiente.
+- [x] Fase 2: compras con partidas, express prorrateado, confianza de costos y multimoneda.
 - [ ] Fase 3: fuente HEX, moneda base, estados derivados y reporte de saldo.
 - [ ] Fase 4: retomar experiencia de producto y módulos de crecimiento.
 

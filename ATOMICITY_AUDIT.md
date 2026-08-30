@@ -23,6 +23,8 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Editar ficha del filamento | Atómico e idempotente | Bajo | Mantener `update_filament_roll`; no reescribir compras, consumos ni pesajes desde este modal. |
 | Corregir proveedor, fecha o costo de una compra | Atómico, trazable e idempotente | Bajo | Mantener `correct_purchase`, la revisión append-only y la sincronización del costo vigente del rollo. |
 | Crear orden, partidas y prorratear cargos | Atómico, inmutable e idempotente | Bajo | Mantener `create_purchase_order`; la orden solo se confirma si sus partidas y cargos asignados cuadran completamente. |
+| Crear orden y registrar pago multimoneda | Atómico, inmutable e idempotente | Bajo | Mantener `create_purchase_order_v2`; monto original, pago real y relación cambiaria se confirman juntos o ninguno se guarda. |
+| Guardar perfil financiero | Atómico e idempotente | Bajo | Mantener `save_user_profile`, RLS por propietario y CRC como valor inicial sin recalcular historia. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
 | Derivar estado del rollo | Regla central en base de datos | Bajo | `Nuevo`, `Abierto`, `Bajo` y `Agotado` se recalculan desde pesos y umbral; `Archivado` continúa siendo explícito. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Mantener estas lecturas solo para la interfaz operativa. |
@@ -31,6 +33,8 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
 
 Las órdenes de compra se agregaron de forma aditiva sobre `purchase_history`: los registros históricos siguen intactos y ahora pueden agruparse bajo un encabezado inmutable. La función segura bloquea la selección durante la operación, valida usuario, proveedor y moneda, distribuye envío y otros cargos, y rechaza la transacción completa si el total asignado no coincide con el encabezado. Un UUID estable permite recuperar el mismo resultado ante reintentos.
+
+El pago real vive en una tabla inmutable separada del monto original. Cada registro congela moneda pagada, tipo de cambio, fecha, clase y fuente; cambiar la moneda base del perfil solo altera la presentación futura y nunca reescribe una compra. La conversión calculada se muestra como referencia, mientras el monto realmente pagado conserva prioridad.
 
 Desde el 29 de agosto, la base también valida la relación rollo-spool al confirmar cada transacción. Las funciones pueden cambiar ambas tablas juntas, pero una escritura parcial se rechaza. Un índice único impide reutilizar el mismo spool físico en otra ficha, incluso si una de las fichas está archivada; además, el cliente autenticado ya no puede borrar directamente rollos o spools.
 
@@ -110,14 +114,14 @@ Mensajes recomendados:
 
 1. [Completado] Crear encabezados de compra y partidas sin eliminar `purchase_history`.
 2. [Completado] Agregar express, otros cargos, prorrateo y confianza del costo.
-3. Conservar moneda original, moneda pagada y conversión histórica.
+3. [Completado] Conservar moneda original, moneda pagada y conversión histórica.
 4. [Parcial] Los datos existentes quedan disponibles para agrupar con confianza explícita y el supuesto histórico opcional; no se inventaron facturas ni cargos.
 5. [Completado] Permitir correcciones append-only del registro actual mientras se diseña el modelo de órdenes y partidas.
 
 ### Fase 3 — Color, perfil y reportes
 
 1. Agregar procedencia del HEX.
-2. Configurar CRC como moneda base inicial del perfil.
+2. [Completado] Configurar CRC como moneda base inicial del perfil.
 3. Derivar estados por gramos y porcentaje.
 4. [Parcial] El reporte de saldo ya usa una vista consistente, conserva monedas originales y exporta CSV; falta agregar conversiones históricas cuando exista moneda base.
 
