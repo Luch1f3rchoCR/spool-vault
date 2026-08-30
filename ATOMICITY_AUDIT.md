@@ -22,12 +22,15 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Agregar rollo, proveedor e historial de compra | Atómico e idempotente | Bajo | Mantener la función `create_roll_with_purchase` como único punto de escritura del formulario. |
 | Editar ficha del filamento | Atómico e idempotente | Bajo | Mantener `update_filament_roll`; no reescribir compras, consumos ni pesajes desde este modal. |
 | Corregir proveedor, fecha o costo de una compra | Atómico, trazable e idempotente | Bajo | Mantener `correct_purchase`, la revisión append-only y la sincronización del costo vigente del rollo. |
+| Crear orden, partidas y prorratear cargos | Atómico, inmutable e idempotente | Bajo | Mantener `create_purchase_order`; la orden solo se confirma si sus partidas y cargos asignados cuadran completamente. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
 | Derivar estado del rollo | Regla central en base de datos | Bajo | `Nuevo`, `Abierto`, `Bajo` y `Agotado` se recalculan desde pesos y umbral; `Archivado` continúa siendo explícito. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Mantener estas lecturas solo para la interfaz operativa. |
 | Reporte de saldo financiero | Vista consistente con RLS | Bajo | Mantener `filament_balance_report` como fuente única; no sumar CRC y USD entre sí. |
 
 La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
+
+Las órdenes de compra se agregaron de forma aditiva sobre `purchase_history`: los registros históricos siguen intactos y ahora pueden agruparse bajo un encabezado inmutable. La función segura bloquea la selección durante la operación, valida usuario, proveedor y moneda, distribuye envío y otros cargos, y rechaza la transacción completa si el total asignado no coincide con el encabezado. Un UUID estable permite recuperar el mismo resultado ante reintentos.
 
 Desde el 29 de agosto, la base también valida la relación rollo-spool al confirmar cada transacción. Las funciones pueden cambiar ambas tablas juntas, pero una escritura parcial se rechaza. Un índice único impide reutilizar el mismo spool físico en otra ficha, incluso si una de las fichas está archivada; además, el cliente autenticado ya no puede borrar directamente rollos o spools.
 
@@ -105,10 +108,10 @@ Mensajes recomendados:
 
 ### Fase 2 — Compras y multimoneda
 
-1. Crear encabezados de compra y partidas sin eliminar `purchase_history`.
-2. Agregar express, otros cargos, prorrateo y confianza del costo.
+1. [Completado] Crear encabezados de compra y partidas sin eliminar `purchase_history`.
+2. [Completado] Agregar express, otros cargos, prorrateo y confianza del costo.
 3. Conservar moneda original, moneda pagada y conversión histórica.
-4. Migrar datos existentes con valores incompletos o estimados explícitos, sin inventar facturas.
+4. [Parcial] Los datos existentes quedan disponibles para agrupar con confianza explícita y el supuesto histórico opcional; no se inventaron facturas ni cargos.
 5. [Completado] Permitir correcciones append-only del registro actual mientras se diseña el modelo de órdenes y partidas.
 
 ### Fase 3 — Color, perfil y reportes
