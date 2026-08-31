@@ -87,6 +87,9 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Mantener historial de proveedor y precio por compra, aunque el mismo filamento cambie de proveedor o costo.
 - [x] Mantener el historial de compras inmutable desde el cliente.
 - [x] Diseñar una corrección financiera trazable sin reescribir el registro original.
+- [x] Permitir registrar una compra faltante para un rollo ya creado, sin inventar ni reescribir historial.
+- [x] Exponer “Corregir compra” y “Registrar compra faltante” desde el detalle del filamento.
+- [x] Marcar visiblemente los rollos cuyo costo está incompleto y guiarlos a su corrección.
 
 ## Multimoneda y perfil
 
@@ -143,6 +146,39 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Crear proyectos/impresiones y asociar consumos reales.
 - [ ] Agregar impresoras y costo por hora.
 
+## Market de proveedores
+
+- [ ] Separar los proveedores personales del usuario de los comercios publicados en el market.
+- [ ] Crear un catálogo canónico para comparar la misma variante por marca, material, línea, color, peso y presentación con/sin spool.
+- [ ] Mostrar “Dónde comprar” con precio, moneda, disponibilidad, entrega, retiro y fecha de actualización.
+- [ ] Iniciar con enlaces referidos hacia el checkout del proveedor y seguimiento de clics respetuoso de la privacidad.
+- [ ] Diseñar un portal o carga CSV/API para que cada proveedor mantenga precios y existencias sin depender de scraping.
+- [ ] Definir ingresos iniciales por comisión referida, oportunidad enviada, plan de proveedor o posición patrocinada claramente identificada.
+- [ ] Validar el piloto comercial con Pritonic, Maker Store y al menos otro proveedor costarricense.
+- [ ] Evaluar checkout dentro de Spool Vault solamente después de resolver pagos, facturación, devoluciones, contracargos, reserva de inventario y soporte.
+
+## Impresoras y AMS
+
+- [ ] Registrar impresoras, modelo, boquilla, ubicación y costo por hora.
+- [ ] Diseñar un conector local seguro para la P1S; nunca guardar la clave LAN ni credenciales Bambu en texto plano en Supabase.
+- [ ] Implementar primero sincronización de solo lectura: estado de impresión, archivo/tarea, tiempo y bandejas AMS.
+- [ ] Mapear cada bandeja AMS a un rollo real de Spool Vault, incluyendo filamentos sin RFID o recargas.
+- [ ] Conciliar el consumo reportado por el trabajo con el saldo del rollo sin descontar dos veces.
+- [ ] Mantener el pesaje como fuente de verdad cuando el remanente del AMS sea desconocido o estimado.
+- [ ] Posponer comandos de control y escritura del AMS hasta validar compatibilidad, permisos y cambios de firmware.
+
+## Proyectos, producción y utilidad
+
+- [ ] Crear proyectos con nombre, versiones, archivos STL/3MF privados, imagen, licencia y notas.
+- [ ] Definir una receta por proyecto: filamentos, colores, gramos previstos, tiempo y cantidad de piezas.
+- [ ] Registrar insumos adicionales como imanes, pines, tornillos, luces, pintura y empaque con cantidad y costo.
+- [ ] Validar existencias antes de imprimir y sugerir ofertas del market cuando falte material.
+- [ ] Crear corridas de producción con fecha, impresora, cantidad, resultado, duración y desperdicio.
+- [ ] Asociar cada consumo real al rollo utilizado y descontarlo atómicamente al cerrar la corrida.
+- [ ] Congelar en la corrida los costos de material, extras, electricidad, máquina, mano de obra y fallos.
+- [ ] Permitir precio de venta, comisiones, envío e impuestos para calcular utilidad y margen sin falsa precisión.
+- [ ] Dar recomendaciones accionables: precio insuficiente, inventario bajo, exceso de desperdicio y necesidad de reposición.
+
 ## Antes de comercializar
 
 - [ ] Diseñar workspaces, miembros, roles y aislamiento por workspace.
@@ -151,3 +187,5 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Activar protección contra contraseñas filtradas si se incorpora login con contraseña.
 - [ ] Definir planes y límites antes de integrar una pasarela de pago.
 - [ ] Implementar respaldos, exportación y eliminación de cuenta.
+- [ ] Definir términos para proveedores, política de anuncios y responsabilidad sobre precio/stock mostrado.
+- [ ] Revisar con asesoría local facturación, protección al consumidor, privacidad y tratamiento de pagos antes de ofrecer checkout nativo.

@@ -343,6 +343,7 @@ create table if not exists public.purchase_history (
   filament_cost numeric(10, 2) not null check (filament_cost >= 0),
   currency text not null default 'CRC',
   quantity_g numeric(8, 2) not null default 1000 check (quantity_g > 0),
+  creation_request_id uuid,
   created_at timestamptz not null default now(),
   check (spool_cost <= total_price),
   check (filament_cost = total_price - spool_cost)
@@ -350,6 +351,10 @@ create table if not exists public.purchase_history (
 
 create index if not exists purchase_history_user_product_idx
   on public.purchase_history (user_id, brand, material, product_line, color_name, purchased_at desc);
+
+create unique index if not exists purchase_history_user_creation_request_idx
+  on public.purchase_history (user_id, creation_request_id)
+  where creation_request_id is not null;
 
 create index if not exists spools_user_status_idx
   on public.spools (user_id, status, code);
