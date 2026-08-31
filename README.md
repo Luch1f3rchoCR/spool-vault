@@ -11,6 +11,7 @@ Incluye:
 - registro de consumo por proyecto que descuenta gramos del rollo;
 - ajuste manual de gramos disponibles para corregir pesajes o recargas;
 - compras por proveedor con precio histórico inmutable y correcciones trazables;
+- registro atómico de compras omitidas para rollos creados sin precio;
 - órdenes de compra con partidas, envío/express, otros cargos, prorrateo y confianza del costo;
 - perfil con moneda base CRC y datos opcionales de facturación;
 - pago real por orden con moneda, tipo de cambio, fecha, clase y fuente congelados;
@@ -27,7 +28,7 @@ Incluye:
 - lectura/escritura NFC con Web NFC cuando el celular/navegador lo soporte;
 - modo demo local si Supabase todavía no está configurado.
 
-El estado de implementación y los próximos bloques están en [`ROADMAP.md`](./ROADMAP.md).
+El estado de implementación y los próximos bloques están en [`ROADMAP.md`](./ROADMAP.md). La estrategia de market de proveedores, integración AMS y proyectos/producción está en [`PRODUCT_EXPANSION_PLAN.md`](./PRODUCT_EXPANSION_PLAN.md).
 
 ## NFC
 

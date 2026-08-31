@@ -26,6 +26,10 @@ import {
 } from "lucide-react";
 import { InventoryReportModal } from "@/components/inventory-report-modal";
 import { MobileNavigation } from "@/components/mobile-navigation";
+import {
+  MissingPurchaseModal,
+  type MissingPurchaseValues
+} from "@/components/missing-purchase-modal";
 import { ProfilePanel, type ProfileValues } from "@/components/profile-panel";
 import {
   PurchaseOrdersModal,
@@ -95,6 +99,12 @@ type PurchaseCorrectionResult = {
   correction: PurchaseCorrection;
   roll: FilamentRoll | null;
   supplier?: Supplier;
+  replayed: boolean;
+};
+type MissingPurchaseResult = {
+  purchase: PurchaseRecord;
+  roll: FilamentRoll;
+  supplier: Supplier;
   replayed: boolean;
 };
 type PurchaseOrderMutationResult = {
@@ -491,6 +501,7 @@ export default function Home() {
   const [showQuickWeigh, setShowQuickWeigh] = useState(false);
   const [editingRollId, setEditingRollId] = useState("");
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
+  const [missingPurchaseRollId, setMissingPurchaseRollId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showPurchaseOrders, setShowPurchaseOrders] = useState(false);
@@ -520,6 +531,7 @@ export default function Home() {
   const [isAddingRoll, setIsAddingRoll] = useState(false);
   const [isUpdatingRoll, setIsUpdatingRoll] = useState(false);
   const [isCorrectingPurchase, setIsCorrectingPurchase] = useState(false);
+  const [isAddingMissingPurchase, setIsAddingMissingPurchase] = useState(false);
   const [isSavingPurchaseOrder, setIsSavingPurchaseOrder] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
@@ -530,6 +542,7 @@ export default function Home() {
   const addRollRequestId = useRef<string | null>(null);
   const updateRollRequests = useRef<Record<string, string>>({});
   const purchaseCorrectionRequests = useRef<Record<string, { id: string; fingerprint: string }>>({});
+  const missingPurchaseRequests = useRef<Record<string, { id: string; fingerprint: string }>>({});
   const purchaseOrderRequest = useRef<{ id: string; fingerprint: string } | null>(null);
   const consumptionRequest = useRef<{ id: string; rollId: string } | null>(null);
   const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
@@ -809,11 +822,11 @@ export default function Home() {
 
   useEffect(() => {
     document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showReport || showPurchaseOrders || showProfile
-      || Boolean(editingRollId) || Boolean(correctingPurchaseId) ? "hidden" : "";
+      || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [correctingPurchaseId, editingRollId, showAdd, showQuickWeigh, showSpools, showReport, showPurchaseOrders, showProfile]);
+  }, [correctingPurchaseId, editingRollId, missingPurchaseRollId, showAdd, showQuickWeigh, showSpools, showReport, showPurchaseOrders, showProfile]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
   const editingRoll = rolls.find((roll) => roll.id === editingRollId);
@@ -849,6 +862,8 @@ export default function Home() {
     [purchaseViews]
   );
   const correctingPurchase = purchaseViews.find((view) => view.original.id === correctingPurchaseId);
+  const missingPurchaseRoll = rolls.find((roll) => roll.id === missingPurchaseRollId);
+  const selectedRollPurchase = purchaseViews.find((view) => view.original.roll_id === selectedRoll?.id);
   const selectedSpool = spools.find((spool) => spool.id === selectedRoll?.spool_id);
   const recentWeighings = weighingEvents
     .filter((event) => event.roll_id === selectedRoll?.id)
@@ -1440,6 +1455,124 @@ export default function Home() {
       setSyncNote(`No se pudo confirmar la corrección. Podés reintentar sin duplicarla: ${message}`);
     } finally {
       setIsCorrectingPurchase(false);
+    }
+  }
+
+  async function registerMissingPurchase(values: MissingPurchaseValues) {
+    if (!missingPurchaseRoll || isAddingMissingPurchase) return;
+    activateLocalMode();
+
+    if (!values.supplier_name.trim()) {
+      setSyncNote("El proveedor es requerido para registrar la compra.");
+      return;
+    }
+    if (!values.purchased_at) {
+      setSyncNote("La fecha de compra es requerida.");
+      return;
+    }
+    if (values.total_price < 0 || values.spool_cost < 0 || values.spool_cost > values.total_price) {
+      setSyncNote("El costo del spool debe estar entre cero y el precio total.");
+      return;
+    }
+
+    const roll = missingPurchaseRoll;
+    const fingerprint = JSON.stringify(values);
+    setIsAddingMissingPurchase(true);
+
+    try {
+      if (usingSupabase && supabase) {
+        const pending = missingPurchaseRequests.current[roll.id];
+        const request = pending?.fingerprint === fingerprint
+          ? pending
+          : { id: crypto.randomUUID(), fingerprint };
+        missingPurchaseRequests.current[roll.id] = request;
+
+        const { data, error } = await supabase.rpc("register_missing_purchase", {
+          p_request_id: request.id,
+          p_roll_id: roll.id,
+          p_supplier_name: values.supplier_name.trim(),
+          p_purchased_at: values.purchased_at,
+          p_package_type: values.package_type,
+          p_total_price: values.total_price,
+          p_spool_cost: values.spool_cost,
+          p_currency: values.currency
+        });
+
+        if (error || !data) {
+          setSyncNote(
+            `No se pudo confirmar la compra faltante. Podés reintentar sin duplicarla: ${error?.message ?? "respuesta vacía"}`
+          );
+          return;
+        }
+
+        const result = data as MissingPurchaseResult;
+        const savedPurchase = {
+          ...result.purchase,
+          total_price: Number(result.purchase.total_price),
+          spool_cost: Number(result.purchase.spool_cost),
+          filament_cost: Number(result.purchase.filament_cost),
+          quantity_g: Number(result.purchase.quantity_g)
+        };
+        const savedRoll = normalizeRollData({
+          ...result.roll,
+          supplier_name: result.supplier.name
+        });
+
+        setPurchases((current) => [
+          savedPurchase,
+          ...current.filter((purchase) => purchase.id !== savedPurchase.id)
+        ]);
+        setRolls((current) => current.map((item) => item.id === savedRoll.id ? savedRoll : item));
+        setSuppliers((current) => [
+          result.supplier,
+          ...current.filter((supplier) => supplier.id !== result.supplier.id)
+        ].sort((a, b) => a.name.localeCompare(b.name)));
+        setSyncNote(result.replayed
+          ? "Esta compra ya estaba guardada; recuperamos el resultado sin duplicarla."
+          : "Compra faltante registrada y costo vigente actualizado en una sola operación.");
+        delete missingPurchaseRequests.current[roll.id];
+      } else {
+        const purchase: PurchaseRecord = {
+          id: crypto.randomUUID(),
+          roll_id: roll.id,
+          supplier_id: null,
+          supplier_name: values.supplier_name.trim(),
+          brand: roll.brand,
+          material: roll.material,
+          product_line: roll.product_line,
+          color_name: roll.color_name,
+          color_hex: roll.color_hex,
+          purchased_at: values.purchased_at,
+          package_type: values.package_type,
+          total_price: values.total_price,
+          spool_cost: values.spool_cost,
+          filament_cost: values.total_price - values.spool_cost,
+          currency: values.currency,
+          quantity_g: Number(roll.initial_weight_g)
+        };
+        setPurchases((current) => [purchase, ...current]);
+        setRolls((current) => current.map((item) => item.id === roll.id
+          ? {
+              ...item,
+              supplier_id: null,
+              supplier_name: purchase.supplier_name,
+              purchase_date: purchase.purchased_at,
+              price_amount: purchase.total_price,
+              currency: purchase.currency,
+              package_type: purchase.package_type,
+              spool_cost_amount: purchase.spool_cost,
+              filament_cost_amount: purchase.filament_cost
+            }
+          : item));
+        setSyncNote("Compra faltante registrada en el inventario local.");
+      }
+
+      setMissingPurchaseRollId("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "error inesperado";
+      setSyncNote(`No se pudo confirmar la compra faltante. Podés reintentar sin duplicarla: ${message}`);
+    } finally {
+      setIsAddingMissingPurchase(false);
     }
   }
 
@@ -2711,6 +2844,19 @@ export default function Home() {
         />
       )}
 
+      {missingPurchaseRoll && (
+        <MissingPurchaseModal
+          roll={missingPurchaseRoll}
+          supplierOptions={Array.from(new Set([
+            ...supplierOptions,
+            ...suppliers.map((supplier) => supplier.name)
+          ]))}
+          isSaving={isAddingMissingPurchase}
+          onClose={() => setMissingPurchaseRollId("")}
+          onSave={registerMissingPurchase}
+        />
+      )}
+
       {showSpools && (
         <div
           className="modal-backdrop"
@@ -3041,14 +3187,42 @@ export default function Home() {
               </div>
             </div>
 
-            <button
-              className="secondary-action edit-roll-action"
-              type="button"
-              onClick={() => setEditingRollId(selectedRoll.id)}
-            >
-              <Pencil size={16} aria-hidden="true" />
-              Editar filamento
-            </button>
+            <div className="detail-actions">
+              <button
+                className="secondary-action edit-roll-action"
+                type="button"
+                onClick={() => setEditingRollId(selectedRoll.id)}
+              >
+                <Pencil size={16} aria-hidden="true" />
+                Editar filamento
+              </button>
+              {selectedRollPurchase ? (
+                <button
+                  className="secondary-action edit-roll-action"
+                  type="button"
+                  onClick={() => setCorrectingPurchaseId(selectedRollPurchase.original.id)}
+                >
+                  <ReceiptText size={16} aria-hidden="true" />
+                  Corregir compra
+                </button>
+              ) : (
+                <button
+                  className="secondary-action edit-roll-action missing-purchase-action"
+                  type="button"
+                  onClick={() => setMissingPurchaseRollId(selectedRoll.id)}
+                >
+                  <AlertTriangle size={16} aria-hidden="true" />
+                  Registrar compra faltante
+                </button>
+              )}
+            </div>
+
+            {!selectedRollPurchase && (
+              <p className="missing-purchase-alert">
+                <AlertTriangle size={16} aria-hidden="true" />
+                El costo de este rollo está incompleto porque no existe una compra en su historial.
+              </p>
+            )}
 
             <div className="detail-facts">
               <span>{Math.round(selectedRoll.available_weight_g)} g disponibles</span>
