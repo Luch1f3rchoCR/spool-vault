@@ -307,6 +307,23 @@ function payloadForRoll(roll: Pick<FilamentRoll, "id" | "qr_payload">) {
   return `${window.location.origin}/?roll=${encodeURIComponent(roll.id)}`;
 }
 
+function rollIdFromPayload(payload: string) {
+  const cleaned = payload.trim();
+
+  try {
+    const url = new URL(cleaned, typeof window === "undefined" ? "https://spool-vault.local" : window.location.origin);
+    const rollId = url.searchParams.get("roll");
+    if (rollId) return rollId;
+  } catch {
+    // QR payloads may also be plain text.
+  }
+
+  const plainMatch = cleaned.match(/filament-roll:([a-z0-9-]+)/i);
+  if (plainMatch?.[1]) return plainMatch[1];
+
+  return cleaned;
+}
+
 function normalizeStatus(available: number, threshold: number, current: RollStatus = "open"): RollStatus {
   if (available <= 0) return "empty";
   if (available <= threshold) return "low";
@@ -499,6 +516,7 @@ export default function Home() {
   const [lowOnly, setLowOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showQuickWeigh, setShowQuickWeigh] = useState(false);
+  const [showQrScanner, setShowQrScanner] = useState(false);
   const [editingRollId, setEditingRollId] = useState("");
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
   const [missingPurchaseRollId, setMissingPurchaseRollId] = useState("");
@@ -521,6 +539,8 @@ export default function Home() {
   const [signedInUserId, setSignedInUserId] = useState("");
   const [authVersion, setAuthVersion] = useState(0);
   const [nfcNote, setNfcNote] = useState("");
+  const [qrScanNote, setQrScanNote] = useState("");
+  const [manualQrPayload, setManualQrPayload] = useState("");
   const [measuredTotalWeight, setMeasuredTotalWeight] = useState("");
   const [weighingTare, setWeighingTare] = useState("");
   const [weighingSpoolTypeId, setWeighingSpoolTypeId] = useState("");
@@ -549,6 +569,9 @@ export default function Home() {
   const createSpoolRequestId = useRef<string | null>(null);
   const updateSpoolRequests = useRef<Record<string, string>>({});
   const quickWeighInputRef = useRef<HTMLInputElement | null>(null);
+  const qrVideoRef = useRef<HTMLVideoElement | null>(null);
+  const qrStreamRef = useRef<MediaStream | null>(null);
+  const qrFrameRef = useRef<number | null>(null);
 
   const [supabase, setSupabase] = useState(() => getSupabaseClient());
   const [supabaseConfig, setSupabaseConfig] = useState(() => getSupabaseConfigStatus());
@@ -821,12 +844,23 @@ export default function Home() {
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showQuickWeigh || showSpools || showReport || showPurchaseOrders || showProfile
+    document.body.style.overflow = showAdd || showQuickWeigh || showQrScanner || showSpools || showReport || showPurchaseOrders || showProfile
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [correctingPurchaseId, editingRollId, missingPurchaseRollId, showAdd, showQuickWeigh, showSpools, showReport, showPurchaseOrders, showProfile]);
+  }, [
+    correctingPurchaseId,
+    editingRollId,
+    missingPurchaseRollId,
+    showAdd,
+    showPurchaseOrders,
+    showProfile,
+    showQrScanner,
+    showQuickWeigh,
+    showReport,
+    showSpools
+  ]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
   const editingRoll = rolls.find((roll) => roll.id === editingRollId);
@@ -900,6 +934,76 @@ export default function Home() {
     if (!showQuickWeigh) return;
     window.setTimeout(() => quickWeighInputRef.current?.focus(), 120);
   }, [showQuickWeigh, selectedRoll?.id]);
+
+  useEffect(() => {
+    if (!showQrScanner) return;
+
+    let isActive = true;
+
+    async function startQrScanner() {
+      if (!("BarcodeDetector" in window)) {
+        setQrScanNote("Este navegador no trae lector QR nativo. Probá NFC o pegá el link del QR.");
+        return;
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setQrScanNote("Este navegador no permite abrir la cámara desde la app.");
+        return;
+      }
+
+      try {
+        const detector = new BarcodeDetector({ formats: ["qr_code"] });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" }
+          }
+        });
+
+        if (!isActive) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        qrStreamRef.current = stream;
+
+        const video = qrVideoRef.current;
+        if (!video) return;
+
+        video.srcObject = stream;
+        await video.play();
+        setQrScanNote("Apuntá la cámara al QR del rollo.");
+
+        const scanFrame = async () => {
+          if (!isActive || !qrVideoRef.current) return;
+
+          try {
+            const barcodes = await detector.detect(qrVideoRef.current);
+            const payload = barcodes[0]?.rawValue;
+
+            if (payload && selectRollFromScannedPayload(payload)) {
+              return;
+            }
+          } catch {
+            setQrScanNote("No pude leer ese cuadro. Mové un poco el cel o acercá el QR.");
+          }
+
+          qrFrameRef.current = window.requestAnimationFrame(scanFrame);
+        };
+
+        qrFrameRef.current = window.requestAnimationFrame(scanFrame);
+      } catch (error) {
+        setQrScanNote(error instanceof Error ? error.message : "No pude abrir la cámara para escanear.");
+      }
+    }
+
+    startQrScanner();
+
+    return () => {
+      isActive = false;
+      stopQrScanner();
+    };
+  }, [showQrScanner, rolls]);
 
   const dashboard = useMemo(() => {
     const totalWeight = rolls.reduce((sum, roll) => sum + Number(roll.available_weight_g), 0);
@@ -2065,6 +2169,60 @@ export default function Home() {
     }
   }
 
+  function stopQrScanner() {
+    if (qrFrameRef.current) {
+      window.cancelAnimationFrame(qrFrameRef.current);
+      qrFrameRef.current = null;
+    }
+
+    qrStreamRef.current?.getTracks().forEach((track) => track.stop());
+    qrStreamRef.current = null;
+
+    if (qrVideoRef.current) {
+      qrVideoRef.current.srcObject = null;
+    }
+  }
+
+  function closeQrScanner() {
+    stopQrScanner();
+    setShowQrScanner(false);
+  }
+
+  function selectRollFromScannedPayload(payload: string) {
+    const scannedId = rollIdFromPayload(payload);
+    const found = rolls.find((roll) => roll.id === scannedId || payload.includes(roll.id));
+
+    if (!found) {
+      setQrScanNote("Leí el QR, pero no encontré ese rollo en este inventario.");
+      return false;
+    }
+
+    setSelectedId(found.id);
+    setQrScanNote(`Rollo detectado: ${found.brand} ${found.color_name}.`);
+    setSyncNote(`Rollo detectado por QR: ${found.brand} ${found.color_name}`);
+    closeQrScanner();
+    window.setTimeout(() => {
+      document.getElementById("inventario")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return true;
+  }
+
+  function openQrScanner() {
+    setManualQrPayload("");
+    setQrScanNote("Preparando cámara...");
+    setShowQrScanner(true);
+  }
+
+  function submitManualQrPayload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!manualQrPayload.trim()) {
+      setQrScanNote("Pegá el texto o link del QR para buscar el rollo.");
+      return;
+    }
+
+    selectRollFromScannedPayload(manualQrPayload);
+  }
+
   async function writeNfcTag() {
     if (!selectedRoll) return;
     if (!("NDEFReader" in window)) {
@@ -2089,7 +2247,9 @@ export default function Home() {
 
   async function scanNfcTag() {
     if (!("NDEFReader" in window)) {
-      setNfcNote("Este navegador no soporta Web NFC. Probá con Android + Chrome o escaneá el QR.");
+      const message = "Este navegador no soporta Web NFC. Probá con Android + Chrome o escaneá el QR.";
+      setNfcNote(message);
+      if (showQrScanner) setQrScanNote(message);
       return;
     }
 
@@ -2097,6 +2257,7 @@ export default function Home() {
       const ndef = new NDEFReader();
       await ndef.scan();
       setNfcNote("Acercá la etiqueta NFC al celular.");
+      if (showQrScanner) setQrScanNote("Acercá la etiqueta NFC al celular.");
 
       ndef.onreading = (event) => {
         const decoder = new TextDecoder();
@@ -2106,13 +2267,22 @@ export default function Home() {
         const found = rolls.find((roll) => readable.includes(roll.id));
         if (found) {
           setSelectedId(found.id);
-          setNfcNote(`Rollo detectado: ${found.brand} ${found.color_name}.`);
+          const message = `Rollo detectado: ${found.brand} ${found.color_name}.`;
+          setNfcNote(message);
+          if (showQrScanner) {
+            setQrScanNote(message);
+            closeQrScanner();
+          }
         } else {
-          setNfcNote("Leí la etiqueta, pero no encontré ese rollo en el inventario.");
+          const message = "Leí la etiqueta, pero no encontré ese rollo en el inventario.";
+          setNfcNote(message);
+          if (showQrScanner) setQrScanNote(message);
         }
       };
     } catch (error) {
-      setNfcNote(error instanceof Error ? error.message : "No se pudo leer la etiqueta NFC.");
+      const message = error instanceof Error ? error.message : "No se pudo leer la etiqueta NFC.";
+      setNfcNote(message);
+      if (showQrScanner) setQrScanNote(message);
     }
   }
 
@@ -2816,6 +2986,63 @@ export default function Home() {
         </div>
       )}
 
+      {showQrScanner && (
+        <div
+          className="modal-backdrop qr-scan-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeQrScanner();
+          }}
+        >
+          <section
+            className="panel modal-panel qr-scan-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="qr-scan-title"
+          >
+            <div className="modal-head quick-weigh-head">
+              <div>
+                <p className="eyebrow">Cámara</p>
+                <h2 id="qr-scan-title">Escanear rollo</h2>
+              </div>
+              <button
+                className="modal-close"
+                type="button"
+                onClick={closeQrScanner}
+                aria-label="Cerrar escáner"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="qr-scanner">
+              <video ref={qrVideoRef} muted playsInline />
+              <div className="qr-scan-frame" aria-hidden="true" />
+            </div>
+
+            <div className="qr-scan-content">
+              <p className="qr-scan-note" role="status">{qrScanNote}</p>
+              <form className="manual-qr-form" onSubmit={submitManualQrPayload}>
+                <label>
+                  Link o texto del QR
+                  <input
+                    value={manualQrPayload}
+                    onChange={(event) => setManualQrPayload(event.target.value)}
+                    placeholder="https://spool-vault.vercel.app/?roll=..."
+                    inputMode="url"
+                  />
+                </label>
+                <button className="secondary-action" type="submit">Buscar rollo</button>
+              </form>
+              <button className="primary-action" type="button" onClick={scanNfcTag}>
+                <Nfc size={18} aria-hidden="true" />
+                Leer NFC
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {editingRoll && (
         <RollEditModal
           roll={editingRoll}
@@ -3514,7 +3741,12 @@ export default function Home() {
         )}
       </section>
 
-      <MobileNavigation isSignedIn={Boolean(signedInEmail)} onAccount={openAccount} onWeigh={goToWeighing} />
+      <MobileNavigation
+        isSignedIn={Boolean(signedInEmail)}
+        onAccount={openAccount}
+        onScan={openQrScanner}
+        onWeigh={goToWeighing}
+      />
     </main>
   );
 }

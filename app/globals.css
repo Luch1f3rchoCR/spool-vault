@@ -1093,8 +1093,18 @@ h3 {
   align-items: end;
 }
 
+.qr-scan-backdrop {
+  align-items: end;
+}
+
 .quick-weigh-panel {
   width: min(520px, 100%);
+  border-radius: 18px 18px 0 0;
+}
+
+.qr-scan-panel {
+  width: min(520px, 100%);
+  overflow: hidden;
   border-radius: 18px 18px 0 0;
 }
 
@@ -1202,6 +1212,55 @@ h3 {
   background: rgba(255, 232, 189, 0.48);
   font-size: 0.78rem;
   line-height: 1.36;
+}
+
+.qr-scanner {
+  position: relative;
+  display: grid;
+  min-height: 310px;
+  overflow: hidden;
+  background: #111a16;
+}
+
+.qr-scanner video {
+  width: 100%;
+  height: 100%;
+  min-height: 310px;
+  object-fit: cover;
+}
+
+.qr-scan-frame {
+  position: absolute;
+  inset: 22%;
+  border: 2px solid rgba(255, 250, 240, 0.92);
+  border-radius: 18px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.25);
+}
+
+.qr-scan-content {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.qr-scan-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.manual-qr-form {
+  display: grid;
+  gap: 8px;
+}
+
+.manual-qr-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
 }
 
 .roll-edit-modal {
@@ -2534,7 +2593,7 @@ textarea:focus {
     left: 10px;
     z-index: 40;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     min-height: 64px;
     padding: 6px;
     border: 1px solid rgba(255, 255, 255, 0.1);
