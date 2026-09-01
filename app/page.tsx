@@ -568,6 +568,7 @@ export default function Home() {
   const [nfcNote, setNfcNote] = useState("");
   const [qrScanNote, setQrScanNote] = useState("");
   const [manualQrPayload, setManualQrPayload] = useState("");
+  const [pendingQrPayload, setPendingQrPayload] = useState("");
   const [measuredTotalWeight, setMeasuredTotalWeight] = useState("");
   const [weighingTare, setWeighingTare] = useState("");
   const [weighingSpoolTypeId, setWeighingSpoolTypeId] = useState("");
@@ -1251,6 +1252,7 @@ export default function Home() {
     const spoolCost = packageType === "spooled" ? parseNumber(form.get("spool_cost_amount"), 1000) : 0;
     const filamentCost = totalPrice === null ? null : Math.max(0, totalPrice - spoolCost);
     const supplierName = String(form.get("supplier_name") || "Sin proveedor").trim() || "Sin proveedor";
+    const scannedQrPayload = pendingQrPayload.trim();
 
     if (availableWeight < 0 || availableWeight > initialWeight) {
       setSyncNote("El peso disponible debe estar entre cero y el peso inicial.");
@@ -1287,7 +1289,7 @@ export default function Home() {
       photo_url: String(form.get("photo_url") || ""),
       purchase_url: String(form.get("purchase_url") || ""),
       nfc_tag_id: null,
-      qr_payload: null
+      qr_payload: scannedQrPayload || null
     };
 
     setIsAddingRoll(true);
@@ -1327,7 +1329,24 @@ export default function Home() {
         }
 
         const result = data as AtomicRollCreationResult;
-        const savedRoll = normalizeRollData(result.roll);
+        let savedRoll = normalizeRollData(result.roll);
+        let tagErrorMessage = "";
+
+        if (scannedQrPayload) {
+          const { data: taggedRoll, error: tagError } = await supabase
+            .from("filament_rolls")
+            .update({ qr_payload: scannedQrPayload })
+            .eq("id", savedRoll.id)
+            .select("*")
+            .single();
+
+          if (tagError) {
+            tagErrorMessage = `Rollo guardado, pero no pude vincular la etiqueta QR: ${tagError.message}`;
+          } else if (taggedRoll) {
+            savedRoll = normalizeRollData(taggedRoll as FilamentRoll);
+          }
+        }
+
         setRolls((current) => [savedRoll, ...current.filter((roll) => roll.id !== savedRoll.id)]);
         setSelectedId(savedRoll.id);
 
@@ -1346,9 +1365,12 @@ export default function Home() {
         }
 
         setSyncNote(
-          result.replayed
+          tagErrorMessage ||
+          (result.replayed
             ? "Esta operación ya estaba guardada; recuperamos el rollo y su compra."
-            : "Rollo, proveedor y compra guardados correctamente."
+            : scannedQrPayload
+              ? "Rollo, proveedor, compra y etiqueta QR guardados correctamente."
+              : "Rollo, proveedor y compra guardados correctamente.")
         );
         addRollRequestId.current = null;
       } else {
@@ -1377,10 +1399,11 @@ export default function Home() {
             ...current
           ]);
         }
-        setSyncNote("Rollo guardado en el inventario local.");
+        setSyncNote(scannedQrPayload ? "Rollo y etiqueta QR guardados en el inventario local." : "Rollo guardado en el inventario local.");
       }
 
       setDraft(initialDraft);
+      setPendingQrPayload("");
       setShowAdd(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : "error inesperado";
@@ -2215,12 +2238,20 @@ export default function Home() {
     setShowQrScanner(false);
   }
 
+  function closeAddRoll() {
+    if (isAddingRoll) return;
+    setShowAdd(false);
+    setPendingQrPayload("");
+  }
+
   function selectRollFromScannedPayload(payload: string) {
     const scannedId = rollIdFromPayload(payload);
     const found = rolls.find((roll) => roll.id === scannedId || payload.includes(roll.id));
 
     if (!found) {
-      setQrScanNote("Leí el QR, pero no encontré ese rollo en este inventario.");
+      stopQrScanner();
+      setPendingQrPayload(payload.trim());
+      setQrScanNote("Leí una etiqueta nueva. Podés crear un rollo y dejarla vinculada.");
       return false;
     }
 
@@ -2230,6 +2261,14 @@ export default function Home() {
     closeQrScanner();
     setScanActionRollId(found.id);
     return true;
+  }
+
+  function addRollFromScannedPayload() {
+    stopQrScanner();
+    setShowQrScanner(false);
+    setScanActionRollId("");
+    setShowAdd(true);
+    setSyncNote("Etiqueta QR lista para vincularse al nuevo rollo.");
   }
 
   function closeScanActions() {
@@ -2272,6 +2311,7 @@ export default function Home() {
 
   function openQrScanner() {
     setManualQrPayload("");
+    setPendingQrPayload("");
     setQrScanNote("Preparando cámara...");
     setShowQrScanner(true);
   }
@@ -2651,7 +2691,7 @@ export default function Home() {
           className="modal-backdrop"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !isAddingRoll) setShowAdd(false);
+            if (event.target === event.currentTarget) closeAddRoll();
           }}
         >
           <section
@@ -2668,7 +2708,7 @@ export default function Home() {
               <button
                 className="modal-close"
                 type="button"
-                onClick={() => setShowAdd(false)}
+                onClick={closeAddRoll}
                 disabled={isAddingRoll}
                 aria-label="Cerrar formulario"
               >
@@ -2676,6 +2716,12 @@ export default function Home() {
               </button>
             </div>
             <form className="form-grid" onSubmit={addRoll} aria-busy={isAddingRoll}>
+            {pendingQrPayload && (
+              <div className="pending-qr-banner wide">
+                <strong>Etiqueta QR lista</strong>
+                <span>Este rollo quedará vinculado al QR escaneado.</span>
+              </div>
+            )}
             <label>
               Marca
               <select
@@ -3086,6 +3132,16 @@ export default function Home() {
 
             <div className="qr-scan-content">
               <p className="qr-scan-note" role="status">{qrScanNote}</p>
+              {pendingQrPayload && (
+                <div className="pending-qr-card">
+                  <span>Nueva etiqueta detectada</span>
+                  <code>{pendingQrPayload}</code>
+                  <button className="secondary-action" type="button" onClick={addRollFromScannedPayload}>
+                    <PackagePlus size={18} aria-hidden="true" />
+                    Agregar rollo con esta etiqueta
+                  </button>
+                </div>
+              )}
               <form className="manual-qr-form" onSubmit={submitManualQrPayload}>
                 <label>
                   Link o texto del QR

@@ -1260,6 +1260,47 @@ h3 {
   line-height: 1.4;
 }
 
+.pending-qr-card,
+.pending-qr-banner {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(47, 125, 95, 0.24);
+  border-radius: 8px;
+  background: rgba(47, 125, 95, 0.08);
+}
+
+.pending-qr-card span,
+.pending-qr-banner strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.pending-qr-card code {
+  overflow-wrap: anywhere;
+  padding: 8px;
+  border: 1px solid rgba(47, 125, 95, 0.18);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 253, 248, 0.8);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.pending-qr-card .secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.pending-qr-banner span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .manual-qr-form {
   display: grid;
   gap: 8px;
