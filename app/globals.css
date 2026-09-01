@@ -2127,6 +2127,14 @@ textarea:focus {
   font-size: 0.74rem;
 }
 
+.weighing-variation {
+  grid-column: 1 / -1;
+  justify-self: start;
+  color: var(--accent-dark);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
 .weighing-history article {
   padding-top: 8px;
   border-top: 1px solid var(--line);
@@ -2148,6 +2156,22 @@ textarea:focus {
   padding: 3px 7px;
   border-radius: 999px;
   font-weight: 800;
+}
+
+.weighing-delta {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--accent-dark) !important;
+  background: rgba(47, 125, 95, 0.1);
+  font-weight: 850;
+}
+
+.weighing-variation.warning,
+.weighing-delta.warning {
+  color: #6a4000 !important;
+  background: rgba(201, 133, 43, 0.13);
 }
 
 .confidence-verified {

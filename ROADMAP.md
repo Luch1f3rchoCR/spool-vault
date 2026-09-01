@@ -65,7 +65,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Referencia Bambu Lab de 254 g editable (213 g de spool + 41 g de cartón/NFC).
 - [x] Ajuste manual disponible para casos especiales.
 - [x] Guardar por separado peso del spool y peso del cartón/NFC.
-- [ ] Registrar historial de pesajes y margen de variación de la balanza.
+- [x] Registrar historial de pesajes y margen de variación de la balanza.
 - [x] Marcar explícitamente rollos incorporados con saldo inicial.
 
 ## Catálogo de tipos de spool

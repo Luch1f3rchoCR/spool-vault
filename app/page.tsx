@@ -346,6 +346,12 @@ function hasManualOpeningBalance(roll: FilamentRoll, weighingCount: number, cons
   );
 }
 
+function formatSignedGrams(value: number) {
+  const rounded = Math.round(value * 100) / 100;
+  if (Math.abs(rounded) <= WEIGHT_DELTA_EPSILON_G) return "0 g";
+  return `${rounded > 0 ? "+" : "-"}${Math.abs(rounded).toLocaleString("es-CR")} g`;
+}
+
 async function detectQrPayload(video: HTMLVideoElement, detector: BarcodeDetector | null) {
   if (detector) {
     const barcodes = await detector.detect(video);
@@ -969,11 +975,16 @@ export default function Home() {
       ))
       .map((roll) => roll.id)
   ), [consumptionCountByRoll, rolls, weighingCountByRoll]);
-  const recentWeighings = weighingEvents
-    .filter((event) => event.roll_id === selectedRoll?.id)
-    .slice(0, 3);
+  const selectedRollWeighings = useMemo(
+    () => weighingEvents.filter((event) => event.roll_id === selectedRoll?.id),
+    [selectedRoll?.id, weighingEvents]
+  );
+  const recentWeighings = selectedRollWeighings.slice(0, 3);
   const selectedRollWeighingCount = selectedRoll ? weighingCountByRoll.get(selectedRoll.id) ?? 0 : 0;
   const selectedHasManualOpeningBalance = selectedRoll ? manualOpeningBalanceRollIds.has(selectedRoll.id) : false;
+  const latestWeighingVariation = selectedRollWeighings.length >= 2
+    ? Math.round((Number(selectedRollWeighings[0].available_weight_g) - Number(selectedRollWeighings[1].available_weight_g)) * 100) / 100
+    : null;
 
   useEffect(() => {
     if (!selectedRoll) return;
@@ -3142,7 +3153,7 @@ export default function Home() {
                 <small>
                   {measuredDelta == null
                     ? "Peso total menos tara"
-                    : `${measuredDelta >= 0 ? "+" : ""}${measuredDelta.toLocaleString("es-CR")} g vs registro actual`}
+                    : `${formatSignedGrams(measuredDelta)} vs registro actual`}
                 </small>
               </div>
 
@@ -3824,7 +3835,11 @@ export default function Home() {
               <div className={measuredRemaining != null && measuredRemaining < 0 ? "weighing-result invalid" : "weighing-result"}>
                 <span>Filamento calculado</span>
                 <strong>{measuredRemaining == null ? "—" : `${measuredRemaining.toLocaleString("es-CR")} g`}</strong>
-                <small>Peso total − tara</small>
+                <small>
+                  {measuredDelta == null
+                    ? "Peso total menos tara"
+                    : `${formatSignedGrams(measuredDelta)} vs registro actual`}
+                </small>
               </div>
               <button className="primary-action" type="submit" disabled={isSavingWeight || measuredRemaining == null || measuredRemaining < 0}>
                 <Weight size={18} aria-hidden="true" />
@@ -3836,24 +3851,41 @@ export default function Home() {
               <div className="weighing-history-head">
                 <h3>Pesajes recientes</h3>
                 <span>{selectedRollWeighingCount} registros</span>
+                {latestWeighingVariation !== null && (
+                  <small className={Math.abs(latestWeighingVariation) > 5 ? "weighing-variation warning" : "weighing-variation"}>
+                    Última variación {formatSignedGrams(latestWeighingVariation)}
+                  </small>
+                )}
               </div>
-              {recentWeighings.length ? recentWeighings.map((event) => (
-                <article key={event.id}>
-                  <div>
-                    <strong>{event.measurement_kind === "scale" ? "Balanza" : "Ajuste manual"}</strong>
-                    <span>{new Date(event.measured_at).toLocaleString("es-CR", { dateStyle: "medium", timeStyle: "short" })}</span>
-                  </div>
-                  <div className="weighing-history-values">
-                    {event.measurement_kind === "scale" && (
-                      <span>{Number(event.gross_weight_g).toLocaleString("es-CR")} g − {Number(event.tare_weight_g).toLocaleString("es-CR")} g</span>
+              {recentWeighings.length ? recentWeighings.map((event, index) => {
+                const previousEvent = selectedRollWeighings[index + 1];
+                const variation = previousEvent
+                  ? Math.round((Number(event.available_weight_g) - Number(previousEvent.available_weight_g)) * 100) / 100
+                  : null;
+
+                return (
+                  <article key={event.id}>
+                    <div>
+                      <strong>{event.measurement_kind === "scale" ? "Balanza" : "Ajuste manual"}</strong>
+                      <span>{new Date(event.measured_at).toLocaleString("es-CR", { dateStyle: "medium", timeStyle: "short" })}</span>
+                    </div>
+                    <div className="weighing-history-values">
+                      {event.measurement_kind === "scale" && (
+                        <span>{Number(event.gross_weight_g).toLocaleString("es-CR")} g − {Number(event.tare_weight_g).toLocaleString("es-CR")} g</span>
+                      )}
+                      <strong>{Number(event.available_weight_g).toLocaleString("es-CR")} g</strong>
+                    </div>
+                    <span className={`confidence-badge confidence-${event.tare_confidence}`}>
+                      {tareConfidenceLabels[event.tare_confidence]}
+                    </span>
+                    {variation !== null && (
+                      <span className={Math.abs(variation) > 5 ? "weighing-delta warning" : "weighing-delta"}>
+                        {formatSignedGrams(variation)} vs anterior
+                      </span>
                     )}
-                    <strong>{Number(event.available_weight_g).toLocaleString("es-CR")} g</strong>
-                  </div>
-                  <span className={`confidence-badge confidence-${event.tare_confidence}`}>
-                    {tareConfidenceLabels[event.tare_confidence]}
-                  </span>
-                </article>
-              )) : (
+                  </article>
+                );
+              }) : (
                 <p className="empty-state">
                   {selectedHasManualOpeningBalance
                     ? "Este saldo viene de la carga inicial. El primer pesaje lo reemplaza por una medición trazable."
