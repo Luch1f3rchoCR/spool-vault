@@ -1097,6 +1097,10 @@ h3 {
   align-items: end;
 }
 
+.scan-actions-backdrop {
+  align-items: end;
+}
+
 .quick-weigh-panel {
   width: min(520px, 100%);
   border-radius: 18px 18px 0 0;
@@ -1105,6 +1109,12 @@ h3 {
 .qr-scan-panel {
   width: min(520px, 100%);
   overflow: hidden;
+  border-radius: 18px 18px 0 0;
+}
+
+.scan-actions-panel {
+  width: min(520px, 100%);
+  padding-bottom: 14px;
   border-radius: 18px 18px 0 0;
 }
 
@@ -1261,6 +1271,61 @@ h3 {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 850;
+}
+
+.scan-roll-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin: 0 14px 12px;
+  padding: 10px;
+  border: 1px solid rgba(47, 125, 95, 0.2);
+  border-radius: 12px;
+  background: rgba(47, 125, 95, 0.07);
+}
+
+.scan-roll-card strong,
+.scan-roll-card span,
+.scan-roll-card small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-roll-card span,
+.scan-roll-card small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.scan-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 14px;
+}
+
+.scan-action-grid button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: #fffdf8;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.scan-action-grid button:nth-child(2) {
+  border-color: transparent;
+  color: var(--paper);
+  background: var(--accent);
 }
 
 .roll-edit-modal {

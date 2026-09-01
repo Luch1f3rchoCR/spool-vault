@@ -48,6 +48,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Escáner QR móvil desde la barra inferior para seleccionar rollo.
 - [x] Decoder QR por canvas para iPhone cuando `BarcodeDetector` no existe.
 - [x] Fallback manual si cámara o permisos fallan.
+- [x] Acciones post-escaneo: ver ficha, pesar, registrar consumo y copiar link.
 - [ ] Validar flujo QR -> ficha -> Pesar en iPhone y Android reales.
 - [ ] Prueba final de instalación en iPhone y Android reales.
 - [ ] Splash e iconos PNG optimizados para cada plataforma.

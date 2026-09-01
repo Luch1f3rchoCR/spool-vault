@@ -543,6 +543,7 @@ export default function Home() {
   const [showAdd, setShowAdd] = useState(false);
   const [showQuickWeigh, setShowQuickWeigh] = useState(false);
   const [showQrScanner, setShowQrScanner] = useState(false);
+  const [scanActionRollId, setScanActionRollId] = useState("");
   const [editingRollId, setEditingRollId] = useState("");
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
   const [missingPurchaseRollId, setMissingPurchaseRollId] = useState("");
@@ -870,7 +871,7 @@ export default function Home() {
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showQuickWeigh || showQrScanner || showSpools || showReport || showPurchaseOrders || showProfile
+    document.body.style.overflow = showAdd || showQuickWeigh || showQrScanner || Boolean(scanActionRollId) || showSpools || showReport || showPurchaseOrders || showProfile
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
@@ -885,10 +886,12 @@ export default function Home() {
     showQrScanner,
     showQuickWeigh,
     showReport,
-    showSpools
+    showSpools,
+    scanActionRollId
   ]);
 
   const selectedRoll = rolls.find((roll) => roll.id === selectedId) ?? rolls[0];
+  const scanActionRoll = rolls.find((roll) => roll.id === scanActionRollId);
   const editingRoll = rolls.find((roll) => roll.id === editingRollId);
   const purchaseViews = useMemo<PurchaseView[]>(() => purchases.map((purchase) => {
     const relatedCorrections = purchaseCorrections
@@ -2225,10 +2228,46 @@ export default function Home() {
     setQrScanNote(`Rollo detectado: ${found.brand} ${found.color_name}.`);
     setSyncNote(`Rollo detectado por QR: ${found.brand} ${found.color_name}`);
     closeQrScanner();
+    setScanActionRollId(found.id);
+    return true;
+  }
+
+  function closeScanActions() {
+    setScanActionRollId("");
+  }
+
+  function showScannedRollDetail() {
+    closeScanActions();
     window.setTimeout(() => {
       document.getElementById("inventario")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
-    return true;
+  }
+
+  function weighScannedRoll() {
+    closeScanActions();
+    setShowQuickWeigh(true);
+    setIsWeighingHighlighted(true);
+    window.setTimeout(() => setIsWeighingHighlighted(false), 1800);
+  }
+
+  function consumeScannedRoll() {
+    closeScanActions();
+    window.setTimeout(() => {
+      document.getElementById("consume-selected-roll")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById("consumption-project-name")?.focus();
+    }, 80);
+  }
+
+  async function copyScannedRollLink() {
+    if (!scanActionRoll) return;
+    const url = `${window.location.origin}/?roll=${encodeURIComponent(scanActionRoll.id)}`;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setSyncNote(`Link copiado para ${scanActionRoll.color_name}`);
+    } catch {
+      setSyncNote(`Link del rollo: ${url}`);
+    }
   }
 
   function openQrScanner() {
@@ -2296,6 +2335,7 @@ export default function Home() {
           if (showQrScanner) {
             setQrScanNote(message);
             closeQrScanner();
+            setScanActionRollId(found.id);
           }
         } else {
           const message = "Leí la etiqueta, pero no encontré ese rollo en el inventario.";
@@ -3067,6 +3107,66 @@ export default function Home() {
         </div>
       )}
 
+      {scanActionRoll && (
+        <div
+          className="modal-backdrop scan-actions-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeScanActions();
+          }}
+        >
+          <section
+            className="panel modal-panel scan-actions-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scan-actions-title"
+          >
+            <div className="modal-head quick-weigh-head">
+              <div>
+                <p className="eyebrow">Rollo detectado</p>
+                <h2 id="scan-actions-title">{scanActionRoll.color_name}</h2>
+              </div>
+              <button
+                className="modal-close"
+                type="button"
+                onClick={closeScanActions}
+                aria-label="Cerrar acciones"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="scan-roll-card">
+              <span className="quick-weigh-swatch" style={{ backgroundColor: scanActionRoll.color_hex }} />
+              <div>
+                <strong>{scanActionRoll.brand} · {scanActionRoll.product_line || "Sin línea"}</strong>
+                <span>{scanActionRoll.material} · {Math.round(Number(scanActionRoll.available_weight_g))} g disponibles</span>
+                <small>{scanActionRoll.location || "Sin ubicación registrada"}</small>
+              </div>
+            </div>
+
+            <div className="scan-action-grid">
+              <button type="button" onClick={showScannedRollDetail}>
+                <Search size={18} aria-hidden="true" />
+                Ver ficha
+              </button>
+              <button type="button" onClick={weighScannedRoll}>
+                <Weight size={18} aria-hidden="true" />
+                Pesar
+              </button>
+              <button type="button" onClick={consumeScannedRoll}>
+                <Pencil size={18} aria-hidden="true" />
+                Consumo
+              </button>
+              <button type="button" onClick={copyScannedRollLink}>
+                <LinkIcon size={18} aria-hidden="true" />
+                Copiar link
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {editingRoll && (
         <RollEditModal
           roll={editingRoll}
@@ -3652,9 +3752,9 @@ export default function Home() {
               </form>
             </details>
 
-            <form className="consume-form" onSubmit={recordConsumption}>
+            <form className="consume-form" id="consume-selected-roll" onSubmit={recordConsumption}>
               <h3>Registrar consumo</h3>
-              <input name="project_name" required placeholder="Proyecto: Miniatura Hulk" />
+              <input id="consumption-project-name" name="project_name" required placeholder="Proyecto: Miniatura Hulk" />
               <div className="inline-fields">
                 <input name="grams_used" required type="number" min="1" placeholder="Gramos" />
                 <input name="consumed_at" type="date" defaultValue={todayIso()} />
