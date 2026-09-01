@@ -82,6 +82,7 @@ const AUTH_REQUEST_TIMEOUT_MS = 15000;
 const WEIGHT_DELTA_EPSILON_G = 0.01;
 
 type DataMode = "authenticated" | "demo" | "local" | "error";
+type InventoryLevel = "available" | "low" | "almost_empty" | "residual" | "empty" | "archived";
 type SpoolMutationResult = { roll: FilamentRoll | null; spool: Spool };
 type AtomicRollCreationResult = {
   roll: FilamentRoll;
@@ -175,6 +176,22 @@ const statusLabels: Record<RollStatus, string> = {
   low: "Bajo",
   empty: "Agotado",
   archived: "Archivado"
+};
+const inventoryLevelLabels: Record<InventoryLevel, string> = {
+  available: "Disponible",
+  low: "Bajo",
+  almost_empty: "Casi agotado",
+  residual: "Residual",
+  empty: "Agotado",
+  archived: "Archivado"
+};
+const inventoryLevelRank: Record<InventoryLevel, number> = {
+  empty: 0,
+  residual: 1,
+  almost_empty: 2,
+  low: 3,
+  available: 4,
+  archived: 5
 };
 const spoolStatusLabels: Record<Spool["status"], string> = {
   empty: "Vacío",
@@ -386,6 +403,29 @@ function normalizeStatus(available: number, threshold: number, current: RollStat
 
 function statusClass(status: RollStatus) {
   return `status status-${status}`;
+}
+
+function inventoryLevelForRoll(roll: FilamentRoll): InventoryLevel {
+  if (roll.status === "archived") return "archived";
+
+  const available = Number(roll.available_weight_g);
+  const initial = Number(roll.initial_weight_g);
+  const remainingPercent = initial > 0 ? (available / initial) * 100 : 0;
+
+  if (available <= 0 || roll.status === "empty") return "empty";
+  if (available <= 25 || remainingPercent <= 2.5) return "residual";
+  if (available <= 75 || remainingPercent <= 7.5) return "almost_empty";
+  if (available <= Number(roll.low_threshold_g) || remainingPercent <= 20 || roll.status === "low") return "low";
+  return "available";
+}
+
+function inventoryLevelClass(level: InventoryLevel) {
+  return `inventory-level inventory-level-${level}`;
+}
+
+function shouldReorderRoll(roll: FilamentRoll) {
+  const level = inventoryLevelForRoll(roll);
+  return level === "low" || level === "almost_empty" || level === "residual" || level === "empty";
 }
 
 function readLocal<T>(key: string, fallback: T) {
@@ -982,6 +1022,7 @@ export default function Home() {
   const recentWeighings = selectedRollWeighings.slice(0, 3);
   const selectedRollWeighingCount = selectedRoll ? weighingCountByRoll.get(selectedRoll.id) ?? 0 : 0;
   const selectedHasManualOpeningBalance = selectedRoll ? manualOpeningBalanceRollIds.has(selectedRoll.id) : false;
+  const selectedInventoryLevel = selectedRoll ? inventoryLevelForRoll(selectedRoll) : null;
   const latestWeighingVariation = selectedRollWeighings.length >= 2
     ? Math.round((Number(selectedRollWeighings[0].available_weight_g) - Number(selectedRollWeighings[1].available_weight_g)) * 100) / 100
     : null;
@@ -1088,7 +1129,7 @@ export default function Home() {
 
   const dashboard = useMemo(() => {
     const totalWeight = rolls.reduce((sum, roll) => sum + Number(roll.available_weight_g), 0);
-    const lowRolls = rolls.filter((roll) => roll.status === "low" || roll.status === "empty");
+    const lowRolls = rolls.filter(shouldReorderRoll);
     const materials = new Set(rolls.map((roll) => roll.material));
     const inventoryCost = rolls.reduce((sum, roll) => {
       if (roll.currency !== userProfile.base_currency || roll.filament_cost_amount == null || !roll.initial_weight_g) return sum;
@@ -1124,7 +1165,7 @@ export default function Home() {
       const matchesQuery = !cleanQuery || searchable.includes(cleanQuery);
       const matchesBrand = brandFilter === "Todos" || roll.brand === brandFilter;
       const matchesMaterial = materialFilter === "Todos" || roll.material === materialFilter;
-      const matchesLow = !lowOnly || roll.status === "low" || roll.status === "empty";
+      const matchesLow = !lowOnly || shouldReorderRoll(roll);
 
       return matchesQuery && matchesBrand && matchesMaterial && matchesLow;
     });
@@ -1133,8 +1174,11 @@ export default function Home() {
   const shoppingList = useMemo(
     () =>
       rolls
-        .filter((roll) => roll.status === "low" || roll.status === "empty")
-        .sort((a, b) => a.available_weight_g - b.available_weight_g),
+        .filter(shouldReorderRoll)
+        .sort((a, b) => {
+          const levelDelta = inventoryLevelRank[inventoryLevelForRoll(a)] - inventoryLevelRank[inventoryLevelForRoll(b)];
+          return levelDelta || a.available_weight_g - b.available_weight_g;
+        }),
     [rolls]
   );
   const emptySpools = spools.filter((spool) => spool.status === "empty");
@@ -3620,6 +3664,7 @@ export default function Home() {
             );
             const isSelected = selectedRoll?.id === roll.id;
             const hasOpeningBalance = manualOpeningBalanceRollIds.has(roll.id);
+            const inventoryLevel = inventoryLevelForRoll(roll);
 
             return (
               <button
@@ -3639,7 +3684,7 @@ export default function Home() {
                   </span>
                 </span>
                 <span className="roll-side">
-                  <span className={statusClass(roll.status)}>{statusLabels[roll.status]}</span>
+                  <span className={inventoryLevelClass(inventoryLevel)}>{inventoryLevelLabels[inventoryLevel]}</span>
                   {isDemoMode && <span className="demo-pill">Muestra</span>}
                   {hasOpeningBalance && <span className="opening-balance-pill">Saldo inicial</span>}
                   <strong>{Math.round(roll.available_weight_g)} g</strong>
@@ -3660,6 +3705,11 @@ export default function Home() {
               <div>
                 <div className="detail-badges">
                   <p className={statusClass(selectedRoll.status)}>{statusLabels[selectedRoll.status]}</p>
+                  {selectedInventoryLevel && (
+                    <span className={inventoryLevelClass(selectedInventoryLevel)}>
+                      {inventoryLevelLabels[selectedInventoryLevel]}
+                    </span>
+                  )}
                   {isDemoMode && <span className="demo-pill">Muestra</span>}
                   {selectedHasManualOpeningBalance && <span className="opening-balance-pill">Saldo inicial</span>}
                 </div>
@@ -3979,15 +4029,22 @@ export default function Home() {
         <h2>Por comprar</h2>
         {shoppingList.length ? (
           <div className="shopping-list">
-            {shoppingList.map((roll) => (
-              <div key={roll.id}>
-                <span className="mini-swatch" style={{ backgroundColor: roll.color_hex }} />
-                <span>
-                  {roll.brand} {roll.product_line} {roll.color_name}
-                </span>
-                <strong>{Math.round(roll.available_weight_g)} g</strong>
-              </div>
-            ))}
+            {shoppingList.map((roll) => {
+              const inventoryLevel = inventoryLevelForRoll(roll);
+
+              return (
+                <div key={roll.id}>
+                  <span className="mini-swatch" style={{ backgroundColor: roll.color_hex }} />
+                  <span>
+                    {roll.brand} {roll.product_line} {roll.color_name}
+                    <small className={inventoryLevelClass(inventoryLevel)}>
+                      {inventoryLevelLabels[inventoryLevel]}
+                    </small>
+                  </span>
+                  <strong>{Math.round(roll.available_weight_g)} g</strong>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="empty-state">No hay rollos bajos por ahora.</p>

@@ -1936,6 +1936,43 @@ textarea:focus {
   background: #e2e8f0;
 }
 
+.inventory-level {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.inventory-level-available {
+  color: #194b3c;
+  background: #d9f7ea;
+}
+
+.inventory-level-low {
+  color: #6a4000;
+  background: #ffe6b0;
+}
+
+.inventory-level-almost_empty {
+  color: #7a3412;
+  background: #fed7aa;
+}
+
+.inventory-level-residual,
+.inventory-level-empty {
+  color: #7a1c14;
+  background: #fee2e2;
+}
+
+.inventory-level-archived {
+  color: #475569;
+  background: #e2e8f0;
+}
+
 .detail-panel {
   position: sticky;
   top: 116px;
@@ -2441,6 +2478,15 @@ textarea:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.shopping-list .inventory-level {
+  display: flex;
+  width: fit-content;
+  min-height: 20px;
+  margin-top: 4px;
+  padding: 2px 7px;
+  font-size: 0.68rem;
 }
 
 .mini-swatch {

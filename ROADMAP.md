@@ -117,7 +117,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 ## Estados y valor de inventario
 
-- [ ] Derivar estados por gramos y porcentaje: disponible, bajo, casi agotado, residual y agotado.
+- [x] Derivar estados por gramos y porcentaje: disponible, bajo, casi agotado, residual y agotado.
 - [ ] Preparar umbrales configurables por usuario.
 - [ ] Separar valor de compra original de valor consumible restante.
 - [ ] Indicar conversiones estimadas, costos incompletos y nivel de confianza sin falsa precisión.
