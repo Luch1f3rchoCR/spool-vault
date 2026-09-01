@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import jsQR from "jsqr";
 import QRCode from "qrcode";
 import {
   AlertTriangle,
@@ -322,6 +323,31 @@ function rollIdFromPayload(payload: string) {
   if (plainMatch?.[1]) return plainMatch[1];
 
   return cleaned;
+}
+
+async function detectQrPayload(video: HTMLVideoElement, detector: BarcodeDetector | null) {
+  if (detector) {
+    const barcodes = await detector.detect(video);
+    const nativePayload = barcodes[0]?.rawValue;
+    if (nativePayload) return nativePayload;
+  }
+
+  if (!video.videoWidth || !video.videoHeight) return "";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return "";
+
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: "attemptBoth"
+  });
+
+  return code?.data ?? "";
 }
 
 function normalizeStatus(available: number, threshold: number, current: RollStatus = "open"): RollStatus {
@@ -941,18 +967,13 @@ export default function Home() {
     let isActive = true;
 
     async function startQrScanner() {
-      if (!("BarcodeDetector" in window)) {
-        setQrScanNote("Este navegador no trae lector QR nativo. Probá NFC o pegá el link del QR.");
-        return;
-      }
-
       if (!navigator.mediaDevices?.getUserMedia) {
         setQrScanNote("Este navegador no permite abrir la cámara desde la app.");
         return;
       }
 
       try {
-        const detector = new BarcodeDetector({ formats: ["qr_code"] });
+        const detector = "BarcodeDetector" in window ? new BarcodeDetector({ formats: ["qr_code"] }) : null;
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: {
@@ -972,14 +993,17 @@ export default function Home() {
 
         video.srcObject = stream;
         await video.play();
-        setQrScanNote("Apuntá la cámara al QR del rollo.");
+        setQrScanNote(
+          detector
+            ? "Apuntá la cámara al QR del rollo."
+            : "Apuntá la cámara al QR. Usando lector compatible con iPhone."
+        );
 
         const scanFrame = async () => {
           if (!isActive || !qrVideoRef.current) return;
 
           try {
-            const barcodes = await detector.detect(qrVideoRef.current);
-            const payload = barcodes[0]?.rawValue;
+            const payload = await detectQrPayload(qrVideoRef.current, detector);
 
             if (payload && selectRollFromScannedPayload(payload)) {
               return;

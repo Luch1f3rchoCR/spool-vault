@@ -11,6 +11,9 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.112.4
         version: 2.112.4
+      jsqr:
+        specifier: 1.4.0
+        version: 1.4.0
       lucide-react:
         specifier: 1.34.0
         version: 1.34.0(react@19.2.8)
@@ -500,6 +503,9 @@ packages:
     resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
     engines: {node: '>=8'}
 
+  jsqr@1.4.0:
+    resolution: {integrity: sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==}
+
   locate-path@5.0.0:
     resolution: {integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==}
     engines: {node: '>=8'}
@@ -956,6 +962,8 @@ snapshots:
   iceberg-js@0.8.1: {}
 
   is-fullwidth-code-point@3.0.0: {}
+
+  jsqr@1.4.0: {}
 
   locate-path@5.0.0:
     dependencies:

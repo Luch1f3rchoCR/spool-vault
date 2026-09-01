@@ -46,6 +46,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Login compacto en la franja superior.
 - [x] Base de perfil y membresía futura.
 - [x] Escáner QR móvil desde la barra inferior para seleccionar rollo.
+- [x] Decoder QR por canvas para iPhone cuando `BarcodeDetector` no existe.
 - [x] Fallback manual si cámara o permisos fallan.
 - [ ] Validar flujo QR -> ficha -> Pesar en iPhone y Android reales.
 - [ ] Prueba final de instalación en iPhone y Android reales.
