@@ -331,7 +331,8 @@ h3 {
   background: rgba(255, 232, 189, 0.48);
 }
 
-.missing-purchase-alert {
+.missing-purchase-alert,
+.opening-balance-alert {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -346,14 +347,21 @@ h3 {
   line-height: 1.4;
 }
 
-.missing-purchase-alert svg {
+.opening-balance-alert {
+  border-color: rgba(47, 125, 95, 0.38);
+  color: var(--accent-dark);
+  background: rgba(47, 125, 95, 0.08);
+}
+
+.missing-purchase-alert svg,
+.opening-balance-alert svg {
   flex: 0 0 auto;
   margin-top: 1px;
 }
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 8px;
   margin: 6px 0 12px;
 }
@@ -1871,7 +1879,8 @@ textarea:focus {
   font-size: 0.9rem;
 }
 
-.demo-pill {
+.demo-pill,
+.opening-balance-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1884,6 +1893,12 @@ textarea:focus {
   background: rgba(255, 232, 189, 0.66);
   font-size: 0.68rem !important;
   font-weight: 900;
+}
+
+.opening-balance-pill {
+  border-color: rgba(47, 125, 95, 0.24);
+  color: var(--accent-dark) !important;
+  background: rgba(47, 125, 95, 0.1);
 }
 
 .status {

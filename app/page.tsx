@@ -79,6 +79,7 @@ const LOCAL_PURCHASE_ORDER_PAYMENTS_KEY = "spool-vault-purchase-order-payments";
 const LOCAL_PROFILE_KEY = "spool-vault-user-profile";
 const LOCAL_WEIGHINGS_KEY = "spool-vault-weighings";
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
+const WEIGHT_DELTA_EPSILON_G = 0.01;
 
 type DataMode = "authenticated" | "demo" | "local" | "error";
 type SpoolMutationResult = { roll: FilamentRoll | null; spool: Spool };
@@ -334,6 +335,14 @@ function payloadMatchesRoll(roll: Pick<FilamentRoll, "id" | "qr_payload">, paylo
     roll.id === scannedId ||
     cleaned.includes(roll.id) ||
     Boolean(storedPayload && (cleaned === storedPayload || cleaned.includes(storedPayload)))
+  );
+}
+
+function hasManualOpeningBalance(roll: FilamentRoll, weighingCount: number, consumptionCount: number) {
+  return (
+    weighingCount === 0 &&
+    consumptionCount === 0 &&
+    Number(roll.initial_weight_g) - Number(roll.available_weight_g) > WEIGHT_DELTA_EPSILON_G
   );
 }
 
@@ -941,9 +950,30 @@ export default function Home() {
   const missingPurchaseRoll = rolls.find((roll) => roll.id === missingPurchaseRollId);
   const selectedRollPurchase = purchaseViews.find((view) => view.original.roll_id === selectedRoll?.id);
   const selectedSpool = spools.find((spool) => spool.id === selectedRoll?.spool_id);
+  const weighingCountByRoll = useMemo(() => {
+    const counts = new Map<string, number>();
+    weighingEvents.forEach((event) => counts.set(event.roll_id, (counts.get(event.roll_id) ?? 0) + 1));
+    return counts;
+  }, [weighingEvents]);
+  const consumptionCountByRoll = useMemo(() => {
+    const counts = new Map<string, number>();
+    logs.forEach((log) => counts.set(log.roll_id, (counts.get(log.roll_id) ?? 0) + 1));
+    return counts;
+  }, [logs]);
+  const manualOpeningBalanceRollIds = useMemo(() => new Set(
+    rolls
+      .filter((roll) => hasManualOpeningBalance(
+        roll,
+        weighingCountByRoll.get(roll.id) ?? 0,
+        consumptionCountByRoll.get(roll.id) ?? 0
+      ))
+      .map((roll) => roll.id)
+  ), [consumptionCountByRoll, rolls, weighingCountByRoll]);
   const recentWeighings = weighingEvents
     .filter((event) => event.roll_id === selectedRoll?.id)
     .slice(0, 3);
+  const selectedRollWeighingCount = selectedRoll ? weighingCountByRoll.get(selectedRoll.id) ?? 0 : 0;
+  const selectedHasManualOpeningBalance = selectedRoll ? manualOpeningBalanceRollIds.has(selectedRoll.id) : false;
 
   useEffect(() => {
     if (!selectedRoll) return;
@@ -1059,9 +1089,10 @@ export default function Home() {
       totalWeight,
       lowCount: lowRolls.length,
       materialCount: materials.size,
+      manualOpeningBalanceCount: manualOpeningBalanceRollIds.size,
       inventoryCost
     };
-  }, [rolls, userProfile.base_currency]);
+  }, [manualOpeningBalanceRollIds.size, rolls, userProfile.base_currency]);
 
   const filteredRolls = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
@@ -2662,6 +2693,11 @@ export default function Home() {
         </article>
         <article>
           <AlertTriangle size={18} aria-hidden="true" />
+          <strong>{dashboard.manualOpeningBalanceCount}</strong>
+          <span>saldo inicial</span>
+        </article>
+        <article>
+          <AlertTriangle size={18} aria-hidden="true" />
           <strong>{dashboard.lowCount}</strong>
           <span>bajos</span>
         </article>
@@ -3572,6 +3608,7 @@ export default function Home() {
               Math.min(100, (Number(roll.available_weight_g) / Number(roll.initial_weight_g)) * 100)
             );
             const isSelected = selectedRoll?.id === roll.id;
+            const hasOpeningBalance = manualOpeningBalanceRollIds.has(roll.id);
 
             return (
               <button
@@ -3593,6 +3630,7 @@ export default function Home() {
                 <span className="roll-side">
                   <span className={statusClass(roll.status)}>{statusLabels[roll.status]}</span>
                   {isDemoMode && <span className="demo-pill">Muestra</span>}
+                  {hasOpeningBalance && <span className="opening-balance-pill">Saldo inicial</span>}
                   <strong>{Math.round(roll.available_weight_g)} g</strong>
                 </span>
               </button>
@@ -3612,6 +3650,7 @@ export default function Home() {
                 <div className="detail-badges">
                   <p className={statusClass(selectedRoll.status)}>{statusLabels[selectedRoll.status]}</p>
                   {isDemoMode && <span className="demo-pill">Muestra</span>}
+                  {selectedHasManualOpeningBalance && <span className="opening-balance-pill">Saldo inicial</span>}
                 </div>
                 <h2>{selectedRoll.color_name}</h2>
                 <p>
@@ -3655,6 +3694,13 @@ export default function Home() {
               <p className="missing-purchase-alert">
                 <AlertTriangle size={16} aria-hidden="true" />
                 El costo de este rollo está incompleto porque no existe una compra en su historial.
+              </p>
+            )}
+
+            {selectedHasManualOpeningBalance && (
+              <p className="opening-balance-alert">
+                <AlertTriangle size={16} aria-hidden="true" />
+                Este rollo entró con saldo inicial cargado manualmente. Pesalo cuando podás para convertirlo en dato verificado.
               </p>
             )}
 
@@ -3789,7 +3835,7 @@ export default function Home() {
             <section className="weighing-history" aria-label="Historial reciente de pesajes">
               <div className="weighing-history-head">
                 <h3>Pesajes recientes</h3>
-                <span>{weighingEvents.filter((event) => event.roll_id === selectedRoll.id).length} registros</span>
+                <span>{selectedRollWeighingCount} registros</span>
               </div>
               {recentWeighings.length ? recentWeighings.map((event) => (
                 <article key={event.id}>
@@ -3808,7 +3854,11 @@ export default function Home() {
                   </span>
                 </article>
               )) : (
-                <p className="empty-state">El primer pesaje quedará guardado acá con la tara que usaste.</p>
+                <p className="empty-state">
+                  {selectedHasManualOpeningBalance
+                    ? "Este saldo viene de la carga inicial. El primer pesaje lo reemplaza por una medición trazable."
+                    : "El primer pesaje quedará guardado acá con la tara que usaste."}
+                </p>
               )}
             </section>
 

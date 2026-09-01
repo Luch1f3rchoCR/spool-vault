@@ -66,7 +66,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Ajuste manual disponible para casos especiales.
 - [x] Guardar por separado peso del spool y peso del cartón/NFC.
 - [ ] Registrar historial de pesajes y margen de variación de la balanza.
-- [ ] Marcar explícitamente rollos incorporados con saldo inicial.
+- [x] Marcar explícitamente rollos incorporados con saldo inicial.
 
 ## Catálogo de tipos de spool
 
