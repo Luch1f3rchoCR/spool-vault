@@ -325,6 +325,18 @@ function rollIdFromPayload(payload: string) {
   return cleaned;
 }
 
+function payloadMatchesRoll(roll: Pick<FilamentRoll, "id" | "qr_payload">, payload: string) {
+  const cleaned = payload.trim();
+  const storedPayload = roll.qr_payload?.trim();
+  const scannedId = rollIdFromPayload(cleaned);
+
+  return (
+    roll.id === scannedId ||
+    cleaned.includes(roll.id) ||
+    Boolean(storedPayload && (cleaned === storedPayload || cleaned.includes(storedPayload)))
+  );
+}
+
 async function detectQrPayload(video: HTMLVideoElement, detector: BarcodeDetector | null) {
   if (detector) {
     const barcodes = await detector.detect(video);
@@ -2245,8 +2257,7 @@ export default function Home() {
   }
 
   function selectRollFromScannedPayload(payload: string) {
-    const scannedId = rollIdFromPayload(payload);
-    const found = rolls.find((roll) => roll.id === scannedId || payload.includes(roll.id));
+    const found = rolls.find((roll) => payloadMatchesRoll(roll, payload));
 
     if (!found) {
       stopQrScanner();
@@ -2309,6 +2320,18 @@ export default function Home() {
     }
   }
 
+  async function copySelectedRollPayload() {
+    if (!selectedRoll) return;
+    const payload = payloadForRoll(selectedRoll);
+
+    try {
+      await navigator.clipboard.writeText(payload);
+      setNfcNote("Contenido de etiqueta copiado.");
+    } catch {
+      setNfcNote(`Contenido de etiqueta: ${payload}`);
+    }
+  }
+
   function openQrScanner() {
     setManualQrPayload("");
     setPendingQrPayload("");
@@ -2335,11 +2358,12 @@ export default function Home() {
 
     try {
       const ndef = new NDEFReader();
+      const rollPayload = payloadForRoll(selectedRoll);
       const urlPayload = `${window.location.origin}/?roll=${encodeURIComponent(selectedRoll.id)}`;
       await ndef.write({
         records: [
           { recordType: "url", data: urlPayload },
-          { recordType: "text", data: `filament-roll:${selectedRoll.id}` }
+          { recordType: "text", data: rollPayload }
         ]
       });
       setNfcNote(`Etiqueta NFC escrita para ${selectedRoll.color_name}.`);
@@ -2367,7 +2391,7 @@ export default function Home() {
         const readable = event.message.records
           .map((record) => (record.data ? decoder.decode(record.data) : ""))
           .join(" ");
-        const found = rolls.find((roll) => readable.includes(roll.id));
+        const found = rolls.find((roll) => payloadMatchesRoll(roll, readable));
         if (found) {
           setSelectedId(found.id);
           const message = `Rollo detectado: ${found.brand} ${found.color_name}.`;
@@ -2380,7 +2404,10 @@ export default function Home() {
         } else {
           const message = "Leí la etiqueta, pero no encontré ese rollo en el inventario.";
           setNfcNote(message);
-          if (showQrScanner) setQrScanNote(message);
+          if (showQrScanner) {
+            setPendingQrPayload(readable.trim());
+            setQrScanNote("Leí una etiqueta NFC nueva. Podés crear un rollo y dejarla vinculada.");
+          }
         }
       };
     } catch (error) {
@@ -3832,6 +3859,10 @@ export default function Home() {
                 )}
               </div>
               <div className="nfc-actions">
+                <button type="button" onClick={copySelectedRollPayload}>
+                  <QrCode size={18} aria-hidden="true" />
+                  Copiar etiqueta
+                </button>
                 <button type="button" onClick={writeNfcTag}>
                   <Nfc size={18} aria-hidden="true" />
                   Escribir NFC

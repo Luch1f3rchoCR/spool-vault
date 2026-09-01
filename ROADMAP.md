@@ -50,6 +50,8 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Fallback manual si cámara o permisos fallan.
 - [x] Acciones post-escaneo: ver ficha, pesar, registrar consumo y copiar link.
 - [x] Crear rollo desde QR no registrado y vincular la etiqueta escaneada.
+- [x] Reconocer etiquetas por payload guardado, no solamente por ID interno.
+- [x] Copiar el contenido exacto de la etiqueta desde la ficha del rollo.
 - [ ] Validar flujo QR -> ficha -> Pesar en iPhone y Android reales.
 - [ ] Prueba final de instalación en iPhone y Android reales.
 - [ ] Splash e iconos PNG optimizados para cada plataforma.
