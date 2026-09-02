@@ -151,7 +151,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Completar branding: “by Stone Collective Dev”, About y Open Graph.
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
 - [ ] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
-- [ ] Crear proyectos/impresiones y asociar consumos reales.
+- [x] Crear proyectos/impresiones y asociar consumos reales.
 - [ ] Agregar impresoras y costo por hora.
 
 ## Market de proveedores
@@ -177,14 +177,19 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 ## Proyectos, producción y utilidad
 
-- [ ] Crear proyectos con nombre, versiones, archivos STL/3MF privados, imagen, licencia y notas.
-- [ ] Definir una receta por proyecto: filamentos, colores, gramos previstos, tiempo y cantidad de piezas.
-- [ ] Registrar insumos adicionales como imanes, pines, tornillos, luces, pintura y empaque con cantidad y costo.
-- [ ] Validar existencias antes de imprimir y sugerir ofertas del market cuando falte material.
-- [ ] Crear corridas de producción con fecha, impresora, cantidad, resultado, duración y desperdicio.
-- [ ] Asociar cada consumo real al rollo utilizado y descontarlo atómicamente al cerrar la corrida.
-- [ ] Congelar en la corrida los costos de material, extras, electricidad, máquina, mano de obra y fallos.
-- [ ] Permitir precio de venta, comisiones, envío e impuestos para calcular utilidad y margen sin falsa precisión.
+- [x] Crear proyectos con nombre, versión, archivo STL/3MF privado, licencia y notas.
+- [ ] Agregar imagen de portada por proyecto.
+- [x] Definir una receta por proyecto con filamentos, colores, gramos previstos y tiempo.
+- [x] Registrar insumos adicionales como imanes, pines, tornillos, luces, pintura y empaque con cantidad y costo.
+- [x] Validar existencias antes de cerrar una impresión.
+- [ ] Sugerir ofertas del market cuando falte material.
+- [x] Crear corridas de producción con fecha, cantidad, resultado y duración.
+- [ ] Incorporar impresora utilizada y desperdicio separado del consumo útil.
+- [x] Asociar cada consumo real al rollo utilizado y descontarlo atómicamente al cerrar la corrida.
+- [x] Congelar en la corrida los costos de material y extras según el lote realmente usado.
+- [ ] Agregar electricidad, máquina, mano de obra y fallos al costo congelado.
+- [x] Permitir precio de venta y utilidad básica sin mezclar monedas ni inventar costos incompletos.
+- [ ] Incorporar comisiones, envío, impuestos y margen final.
 - [ ] Dar recomendaciones accionables: precio insuficiente, inventario bajo, exceso de desperdicio y necesidad de reposición.
 
 ## Antes de comercializar

@@ -207,6 +207,100 @@ export type ConsumptionLog = {
   request_id?: string | null;
 };
 
+export type PrintProject = {
+  id: string;
+  creation_request_id: string;
+  name: string;
+  description: string | null;
+  version: string | null;
+  file_path: string | null;
+  file_name: string | null;
+  file_size_bytes: number | null;
+  license_name: string | null;
+  commercial_use_allowed: boolean;
+  estimated_minutes: number | null;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProjectFilamentRequirement = {
+  id: string;
+  project_id: string;
+  position: number;
+  label: string | null;
+  preferred_roll_id: string | null;
+  brand: string;
+  material: string;
+  product_line: string | null;
+  color_name: string;
+  color_hex: string;
+  planned_grams: number;
+  created_at: string;
+};
+
+export type ProjectComponent = {
+  id: string;
+  project_id: string;
+  position: number;
+  name: string;
+  unit: string;
+  quantity: number;
+  unit_cost: number;
+  currency: string;
+  supplier_name: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type ProductionRunStatus = "completed" | "partial" | "failed";
+
+export type ProductionRun = {
+  id: string;
+  request_id: string;
+  project_id: string | null;
+  project_name: string;
+  produced_at: string;
+  quantity: number;
+  status: ProductionRunStatus;
+  actual_minutes: number | null;
+  sale_amount: number | null;
+  sale_currency: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type ProductionRunFilament = {
+  id: string;
+  run_id: string;
+  project_requirement_id: string | null;
+  roll_id: string | null;
+  brand: string;
+  material: string;
+  product_line: string | null;
+  color_name: string;
+  color_hex: string;
+  grams_used: number;
+  unit_cost_per_g: number | null;
+  cost_amount: number | null;
+  currency: string | null;
+  created_at: string;
+};
+
+export type ProductionRunComponent = {
+  id: string;
+  run_id: string;
+  project_component_id: string | null;
+  name: string;
+  unit: string;
+  quantity: number;
+  unit_cost: number;
+  cost_amount: number;
+  currency: string;
+  supplier_name: string | null;
+  created_at: string;
+};
+
 export type InventoryBalanceRow = {
   roll_id: string;
   user_id?: string;

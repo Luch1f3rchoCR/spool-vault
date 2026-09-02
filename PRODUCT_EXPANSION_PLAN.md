@@ -166,9 +166,9 @@ Cada componente debe mostrar si es real, estimado o incompleto. La app puede rec
 
 ### Entrega B — proyectos mínimos
 
-- Proyecto, receta de materiales y extras.
-- Corrida manual de producción.
-- Descuento atómico de rollos y costo/utilidad básicos.
+- [x] Proyecto, receta de materiales, extras y archivos privados STL/3MF.
+- [x] Corrida manual de producción.
+- [x] Descuento atómico de rollos y costo/utilidad básicos.
 
 ### Entrega C — market piloto
 

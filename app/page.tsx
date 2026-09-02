@@ -9,6 +9,7 @@ import {
   Camera,
   Check,
   Filter,
+  FolderKanban,
   LinkIcon,
   LogIn,
   Nfc,
@@ -33,6 +34,11 @@ import {
 } from "@/components/missing-purchase-modal";
 import { ProfilePanel, type ProfileValues } from "@/components/profile-panel";
 import {
+  ProjectsModal,
+  type ProductionRunValues,
+  type ProjectCreateValues
+} from "@/components/projects-modal";
+import {
   PurchaseOrdersModal,
   type PurchaseOrderValues
 } from "@/components/purchase-orders-modal";
@@ -53,6 +59,12 @@ import type {
   FilamentRoll,
   InventoryBalanceRow,
   PackageType,
+  PrintProject,
+  ProductionRun,
+  ProductionRunComponent,
+  ProductionRunFilament,
+  ProjectComponent,
+  ProjectFilamentRequirement,
   PurchaseCorrection,
   PurchaseOrder,
   PurchaseOrderItem,
@@ -78,6 +90,12 @@ const LOCAL_PURCHASE_ORDER_ITEMS_KEY = "spool-vault-purchase-order-items";
 const LOCAL_PURCHASE_ORDER_PAYMENTS_KEY = "spool-vault-purchase-order-payments";
 const LOCAL_PROFILE_KEY = "spool-vault-user-profile";
 const LOCAL_WEIGHINGS_KEY = "spool-vault-weighings";
+const LOCAL_PROJECTS_KEY = "spool-vault-projects";
+const LOCAL_PROJECT_REQUIREMENTS_KEY = "spool-vault-project-requirements";
+const LOCAL_PROJECT_COMPONENTS_KEY = "spool-vault-project-components";
+const LOCAL_PRODUCTION_RUNS_KEY = "spool-vault-production-runs";
+const LOCAL_RUN_FILAMENTS_KEY = "spool-vault-run-filaments";
+const LOCAL_RUN_COMPONENTS_KEY = "spool-vault-run-components";
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
 const WEIGHT_DELTA_EPSILON_G = 0.01;
 
@@ -114,6 +132,20 @@ type PurchaseOrderMutationResult = {
   order: PurchaseOrder;
   items: PurchaseOrderItem[];
   payment: PurchaseOrderPayment | null;
+  replayed: boolean;
+};
+type ProjectMutationResult = {
+  project: PrintProject;
+  requirements: ProjectFilamentRequirement[];
+  components: ProjectComponent[];
+  replayed: boolean;
+};
+type ProductionRunMutationResult = {
+  run: ProductionRun;
+  filaments: ProductionRunFilament[];
+  components: ProductionRunComponent[];
+  rolls: FilamentRoll[];
+  logs: ConsumptionLog[];
   replayed: boolean;
 };
 type PurchaseView = {
@@ -601,6 +633,12 @@ export default function Home() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([]);
   const [purchaseOrderPayments, setPurchaseOrderPayments] = useState<PurchaseOrderPayment[]>([]);
+  const [projects, setProjects] = useState<PrintProject[]>([]);
+  const [projectRequirements, setProjectRequirements] = useState<ProjectFilamentRequirement[]>([]);
+  const [projectComponents, setProjectComponents] = useState<ProjectComponent[]>([]);
+  const [productionRuns, setProductionRuns] = useState<ProductionRun[]>([]);
+  const [productionRunFilaments, setProductionRunFilaments] = useState<ProductionRunFilament[]>([]);
+  const [productionRunComponents, setProductionRunComponents] = useState<ProductionRunComponent[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => defaultUserProfile());
   const [selectedId, setSelectedId] = useState<string>("");
   const [query, setQuery] = useState("");
@@ -617,6 +655,7 @@ export default function Home() {
   const [showSpools, setShowSpools] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showPurchaseOrders, setShowPurchaseOrders] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
   const [reportRows, setReportRows] = useState<InventoryBalanceRow[]>([]);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [reportError, setReportError] = useState("");
@@ -648,6 +687,8 @@ export default function Home() {
   const [isCorrectingPurchase, setIsCorrectingPurchase] = useState(false);
   const [isAddingMissingPurchase, setIsAddingMissingPurchase] = useState(false);
   const [isSavingPurchaseOrder, setIsSavingPurchaseOrder] = useState(false);
+  const [isSavingProject, setIsSavingProject] = useState(false);
+  const [isSavingProductionRun, setIsSavingProductionRun] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
@@ -659,6 +700,8 @@ export default function Home() {
   const purchaseCorrectionRequests = useRef<Record<string, { id: string; fingerprint: string }>>({});
   const missingPurchaseRequests = useRef<Record<string, { id: string; fingerprint: string }>>({});
   const purchaseOrderRequest = useRef<{ id: string; fingerprint: string } | null>(null);
+  const projectRequest = useRef<{ id: string; projectId: string; fingerprint: string; filePath: string | null } | null>(null);
+  const productionRunRequest = useRef<{ id: string; projectId: string; fingerprint: string } | null>(null);
   const consumptionRequest = useRef<{ id: string; rollId: string } | null>(null);
   const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
   const createSpoolRequestId = useRef<string | null>(null);
@@ -720,6 +763,12 @@ export default function Home() {
           setPurchaseOrders([]);
           setPurchaseOrderItems([]);
           setPurchaseOrderPayments([]);
+          setProjects([]);
+          setProjectRequirements([]);
+          setProjectComponents([]);
+          setProductionRuns([]);
+          setProductionRunFilaments([]);
+          setProductionRunComponents([]);
           setUserProfile(defaultUserProfile());
           setSignedInUserId("");
           setSelectedId("");
@@ -739,6 +788,12 @@ export default function Home() {
           const localPurchaseOrders = readLocal<PurchaseOrder[]>(LOCAL_PURCHASE_ORDERS_KEY, []);
           const localPurchaseOrderItems = readLocal<PurchaseOrderItem[]>(LOCAL_PURCHASE_ORDER_ITEMS_KEY, []);
           const localPurchaseOrderPayments = readLocal<PurchaseOrderPayment[]>(LOCAL_PURCHASE_ORDER_PAYMENTS_KEY, []);
+          const localProjects = readLocal<PrintProject[]>(LOCAL_PROJECTS_KEY, []);
+          const localProjectRequirements = readLocal<ProjectFilamentRequirement[]>(LOCAL_PROJECT_REQUIREMENTS_KEY, []);
+          const localProjectComponents = readLocal<ProjectComponent[]>(LOCAL_PROJECT_COMPONENTS_KEY, []);
+          const localProductionRuns = readLocal<ProductionRun[]>(LOCAL_PRODUCTION_RUNS_KEY, []);
+          const localProductionRunFilaments = readLocal<ProductionRunFilament[]>(LOCAL_RUN_FILAMENTS_KEY, []);
+          const localProductionRunComponents = readLocal<ProductionRunComponent[]>(LOCAL_RUN_COMPONENTS_KEY, []);
           const localProfile = readLocal<UserProfile>(LOCAL_PROFILE_KEY, defaultUserProfile());
           const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
           setSignedInEmail("");
@@ -753,6 +808,12 @@ export default function Home() {
           setPurchaseOrders(localPurchaseOrders);
           setPurchaseOrderItems(localPurchaseOrderItems);
           setPurchaseOrderPayments(localPurchaseOrderPayments);
+          setProjects(localProjects);
+          setProjectRequirements(localProjectRequirements);
+          setProjectComponents(localProjectComponents);
+          setProductionRuns(localProductionRuns);
+          setProductionRunFilaments(localProductionRunFilaments);
+          setProductionRunComponents(localProductionRunComponents);
           setUserProfile(localProfile);
           setSelectedId(localRolls[0]?.id ?? "");
           setDataMode(hasLocalInventory ? "local" : "demo");
@@ -780,7 +841,13 @@ export default function Home() {
           { data: purchaseOrderData, error: purchaseOrderError },
           { data: purchaseOrderItemData, error: purchaseOrderItemError },
           { data: purchaseOrderPaymentData, error: purchaseOrderPaymentError },
-          { data: profileData, error: profileError }
+          { data: profileData, error: profileError },
+          { data: projectData, error: projectError },
+          { data: projectRequirementData, error: projectRequirementError },
+          { data: projectComponentData, error: projectComponentError },
+          { data: productionRunData, error: productionRunError },
+          { data: productionRunFilamentData, error: productionRunFilamentError },
+          { data: productionRunComponentData, error: productionRunComponentError }
         ] =
           await Promise.all([
             supabase.from("filament_rolls").select("*").order("updated_at", { ascending: false }),
@@ -794,14 +861,22 @@ export default function Home() {
             supabase.from("purchase_orders").select("*").order("purchased_at", { ascending: false }),
             supabase.from("purchase_order_items").select("*").order("created_at", { ascending: false }),
             supabase.from("purchase_order_payments").select("*").order("created_at", { ascending: false }),
-            supabase.from("user_profiles").select("*").maybeSingle()
+            supabase.from("user_profiles").select("*").maybeSingle(),
+            supabase.from("print_projects").select("*").order("created_at", { ascending: false }),
+            supabase.from("project_filament_requirements").select("*").order("position"),
+            supabase.from("project_components").select("*").order("position"),
+            supabase.from("production_runs").select("*").order("produced_at", { ascending: false }),
+            supabase.from("production_run_filaments").select("*").order("created_at", { ascending: false }),
+            supabase.from("production_run_components").select("*").order("created_at", { ascending: false })
           ]);
 
         if (
           !rollError && !logError && !spoolError && !spoolTypeError && !weighingError
           && !supplierError && !purchaseError && !purchaseCorrectionError
           && !purchaseOrderError && !purchaseOrderItemError && !purchaseOrderPaymentError
-          && !profileError && rollData
+          && !profileError && !projectError && !projectRequirementError && !projectComponentError
+          && !productionRunError && !productionRunFilamentError && !productionRunComponentError
+          && rollData
         ) {
           const loadedSuppliers = (supplierData ?? []) as Supplier[];
           const loadedRolls = (rollData as FilamentRoll[]).map((roll) => ({
@@ -819,6 +894,12 @@ export default function Home() {
           setPurchaseOrders((purchaseOrderData ?? []) as PurchaseOrder[]);
           setPurchaseOrderItems((purchaseOrderItemData ?? []) as PurchaseOrderItem[]);
           setPurchaseOrderPayments((purchaseOrderPaymentData ?? []) as PurchaseOrderPayment[]);
+          setProjects((projectData ?? []) as PrintProject[]);
+          setProjectRequirements((projectRequirementData ?? []) as ProjectFilamentRequirement[]);
+          setProjectComponents((projectComponentData ?? []) as ProjectComponent[]);
+          setProductionRuns((productionRunData ?? []) as ProductionRun[]);
+          setProductionRunFilaments((productionRunFilamentData ?? []) as ProductionRunFilament[]);
+          setProductionRunComponents((productionRunComponentData ?? []) as ProductionRunComponent[]);
           setUserProfile((profileData as UserProfile | null) ?? defaultUserProfile(user.id, user.email ?? ""));
           setSelectedId(loadedRolls[0]?.id ?? "");
           setDataMode("authenticated");
@@ -838,6 +919,12 @@ export default function Home() {
         setPurchaseOrders([]);
         setPurchaseOrderItems([]);
         setPurchaseOrderPayments([]);
+        setProjects([]);
+        setProjectRequirements([]);
+        setProjectComponents([]);
+        setProductionRuns([]);
+        setProductionRunFilaments([]);
+        setProductionRunComponents([]);
         setUserProfile(defaultUserProfile(user.id, user.email ?? ""));
         setSelectedId("");
         setDataMode("error");
@@ -855,6 +942,12 @@ export default function Home() {
       const localPurchaseOrders = readLocal<PurchaseOrder[]>(LOCAL_PURCHASE_ORDERS_KEY, []);
       const localPurchaseOrderItems = readLocal<PurchaseOrderItem[]>(LOCAL_PURCHASE_ORDER_ITEMS_KEY, []);
       const localPurchaseOrderPayments = readLocal<PurchaseOrderPayment[]>(LOCAL_PURCHASE_ORDER_PAYMENTS_KEY, []);
+      const localProjects = readLocal<PrintProject[]>(LOCAL_PROJECTS_KEY, []);
+      const localProjectRequirements = readLocal<ProjectFilamentRequirement[]>(LOCAL_PROJECT_REQUIREMENTS_KEY, []);
+      const localProjectComponents = readLocal<ProjectComponent[]>(LOCAL_PROJECT_COMPONENTS_KEY, []);
+      const localProductionRuns = readLocal<ProductionRun[]>(LOCAL_PRODUCTION_RUNS_KEY, []);
+      const localProductionRunFilaments = readLocal<ProductionRunFilament[]>(LOCAL_RUN_FILAMENTS_KEY, []);
+      const localProductionRunComponents = readLocal<ProductionRunComponent[]>(LOCAL_RUN_COMPONENTS_KEY, []);
       const localProfile = readLocal<UserProfile>(LOCAL_PROFILE_KEY, defaultUserProfile());
       const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
       setRolls(localRolls);
@@ -867,6 +960,12 @@ export default function Home() {
       setPurchaseOrders(localPurchaseOrders);
       setPurchaseOrderItems(localPurchaseOrderItems);
       setPurchaseOrderPayments(localPurchaseOrderPayments);
+      setProjects(localProjects);
+      setProjectRequirements(localProjectRequirements);
+      setProjectComponents(localProjectComponents);
+      setProductionRuns(localProductionRuns);
+      setProductionRunFilaments(localProductionRunFilaments);
+      setProductionRunComponents(localProductionRunComponents);
       setUserProfile(localProfile);
       setSelectedId(localRolls[0]?.id ?? "");
       setDataMode(hasLocalInventory ? "local" : "demo");
@@ -939,7 +1038,32 @@ export default function Home() {
   }, [dataMode, usingSupabase, weighingEvents]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showQuickWeigh || showQrScanner || Boolean(scanActionRollId) || showSpools || showReport || showPurchaseOrders || showProfile
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PROJECTS_KEY, projects);
+  }, [dataMode, projects, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PROJECT_REQUIREMENTS_KEY, projectRequirements);
+  }, [dataMode, projectRequirements, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PROJECT_COMPONENTS_KEY, projectComponents);
+  }, [dataMode, projectComponents, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PRODUCTION_RUNS_KEY, productionRuns);
+  }, [dataMode, productionRuns, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_RUN_FILAMENTS_KEY, productionRunFilaments);
+  }, [dataMode, productionRunFilaments, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_RUN_COMPONENTS_KEY, productionRunComponents);
+  }, [dataMode, productionRunComponents, usingSupabase]);
+
+  useEffect(() => {
+    document.body.style.overflow = showAdd || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
+      || showSpools || showReport || showPurchaseOrders || showProjects || showProfile
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
@@ -951,6 +1075,7 @@ export default function Home() {
     showAdd,
     showPurchaseOrders,
     showProfile,
+    showProjects,
     showQrScanner,
     showQuickWeigh,
     showReport,
@@ -1825,6 +1950,370 @@ export default function Home() {
       setSyncNote(`No se pudo confirmar la compra faltante. Podés reintentar sin duplicarla: ${message}`);
     } finally {
       setIsAddingMissingPurchase(false);
+    }
+  }
+
+  async function createProject(values: ProjectCreateValues, file: File | null) {
+    if (isSavingProject) return false;
+    activateLocalMode();
+
+    const extension = file?.name.split(".").pop()?.toLowerCase() ?? "";
+    if (file && !["stl", "3mf"].includes(extension)) {
+      setSyncNote("El archivo del proyecto debe ser STL o 3MF.");
+      return false;
+    }
+    if (file && file.size > 50 * 1024 * 1024) {
+      setSyncNote("El archivo del proyecto no puede superar 50 MB.");
+      return false;
+    }
+    if (!values.requirements.length) {
+      setSyncNote("Agregá al menos un filamento a la receta.");
+      return false;
+    }
+
+    const fingerprint = JSON.stringify({
+      ...values,
+      file: file ? { name: file.name, size: file.size, type: file.type } : null
+    });
+    setIsSavingProject(true);
+
+    try {
+      if (usingSupabase && supabase) {
+        const pending = projectRequest.current;
+        const request = pending?.fingerprint === fingerprint
+          ? pending
+          : {
+              id: crypto.randomUUID(),
+              projectId: crypto.randomUUID(),
+              fingerprint,
+              filePath: null
+            };
+        projectRequest.current = request;
+
+        let filePath = request.filePath;
+        if (file && signedInUserId) {
+          filePath = `${signedInUserId}/${request.projectId}/${request.id}.${extension}`;
+          const { error: uploadError } = await supabase.storage
+            .from("project-files")
+            .upload(filePath, file, {
+              contentType: file.type || "application/octet-stream",
+              upsert: true
+            });
+
+          if (uploadError) {
+            setSyncNote(`No se pudo guardar el archivo privado: ${uploadError.message}`);
+            return false;
+          }
+          projectRequest.current = { ...request, filePath };
+        }
+
+        const { data, error } = await supabase.rpc("create_print_project", {
+          p_project_id: request.projectId,
+          p_request_id: request.id,
+          p_name: values.name,
+          p_description: values.description || null,
+          p_version: values.version || null,
+          p_file_path: filePath,
+          p_file_name: file?.name ?? null,
+          p_file_size_bytes: file?.size ?? null,
+          p_license_name: values.license_name || null,
+          p_commercial_use_allowed: values.commercial_use_allowed,
+          p_estimated_minutes: values.estimated_minutes,
+          p_requirements: values.requirements,
+          p_components: values.components
+        });
+
+        if (error || !data) {
+          setSyncNote(`No se pudo confirmar el proyecto. Podés reintentar sin duplicarlo: ${error?.message ?? "respuesta vacía"}`);
+          return false;
+        }
+
+        const result = data as ProjectMutationResult;
+        const savedRequirements = result.requirements.map((item) => ({
+          ...item,
+          position: Number(item.position),
+          planned_grams: Number(item.planned_grams)
+        }));
+        const savedComponents = result.components.map((item) => ({
+          ...item,
+          position: Number(item.position),
+          quantity: Number(item.quantity),
+          unit_cost: Number(item.unit_cost)
+        }));
+        setProjects((current) => [result.project, ...current.filter((item) => item.id !== result.project.id)]);
+        setProjectRequirements((current) => [
+          ...savedRequirements,
+          ...current.filter((item) => item.project_id !== result.project.id)
+        ]);
+        setProjectComponents((current) => [
+          ...savedComponents,
+          ...current.filter((item) => item.project_id !== result.project.id)
+        ]);
+        setSyncNote(result.replayed
+          ? "Este proyecto ya estaba guardado; recuperamos la receta sin duplicarla."
+          : `Proyecto ${result.project.name} guardado con su receta${file ? " y archivo privado" : ""}.`);
+        projectRequest.current = null;
+        return true;
+      }
+
+      const projectId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const project: PrintProject = {
+        id: projectId,
+        creation_request_id: crypto.randomUUID(),
+        name: values.name,
+        description: values.description || null,
+        version: values.version || null,
+        file_path: null,
+        file_name: file?.name ?? null,
+        file_size_bytes: file?.size ?? null,
+        license_name: values.license_name || null,
+        commercial_use_allowed: values.commercial_use_allowed,
+        estimated_minutes: values.estimated_minutes,
+        is_archived: false,
+        created_at: now,
+        updated_at: now
+      };
+      const localRequirements = values.requirements.map((item, index) => {
+        const roll = rolls.find((candidate) => candidate.id === item.roll_id);
+        if (!roll) throw new Error("Uno de los rollos de la receta no existe.");
+        return {
+          id: crypto.randomUUID(),
+          project_id: projectId,
+          position: index + 1,
+          label: item.label || null,
+          preferred_roll_id: roll.id,
+          brand: roll.brand,
+          material: roll.material,
+          product_line: roll.product_line,
+          color_name: roll.color_name,
+          color_hex: roll.color_hex,
+          planned_grams: item.planned_grams,
+          created_at: now
+        } satisfies ProjectFilamentRequirement;
+      });
+      const localComponents = values.components.map((item, index) => ({
+        id: crypto.randomUUID(),
+        project_id: projectId,
+        position: index + 1,
+        name: item.name,
+        unit: item.unit,
+        quantity: item.quantity,
+        unit_cost: item.unit_cost,
+        currency: item.currency,
+        supplier_name: item.supplier_name || null,
+        notes: item.notes || null,
+        created_at: now
+      } satisfies ProjectComponent));
+      setProjects((current) => [project, ...current]);
+      setProjectRequirements((current) => [...localRequirements, ...current]);
+      setProjectComponents((current) => [...localComponents, ...current]);
+      setSyncNote(`Proyecto ${project.name} guardado localmente${file ? "; el archivo solo se sincroniza al iniciar sesión" : ""}.`);
+      return true;
+    } catch (error) {
+      setSyncNote(`No se pudo guardar el proyecto: ${error instanceof Error ? error.message : "error inesperado"}`);
+      return false;
+    } finally {
+      setIsSavingProject(false);
+    }
+  }
+
+  async function completeProductionRun(values: ProductionRunValues) {
+    if (isSavingProductionRun) return false;
+    activateLocalMode();
+    const fingerprint = JSON.stringify(values);
+    setIsSavingProductionRun(true);
+
+    try {
+      if (usingSupabase && supabase) {
+        const pending = productionRunRequest.current;
+        const request = pending?.fingerprint === fingerprint && pending.projectId === values.project_id
+          ? pending
+          : { id: crypto.randomUUID(), projectId: values.project_id, fingerprint };
+        productionRunRequest.current = request;
+
+        const { data, error } = await supabase.rpc("complete_production_run", {
+          p_request_id: request.id,
+          p_project_id: values.project_id,
+          p_produced_at: values.produced_at,
+          p_quantity: values.quantity,
+          p_status: values.status,
+          p_actual_minutes: values.actual_minutes,
+          p_sale_amount: values.sale_amount,
+          p_sale_currency: values.sale_currency,
+          p_notes: values.notes || null,
+          p_filaments: values.filaments,
+          p_components: values.components
+        });
+
+        if (error || !data) {
+          setSyncNote(`No se pudo cerrar la corrida. Podés reintentar sin duplicar consumos: ${error?.message ?? "respuesta vacía"}`);
+          return false;
+        }
+
+        const result = data as ProductionRunMutationResult;
+        const savedRun = {
+          ...result.run,
+          quantity: Number(result.run.quantity),
+          actual_minutes: result.run.actual_minutes == null ? null : Number(result.run.actual_minutes),
+          sale_amount: result.run.sale_amount == null ? null : Number(result.run.sale_amount)
+        };
+        const savedFilaments = result.filaments.map((line) => ({
+          ...line,
+          grams_used: Number(line.grams_used),
+          unit_cost_per_g: line.unit_cost_per_g == null ? null : Number(line.unit_cost_per_g),
+          cost_amount: line.cost_amount == null ? null : Number(line.cost_amount)
+        }));
+        const savedComponents = result.components.map((line) => ({
+          ...line,
+          quantity: Number(line.quantity),
+          unit_cost: Number(line.unit_cost),
+          cost_amount: Number(line.cost_amount)
+        }));
+        setProductionRuns((current) => [savedRun, ...current.filter((run) => run.id !== savedRun.id)]);
+        setProductionRunFilaments((current) => [
+          ...savedFilaments,
+          ...current.filter((line) => line.run_id !== savedRun.id)
+        ]);
+        setProductionRunComponents((current) => [
+          ...savedComponents,
+          ...current.filter((line) => line.run_id !== savedRun.id)
+        ]);
+        setLogs((current) => [
+          ...result.logs.map((log) => ({
+            ...log,
+            grams_used: Number(log.grams_used),
+            cost_amount: log.cost_amount == null ? null : Number(log.cost_amount)
+          })),
+          ...current.filter((log) => !result.logs.some((saved) => saved.id === log.id))
+        ]);
+        setRolls((current) => current.map((roll) => {
+          const updated = result.rolls.find((item) => item.id === roll.id);
+          return updated ? { ...normalizeRollData(updated), supplier_name: roll.supplier_name } : roll;
+        }));
+        setSyncNote(result.replayed
+          ? "Esta corrida ya estaba guardada; recuperamos sus consumos sin duplicarlos."
+          : `Producción de ${savedRun.project_name} registrada y descontada del inventario.`);
+        productionRunRequest.current = null;
+        return true;
+      }
+
+      const project = projects.find((item) => item.id === values.project_id);
+      if (!project) throw new Error("Proyecto no encontrado.");
+      const usageByRoll = new Map<string, number>();
+      values.filaments.forEach((item) => usageByRoll.set(item.roll_id, (usageByRoll.get(item.roll_id) ?? 0) + item.grams_used));
+      usageByRoll.forEach((grams, rollId) => {
+        const roll = rolls.find((item) => item.id === rollId);
+        if (!roll || grams > Number(roll.available_weight_g)) throw new Error(`Saldo insuficiente en ${roll?.color_name ?? "un rollo"}.`);
+      });
+
+      const runId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const run: ProductionRun = {
+        id: runId,
+        request_id: crypto.randomUUID(),
+        project_id: project.id,
+        project_name: project.name,
+        produced_at: values.produced_at,
+        quantity: values.quantity,
+        status: values.status,
+        actual_minutes: values.actual_minutes,
+        sale_amount: values.sale_amount,
+        sale_currency: values.sale_currency,
+        notes: values.notes || null,
+        created_at: now
+      };
+      const localFilaments = values.filaments.map((item) => {
+        const roll = rolls.find((candidate) => candidate.id === item.roll_id);
+        if (!roll) throw new Error("Rollo no encontrado.");
+        const unitCost = roll.filament_cost_amount == null ? null : Number(roll.filament_cost_amount) / Number(roll.initial_weight_g);
+        return {
+          id: crypto.randomUUID(),
+          run_id: runId,
+          project_requirement_id: item.requirement_id,
+          roll_id: roll.id,
+          brand: roll.brand,
+          material: roll.material,
+          product_line: roll.product_line,
+          color_name: roll.color_name,
+          color_hex: roll.color_hex,
+          grams_used: item.grams_used,
+          unit_cost_per_g: unitCost,
+          cost_amount: unitCost == null ? null : unitCost * item.grams_used,
+          currency: unitCost == null ? null : roll.currency,
+          created_at: now
+        } satisfies ProductionRunFilament;
+      });
+      const localComponents = values.components.map((item) => {
+        const component = projectComponents.find((candidate) => candidate.id === item.component_id);
+        if (!component) throw new Error("Insumo no encontrado.");
+        return {
+          id: crypto.randomUUID(),
+          run_id: runId,
+          project_component_id: component.id,
+          name: component.name,
+          unit: component.unit,
+          quantity: item.quantity,
+          unit_cost: component.unit_cost,
+          cost_amount: item.quantity * component.unit_cost,
+          currency: component.currency,
+          supplier_name: component.supplier_name,
+          created_at: now
+        } satisfies ProductionRunComponent;
+      });
+      const localLogs = localFilaments.map((line) => ({
+        id: crypto.randomUUID(),
+        roll_id: line.roll_id as string,
+        project_name: project.name,
+        grams_used: line.grams_used,
+        consumed_at: values.produced_at,
+        notes: `production-run:${runId}`,
+        cost_amount: line.cost_amount,
+        currency: line.currency,
+        request_id: crypto.randomUUID()
+      } satisfies ConsumptionLog));
+      setProductionRuns((current) => [run, ...current]);
+      setProductionRunFilaments((current) => [...localFilaments, ...current]);
+      setProductionRunComponents((current) => [...localComponents, ...current]);
+      setLogs((current) => [...localLogs, ...current]);
+      setRolls((current) => current.map((roll) => {
+        const used = usageByRoll.get(roll.id) ?? 0;
+        if (!used) return roll;
+        const available = Number(roll.available_weight_g) - used;
+        return { ...roll, available_weight_g: available, status: normalizeStatus(available, Number(roll.low_threshold_g), roll.status) };
+      }));
+      setSyncNote(`Producción de ${project.name} guardada localmente y descontada del inventario.`);
+      return true;
+    } catch (error) {
+      setSyncNote(`No se pudo cerrar la corrida: ${error instanceof Error ? error.message : "error inesperado"}`);
+      return false;
+    } finally {
+      setIsSavingProductionRun(false);
+    }
+  }
+
+  async function openProjectFile(project: PrintProject) {
+    if (!project.file_path || !supabase || !usingSupabase) {
+      setSyncNote("Este proyecto no tiene un archivo sincronizado para abrir.");
+      return;
+    }
+
+    const popup = window.open("", "_blank");
+    const { data, error } = await supabase.storage
+      .from("project-files")
+      .createSignedUrl(project.file_path, 60);
+
+    if (error || !data?.signedUrl) {
+      popup?.close();
+      setSyncNote(`No se pudo abrir el archivo privado: ${error?.message ?? "enlace vacío"}`);
+      return;
+    }
+
+    if (popup) {
+      popup.opener = null;
+      popup.location.href = data.signedUrl;
+    } else {
+      window.location.href = data.signedUrl;
     }
   }
 
@@ -2716,6 +3205,10 @@ export default function Home() {
           </p>
         </div>
         <div className="hero-actions">
+          <button className="icon-action secondary" type="button" onClick={() => setShowProjects(true)}>
+            <FolderKanban size={20} aria-hidden="true" />
+            <span>Proyectos</span>
+          </button>
           <button className="icon-action secondary" type="button" onClick={() => setShowPurchaseOrders(true)}>
             <ReceiptText size={20} aria-hidden="true" />
             <span>Compras</span>
@@ -3615,6 +4108,26 @@ export default function Home() {
           isSaving={isSavingPurchaseOrder}
           onClose={() => setShowPurchaseOrders(false)}
           onCreate={createPurchaseOrder}
+        />
+      )}
+
+      {showProjects && (
+        <ProjectsModal
+          projects={projects}
+          requirements={projectRequirements}
+          components={projectComponents}
+          runs={productionRuns}
+          runFilaments={productionRunFilaments}
+          runComponents={productionRunComponents}
+          rolls={rolls}
+          baseCurrency={userProfile.base_currency}
+          mode={dataMode}
+          isSavingProject={isSavingProject}
+          isSavingRun={isSavingProductionRun}
+          onClose={() => setShowProjects(false)}
+          onCreateProject={createProject}
+          onCompleteRun={completeProductionRun}
+          onOpenFile={openProjectFile}
         />
       )}
 
