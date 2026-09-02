@@ -190,6 +190,11 @@ export type UserProfile = {
   billing_tax_id: string | null;
   billing_email: string | null;
   billing_address: string | null;
+  production_cost_currency: string;
+  electricity_price_per_kwh: number | null;
+  printer_average_power_w: number | null;
+  machine_cost_per_hour: number;
+  labor_cost_per_hour: number;
   membership_status: "early_access" | "active" | "past_due" | "paused" | "cancelled";
   created_at?: string;
   updated_at?: string;
@@ -298,6 +303,21 @@ export type ProductionRunComponent = {
   cost_amount: number;
   currency: string;
   supplier_name: string | null;
+  created_at: string;
+};
+
+export type ProductionRunCost = {
+  run_id: string;
+  actual_labor_minutes: number | null;
+  currency: string;
+  electricity_price_per_kwh: number | null;
+  printer_average_power_w: number | null;
+  machine_cost_per_hour: number;
+  labor_cost_per_hour: number;
+  electricity_cost_amount: number | null;
+  machine_cost_amount: number | null;
+  labor_cost_amount: number | null;
+  failure_cost_amount: number;
   created_at: string;
 };
 

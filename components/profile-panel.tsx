@@ -22,6 +22,11 @@ export type ProfileValues = {
   billing_tax_id: string;
   billing_email: string;
   billing_address: string;
+  production_cost_currency: string;
+  electricity_price_per_kwh: string;
+  printer_average_power_w: string;
+  machine_cost_per_hour: string;
+  labor_cost_per_hour: string;
 };
 
 type ProfilePanelProps = {
@@ -40,7 +45,12 @@ export function ProfilePanel({ email, profile, isSaving, onClose, onSave, onSign
     billing_name: profile.billing_name ?? "",
     billing_tax_id: profile.billing_tax_id ?? "",
     billing_email: profile.billing_email ?? email,
-    billing_address: profile.billing_address ?? ""
+    billing_address: profile.billing_address ?? "",
+    production_cost_currency: profile.production_cost_currency || profile.base_currency || "CRC",
+    electricity_price_per_kwh: profile.electricity_price_per_kwh == null ? "" : String(profile.electricity_price_per_kwh),
+    printer_average_power_w: profile.printer_average_power_w == null ? "" : String(profile.printer_average_power_w),
+    machine_cost_per_hour: String(profile.machine_cost_per_hour ?? 0),
+    labor_cost_per_hour: String(profile.labor_cost_per_hour ?? 0)
   });
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -90,6 +100,22 @@ export function ProfilePanel({ email, profile, isSaving, onClose, onSave, onSign
             <label className="wide">Dirección de facturación<textarea maxLength={500} value={values.billing_address} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_address: event.target.value })} /></label>
           </div>
           <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando perfil…" : "Guardar preferencias"}</button>
+        </form>
+
+        <form className="profile-preferences production-settings" onSubmit={submit} aria-busy={isSaving}>
+          <div className="profile-section-head">
+            <span><CreditCard size={19} aria-hidden="true" /></span>
+            <div><p className="eyebrow">Producción</p><h3>Tarifas para calcular impresiones</h3></div>
+          </div>
+          <p className="form-help">Son valores predeterminados. Cada corrida guarda una copia y nunca cambia aunque después modifiqués estas tarifas.</p>
+          <div className="form-grid profile-form-grid">
+            <label>Moneda de costos<select value={values.production_cost_currency} disabled={isSaving} onChange={(event) => setValues({ ...values, production_cost_currency: event.target.value })}><option value="CRC">CRC · Colón costarricense</option><option value="USD">USD · Dólar estadounidense</option><option value="EUR">EUR · Euro</option></select></label>
+            <label>Electricidad por kWh<input type="number" min="0" step="0.01" value={values.electricity_price_per_kwh} disabled={isSaving} placeholder="Ej. 95" onChange={(event) => setValues({ ...values, electricity_price_per_kwh: event.target.value })} /></label>
+            <label>Potencia promedio de impresora (W)<input type="number" min="0.01" step="0.01" value={values.printer_average_power_w} disabled={isSaving} placeholder="Ej. 120" onChange={(event) => setValues({ ...values, printer_average_power_w: event.target.value })} /></label>
+            <label>Costo de máquina por hora<input type="number" min="0" step="0.01" value={values.machine_cost_per_hour} disabled={isSaving} placeholder="0" onChange={(event) => setValues({ ...values, machine_cost_per_hour: event.target.value })} /></label>
+            <label>Costo de mano de obra por hora<input type="number" min="0" step="0.01" value={values.labor_cost_per_hour} disabled={isSaving} placeholder="0" onChange={(event) => setValues({ ...values, labor_cost_per_hour: event.target.value })} /></label>
+          </div>
+          <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando tarifas…" : "Guardar tarifas"}</button>
         </form>
 
         <div className="membership-card">

@@ -150,7 +150,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 - [ ] Completar branding: “by Stone Collective Dev”, About y Open Graph.
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
-- [ ] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
+- [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.
 - [ ] Agregar impresoras y costo por hora.
 
@@ -187,7 +187,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Incorporar impresora utilizada y desperdicio separado del consumo útil.
 - [x] Asociar cada consumo real al rollo utilizado y descontarlo atómicamente al cerrar la corrida.
 - [x] Congelar en la corrida los costos de material y extras según el lote realmente usado.
-- [ ] Agregar electricidad, máquina, mano de obra y fallos al costo congelado.
+- [x] Agregar electricidad, máquina, mano de obra y fallos al costo congelado.
 - [x] Permitir precio de venta y utilidad básica sin mezclar monedas ni inventar costos incompletos.
 - [ ] Incorporar comisiones, envío, impuestos y margen final.
 - [ ] Dar recomendaciones accionables: precio insuficiente, inventario bajo, exceso de desperdicio y necesidad de reposición.

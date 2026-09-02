@@ -13,7 +13,7 @@ Incluye:
 - compras por proveedor con precio histórico inmutable y correcciones trazables;
 - registro atómico de compras omitidas para rollos creados sin precio;
 - órdenes de compra con partidas, envío/express, otros cargos, prorrateo y confianza del costo;
-- perfil con moneda base CRC y datos opcionales de facturación;
+- perfil con moneda base CRC, datos opcionales de facturación y tarifas productivas configurables;
 - pago real por orden con moneda, tipo de cambio, fecha, clase y fuente congelados;
 - modal para corregir proveedor, fecha, presentación, precio, spool y moneda sin borrar el registro original;
 - separación entre precio total, costo reutilizable del spool y costo consumible por gramo;
@@ -24,7 +24,7 @@ Incluye:
 - historial inmutable de pesajes con reintentos seguros;
 - costo de cada consumo calculado con el rollo realmente utilizado;
 - proyectos con recetas reutilizables, archivos STL/3MF privados, tiempos, filamentos e insumos adicionales;
-- corridas de producción con consumo real, costos congelados, venta opcional y descuento atómico de todos los rollos;
+- corridas de producción con consumo real, electricidad, máquina, mano de obra, fallos, costos congelados, venta opcional y descuento atómico de todos los rollos;
 - reporte de saldo por moneda, con valor restante, costos incompletos y exportación CSV;
 - QR por rollo;
 - lectura/escritura NFC con Web NFC cuando el celular/navegador lo soporte;

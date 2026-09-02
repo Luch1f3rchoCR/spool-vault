@@ -62,6 +62,7 @@ import type {
   PrintProject,
   ProductionRun,
   ProductionRunComponent,
+  ProductionRunCost,
   ProductionRunFilament,
   ProjectComponent,
   ProjectFilamentRequirement,
@@ -96,6 +97,7 @@ const LOCAL_PROJECT_COMPONENTS_KEY = "spool-vault-project-components";
 const LOCAL_PRODUCTION_RUNS_KEY = "spool-vault-production-runs";
 const LOCAL_RUN_FILAMENTS_KEY = "spool-vault-run-filaments";
 const LOCAL_RUN_COMPONENTS_KEY = "spool-vault-run-components";
+const LOCAL_RUN_COSTS_KEY = "spool-vault-run-costs";
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
 const WEIGHT_DELTA_EPSILON_G = 0.01;
 
@@ -144,6 +146,7 @@ type ProductionRunMutationResult = {
   run: ProductionRun;
   filaments: ProductionRunFilament[];
   components: ProductionRunComponent[];
+  costs: ProductionRunCost;
   rolls: FilamentRoll[];
   logs: ConsumptionLog[];
   replayed: boolean;
@@ -314,7 +317,41 @@ function defaultUserProfile(userId = "local", email = ""): UserProfile {
     billing_tax_id: null,
     billing_email: email || null,
     billing_address: null,
+    production_cost_currency: "CRC",
+    electricity_price_per_kwh: null,
+    printer_average_power_w: null,
+    machine_cost_per_hour: 0,
+    labor_cost_per_hour: 0,
     membership_status: "early_access"
+  };
+}
+
+function normalizeUserProfile(profile: UserProfile | null, userId = "local", email = "") {
+  const fallback = defaultUserProfile(userId, email);
+  if (!profile) return fallback;
+  return {
+    ...fallback,
+    ...profile,
+    production_cost_currency: profile.production_cost_currency || profile.base_currency || fallback.production_cost_currency,
+    electricity_price_per_kwh: profile.electricity_price_per_kwh == null ? null : Number(profile.electricity_price_per_kwh),
+    printer_average_power_w: profile.printer_average_power_w == null ? null : Number(profile.printer_average_power_w),
+    machine_cost_per_hour: Number(profile.machine_cost_per_hour ?? 0),
+    labor_cost_per_hour: Number(profile.labor_cost_per_hour ?? 0)
+  } satisfies UserProfile;
+}
+
+function normalizeProductionRunCost(cost: ProductionRunCost): ProductionRunCost {
+  return {
+    ...cost,
+    actual_labor_minutes: cost.actual_labor_minutes == null ? null : Number(cost.actual_labor_minutes),
+    electricity_price_per_kwh: cost.electricity_price_per_kwh == null ? null : Number(cost.electricity_price_per_kwh),
+    printer_average_power_w: cost.printer_average_power_w == null ? null : Number(cost.printer_average_power_w),
+    machine_cost_per_hour: Number(cost.machine_cost_per_hour),
+    labor_cost_per_hour: Number(cost.labor_cost_per_hour),
+    electricity_cost_amount: cost.electricity_cost_amount == null ? null : Number(cost.electricity_cost_amount),
+    machine_cost_amount: cost.machine_cost_amount == null ? null : Number(cost.machine_cost_amount),
+    labor_cost_amount: cost.labor_cost_amount == null ? null : Number(cost.labor_cost_amount),
+    failure_cost_amount: Number(cost.failure_cost_amount)
   };
 }
 
@@ -639,6 +676,7 @@ export default function Home() {
   const [productionRuns, setProductionRuns] = useState<ProductionRun[]>([]);
   const [productionRunFilaments, setProductionRunFilaments] = useState<ProductionRunFilament[]>([]);
   const [productionRunComponents, setProductionRunComponents] = useState<ProductionRunComponent[]>([]);
+  const [productionRunCosts, setProductionRunCosts] = useState<ProductionRunCost[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => defaultUserProfile());
   const [selectedId, setSelectedId] = useState<string>("");
   const [query, setQuery] = useState("");
@@ -769,6 +807,7 @@ export default function Home() {
           setProductionRuns([]);
           setProductionRunFilaments([]);
           setProductionRunComponents([]);
+          setProductionRunCosts([]);
           setUserProfile(defaultUserProfile());
           setSignedInUserId("");
           setSelectedId("");
@@ -794,6 +833,7 @@ export default function Home() {
           const localProductionRuns = readLocal<ProductionRun[]>(LOCAL_PRODUCTION_RUNS_KEY, []);
           const localProductionRunFilaments = readLocal<ProductionRunFilament[]>(LOCAL_RUN_FILAMENTS_KEY, []);
           const localProductionRunComponents = readLocal<ProductionRunComponent[]>(LOCAL_RUN_COMPONENTS_KEY, []);
+          const localProductionRunCosts = readLocal<ProductionRunCost[]>(LOCAL_RUN_COSTS_KEY, []);
           const localProfile = readLocal<UserProfile>(LOCAL_PROFILE_KEY, defaultUserProfile());
           const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
           setSignedInEmail("");
@@ -814,7 +854,8 @@ export default function Home() {
           setProductionRuns(localProductionRuns);
           setProductionRunFilaments(localProductionRunFilaments);
           setProductionRunComponents(localProductionRunComponents);
-          setUserProfile(localProfile);
+          setProductionRunCosts(localProductionRunCosts);
+          setUserProfile(normalizeUserProfile(localProfile));
           setSelectedId(localRolls[0]?.id ?? "");
           setDataMode(hasLocalInventory ? "local" : "demo");
           setSyncNote(
@@ -847,7 +888,8 @@ export default function Home() {
           { data: projectComponentData, error: projectComponentError },
           { data: productionRunData, error: productionRunError },
           { data: productionRunFilamentData, error: productionRunFilamentError },
-          { data: productionRunComponentData, error: productionRunComponentError }
+          { data: productionRunComponentData, error: productionRunComponentError },
+          { data: productionRunCostData, error: productionRunCostError }
         ] =
           await Promise.all([
             supabase.from("filament_rolls").select("*").order("updated_at", { ascending: false }),
@@ -867,7 +909,8 @@ export default function Home() {
             supabase.from("project_components").select("*").order("position"),
             supabase.from("production_runs").select("*").order("produced_at", { ascending: false }),
             supabase.from("production_run_filaments").select("*").order("created_at", { ascending: false }),
-            supabase.from("production_run_components").select("*").order("created_at", { ascending: false })
+            supabase.from("production_run_components").select("*").order("created_at", { ascending: false }),
+            supabase.from("production_run_costs").select("*").order("created_at", { ascending: false })
           ]);
 
         if (
@@ -875,7 +918,7 @@ export default function Home() {
           && !supplierError && !purchaseError && !purchaseCorrectionError
           && !purchaseOrderError && !purchaseOrderItemError && !purchaseOrderPaymentError
           && !profileError && !projectError && !projectRequirementError && !projectComponentError
-          && !productionRunError && !productionRunFilamentError && !productionRunComponentError
+          && !productionRunError && !productionRunFilamentError && !productionRunComponentError && !productionRunCostError
           && rollData
         ) {
           const loadedSuppliers = (supplierData ?? []) as Supplier[];
@@ -900,7 +943,8 @@ export default function Home() {
           setProductionRuns((productionRunData ?? []) as ProductionRun[]);
           setProductionRunFilaments((productionRunFilamentData ?? []) as ProductionRunFilament[]);
           setProductionRunComponents((productionRunComponentData ?? []) as ProductionRunComponent[]);
-          setUserProfile((profileData as UserProfile | null) ?? defaultUserProfile(user.id, user.email ?? ""));
+          setProductionRunCosts(((productionRunCostData ?? []) as ProductionRunCost[]).map(normalizeProductionRunCost));
+          setUserProfile(normalizeUserProfile(profileData as UserProfile | null, user.id, user.email ?? ""));
           setSelectedId(loadedRolls[0]?.id ?? "");
           setDataMode("authenticated");
           setSyncNote("Conectado a Supabase · inventario real");
@@ -925,6 +969,7 @@ export default function Home() {
         setProductionRuns([]);
         setProductionRunFilaments([]);
         setProductionRunComponents([]);
+        setProductionRunCosts([]);
         setUserProfile(defaultUserProfile(user.id, user.email ?? ""));
         setSelectedId("");
         setDataMode("error");
@@ -948,6 +993,7 @@ export default function Home() {
       const localProductionRuns = readLocal<ProductionRun[]>(LOCAL_PRODUCTION_RUNS_KEY, []);
       const localProductionRunFilaments = readLocal<ProductionRunFilament[]>(LOCAL_RUN_FILAMENTS_KEY, []);
       const localProductionRunComponents = readLocal<ProductionRunComponent[]>(LOCAL_RUN_COMPONENTS_KEY, []);
+      const localProductionRunCosts = readLocal<ProductionRunCost[]>(LOCAL_RUN_COSTS_KEY, []);
       const localProfile = readLocal<UserProfile>(LOCAL_PROFILE_KEY, defaultUserProfile());
       const localWeighings = readLocal<WeighingEvent[]>(LOCAL_WEIGHINGS_KEY, []);
       setRolls(localRolls);
@@ -966,7 +1012,8 @@ export default function Home() {
       setProductionRuns(localProductionRuns);
       setProductionRunFilaments(localProductionRunFilaments);
       setProductionRunComponents(localProductionRunComponents);
-      setUserProfile(localProfile);
+      setProductionRunCosts(localProductionRunCosts);
+      setUserProfile(normalizeUserProfile(localProfile));
       setSelectedId(localRolls[0]?.id ?? "");
       setDataMode(hasLocalInventory ? "local" : "demo");
       setSyncNote(
@@ -1060,6 +1107,10 @@ export default function Home() {
   useEffect(() => {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_RUN_COMPONENTS_KEY, productionRunComponents);
   }, [dataMode, productionRunComponents, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_RUN_COSTS_KEY, productionRunCosts);
+  }, [dataMode, productionRunCosts, usingSupabase]);
 
   useEffect(() => {
     document.body.style.overflow = showAdd || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
@@ -1419,13 +1470,18 @@ export default function Home() {
 
     try {
       if (usingSupabase && supabase) {
-        const { data, error } = await supabase.rpc("save_user_profile", {
+        const { data, error } = await supabase.rpc("save_user_profile_v2", {
           p_display_name: values.display_name || null,
           p_base_currency: values.base_currency,
           p_billing_name: values.billing_name || null,
           p_billing_tax_id: values.billing_tax_id || null,
           p_billing_email: values.billing_email || null,
-          p_billing_address: values.billing_address || null
+          p_billing_address: values.billing_address || null,
+          p_production_cost_currency: values.production_cost_currency,
+          p_electricity_price_per_kwh: values.electricity_price_per_kwh === "" ? null : Number(values.electricity_price_per_kwh),
+          p_printer_average_power_w: values.printer_average_power_w === "" ? null : Number(values.printer_average_power_w),
+          p_machine_cost_per_hour: Number(values.machine_cost_per_hour || 0),
+          p_labor_cost_per_hour: Number(values.labor_cost_per_hour || 0)
         });
 
         if (error || !data) {
@@ -1433,8 +1489,8 @@ export default function Home() {
           return false;
         }
 
-        setUserProfile(data as UserProfile);
-        setSyncNote("Perfil y preferencias financieras guardados.");
+        setUserProfile(normalizeUserProfile(data as UserProfile, signedInUserId, signedInEmail));
+        setSyncNote("Perfil, moneda y tarifas productivas guardados.");
         return true;
       }
 
@@ -1447,9 +1503,14 @@ export default function Home() {
         billing_tax_id: values.billing_tax_id.trim() || null,
         billing_email: values.billing_email.trim() || null,
         billing_address: values.billing_address.trim() || null,
+        production_cost_currency: values.production_cost_currency,
+        electricity_price_per_kwh: values.electricity_price_per_kwh === "" ? null : Number(values.electricity_price_per_kwh),
+        printer_average_power_w: values.printer_average_power_w === "" ? null : Number(values.printer_average_power_w),
+        machine_cost_per_hour: Number(values.machine_cost_per_hour || 0),
+        labor_cost_per_hour: Number(values.labor_cost_per_hour || 0),
         updated_at: new Date().toISOString()
       };
-      setUserProfile(localProfile);
+      setUserProfile(normalizeUserProfile(localProfile));
       setDataMode("local");
       setSyncNote("Perfil guardado en este dispositivo.");
       return true;
@@ -2132,7 +2193,7 @@ export default function Home() {
           : { id: crypto.randomUUID(), projectId: values.project_id, fingerprint };
         productionRunRequest.current = request;
 
-        const { data, error } = await supabase.rpc("complete_production_run", {
+        const { data, error } = await supabase.rpc("complete_production_run_v2", {
           p_request_id: request.id,
           p_project_id: values.project_id,
           p_produced_at: values.produced_at,
@@ -2143,7 +2204,9 @@ export default function Home() {
           p_sale_currency: values.sale_currency,
           p_notes: values.notes || null,
           p_filaments: values.filaments,
-          p_components: values.components
+          p_components: values.components,
+          p_actual_labor_minutes: values.actual_labor_minutes,
+          p_failure_cost_amount: values.failure_cost_amount
         });
 
         if (error || !data) {
@@ -2178,6 +2241,11 @@ export default function Home() {
         setProductionRunComponents((current) => [
           ...savedComponents,
           ...current.filter((line) => line.run_id !== savedRun.id)
+        ]);
+        const savedCosts = normalizeProductionRunCost(result.costs);
+        setProductionRunCosts((current) => [
+          savedCosts,
+          ...current.filter((cost) => cost.run_id !== savedRun.id)
         ]);
         setLogs((current) => [
           ...result.logs.map((log) => ({
@@ -2261,6 +2329,27 @@ export default function Home() {
           created_at: now
         } satisfies ProductionRunComponent;
       });
+      const actualHours = values.actual_minutes == null ? null : values.actual_minutes / 60;
+      const laborHours = values.actual_labor_minutes == null ? null : values.actual_labor_minutes / 60;
+      const electricityCost = actualHours == null
+        || userProfile.electricity_price_per_kwh == null
+        || userProfile.printer_average_power_w == null
+        ? null
+        : actualHours * (Number(userProfile.printer_average_power_w) / 1000) * Number(userProfile.electricity_price_per_kwh);
+      const localCosts: ProductionRunCost = {
+        run_id: runId,
+        actual_labor_minutes: values.actual_labor_minutes,
+        currency: userProfile.production_cost_currency || userProfile.base_currency,
+        electricity_price_per_kwh: userProfile.electricity_price_per_kwh,
+        printer_average_power_w: userProfile.printer_average_power_w,
+        machine_cost_per_hour: Number(userProfile.machine_cost_per_hour),
+        labor_cost_per_hour: Number(userProfile.labor_cost_per_hour),
+        electricity_cost_amount: electricityCost,
+        machine_cost_amount: actualHours == null ? null : actualHours * Number(userProfile.machine_cost_per_hour),
+        labor_cost_amount: laborHours == null ? null : laborHours * Number(userProfile.labor_cost_per_hour),
+        failure_cost_amount: values.failure_cost_amount,
+        created_at: now
+      };
       const localLogs = localFilaments.map((line) => ({
         id: crypto.randomUUID(),
         roll_id: line.roll_id as string,
@@ -2275,6 +2364,7 @@ export default function Home() {
       setProductionRuns((current) => [run, ...current]);
       setProductionRunFilaments((current) => [...localFilaments, ...current]);
       setProductionRunComponents((current) => [...localComponents, ...current]);
+      setProductionRunCosts((current) => [localCosts, ...current]);
       setLogs((current) => [...localLogs, ...current]);
       setRolls((current) => current.map((roll) => {
         const used = usageByRoll.get(roll.id) ?? 0;
@@ -4119,8 +4209,10 @@ export default function Home() {
           runs={productionRuns}
           runFilaments={productionRunFilaments}
           runComponents={productionRunComponents}
+          runCosts={productionRunCosts}
           rolls={rolls}
           baseCurrency={userProfile.base_currency}
+          profile={userProfile}
           mode={dataMode}
           isSavingProject={isSavingProject}
           isSavingRun={isSavingProductionRun}
