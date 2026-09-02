@@ -2968,6 +2968,30 @@ textarea:focus {
 .run-usage-row small,
 .run-component-row small { margin-top: 3px; color: var(--muted); font-size: 0.7rem; }
 
+.run-operating-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 11px;
+}
+.run-operating-grid > span {
+  padding: 9px 10px;
+  border: 1px solid rgba(47, 125, 95, 0.18);
+  border-radius: 9px;
+  background: #fffdf8;
+}
+.run-operating-grid small,
+.run-operating-grid strong { display: block; }
+.run-operating-grid small { color: var(--muted); font-size: 0.68rem; }
+.operating-cost-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
 .run-cost-preview {
   padding: 13px;
   border: 1px solid rgba(47, 125, 95, 0.24);
@@ -3094,6 +3118,10 @@ textarea:focus {
 
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .run-operating-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .detail-panel {

@@ -21,10 +21,12 @@ import type {
   PrintProject,
   ProductionRun,
   ProductionRunComponent,
+  ProductionRunCost,
   ProductionRunFilament,
   ProductionRunStatus,
   ProjectComponent,
-  ProjectFilamentRequirement
+  ProjectFilamentRequirement,
+  UserProfile
 } from "@/lib/types";
 
 export type ProjectCreateValues = {
@@ -52,6 +54,8 @@ export type ProductionRunValues = {
   quantity: number;
   status: ProductionRunStatus;
   actual_minutes: number | null;
+  actual_labor_minutes: number | null;
+  failure_cost_amount: number;
   sale_amount: number | null;
   sale_currency: string | null;
   notes: string;
@@ -66,8 +70,10 @@ type Props = {
   runs: ProductionRun[];
   runFilaments: ProductionRunFilament[];
   runComponents: ProductionRunComponent[];
+  runCosts: ProductionRunCost[];
   rolls: FilamentRoll[];
   baseCurrency: string;
+  profile: UserProfile;
   mode: "authenticated" | "demo" | "local" | "error";
   isSavingProject: boolean;
   isSavingRun: boolean;
@@ -117,7 +123,8 @@ function duration(minutes: number | null) {
 
 function totalsByCurrency(
   filaments: ProductionRunFilament[],
-  components: ProductionRunComponent[]
+  components: ProductionRunComponent[],
+  operatingCosts?: ProductionRunCost
 ) {
   const totals = new Map<string, number>();
   filaments.forEach((line) => {
@@ -128,6 +135,15 @@ function totalsByCurrency(
   components.forEach((line) => {
     totals.set(line.currency, (totals.get(line.currency) ?? 0) + Number(line.cost_amount));
   });
+  if (operatingCosts) {
+    const total = [
+      operatingCosts.electricity_cost_amount,
+      operatingCosts.machine_cost_amount,
+      operatingCosts.labor_cost_amount,
+      operatingCosts.failure_cost_amount
+    ].reduce<number>((sum, value) => sum + (value == null ? 0 : Number(value)), 0);
+    if (total > 0) totals.set(operatingCosts.currency, (totals.get(operatingCosts.currency) ?? 0) + total);
+  }
   return totals;
 }
 
@@ -278,6 +294,7 @@ function ProductionRunForm({
   components,
   rolls,
   baseCurrency,
+  profile,
   isSaving,
   onCancel,
   onSave
@@ -287,6 +304,7 @@ function ProductionRunForm({
   components: ProjectComponent[];
   rolls: FilamentRoll[];
   baseCurrency: string;
+  profile: UserProfile;
   isSaving: boolean;
   onCancel: () => void;
   onSave: Props["onCompleteRun"];
@@ -295,6 +313,8 @@ function ProductionRunForm({
   const [quantity, setQuantity] = useState(1);
   const [status, setStatus] = useState<ProductionRunStatus>("completed");
   const [actualMinutes, setActualMinutes] = useState(project.estimated_minutes == null ? "" : String(project.estimated_minutes));
+  const [actualLaborMinutes, setActualLaborMinutes] = useState("0");
+  const [failureCostAmount, setFailureCostAmount] = useState("0");
   const [saleAmount, setSaleAmount] = useState("");
   const [saleCurrency, setSaleCurrency] = useState(baseCurrency);
   const [notes, setNotes] = useState("");
@@ -316,7 +336,7 @@ function ProductionRunForm({
 
   const shortageMessages: string[] = [];
   const previewTotals = new Map<string, number>();
-  let incompleteCosts = 0;
+  let incompleteFilamentCosts = 0;
 
   requirements.forEach((requirement) => {
     const usage = usages[requirement.id];
@@ -327,7 +347,7 @@ function ProductionRunForm({
       return;
     }
     if (grams > Number(roll.available_weight_g)) shortageMessages.push(`${roll.color_name}: faltan ${(grams - Number(roll.available_weight_g)).toLocaleString("es-CR")} g.`);
-    if (roll.filament_cost_amount == null || Number(roll.initial_weight_g) <= 0) incompleteCosts += 1;
+    if (roll.filament_cost_amount == null || Number(roll.initial_weight_g) <= 0) incompleteFilamentCosts += 1;
     else previewTotals.set(roll.currency, (previewTotals.get(roll.currency) ?? 0) + Number(roll.filament_cost_amount) / Number(roll.initial_weight_g) * grams);
   });
 
@@ -337,8 +357,24 @@ function ProductionRunForm({
     else previewTotals.set(component.currency, (previewTotals.get(component.currency) ?? 0) + used * Number(component.unit_cost));
   });
 
+  const costCurrency = profile.production_cost_currency || baseCurrency;
+  const actualHours = actualMinutes === "" ? null : Number(actualMinutes) / 60;
+  const laborHours = actualLaborMinutes === "" ? null : Number(actualLaborMinutes) / 60;
+  const electricityCost = actualHours == null
+    || profile.electricity_price_per_kwh == null
+    || profile.printer_average_power_w == null
+    ? null
+    : actualHours * (Number(profile.printer_average_power_w) / 1000) * Number(profile.electricity_price_per_kwh);
+  const machineCost = actualHours == null ? null : actualHours * Number(profile.machine_cost_per_hour);
+  const laborCost = laborHours == null ? null : laborHours * Number(profile.labor_cost_per_hour);
+  const failureCost = Number(failureCostAmount || 0);
+  [electricityCost, machineCost, laborCost, failureCost].forEach((value) => {
+    if (value != null && value > 0) previewTotals.set(costCurrency, (previewTotals.get(costCurrency) ?? 0) + value);
+  });
+  const hasIncompleteOperatingCosts = electricityCost == null || machineCost == null || laborCost == null;
+
   const parsedSale = saleAmount === "" ? null : Number(saleAmount);
-  const comparableCost = previewTotals.size === 1 && previewTotals.has(saleCurrency) && incompleteCosts === 0
+  const comparableCost = previewTotals.size === 1 && previewTotals.has(saleCurrency) && incompleteFilamentCosts === 0 && !hasIncompleteOperatingCosts
     ? previewTotals.get(saleCurrency) ?? null
     : null;
   const profit = parsedSale == null || comparableCost == null ? null : parsedSale - comparableCost;
@@ -352,6 +388,8 @@ function ProductionRunForm({
       quantity,
       status,
       actual_minutes: actualMinutes === "" ? null : Number(actualMinutes),
+      actual_labor_minutes: actualLaborMinutes === "" ? null : Number(actualLaborMinutes),
+      failure_cost_amount: failureCost,
       sale_amount: parsedSale,
       sale_currency: parsedSale == null ? null : saleCurrency,
       notes: notes.trim(),
@@ -386,7 +424,23 @@ function ProductionRunForm({
 
       {components.length > 0 && <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">Extras reales</p><h3>Insumos consumidos</h3></div></div>{components.map((component) => <div className="run-component-row" key={component.id}><div><strong>{component.name}</strong><small>{money(component.currency, component.unit_cost)} / {component.unit}</small></div><label>Cantidad<input required type="number" min="0.001" step="0.001" value={componentUsage[component.id] ?? ""} disabled={isSaving} onChange={(event) => setComponentUsage((current) => ({ ...current, [component.id]: event.target.value }))} /></label></div>)}</section>}
 
-      <section className="run-cost-preview"><div className="section-head"><div><p className="eyebrow">Vista previa</p><h3>Costo y utilidad</h3></div></div><div className="run-cost-currencies">{Array.from(previewTotals.entries()).map(([currency, total]) => <span key={currency}><small>Costo {currency}</small><strong>{money(currency, total)}</strong></span>)}{!previewTotals.size && <span><small>Costo</small><strong>Incompleto</strong></span>}</div>{incompleteCosts > 0 && <p><AlertTriangle size={15} />{incompleteCosts} filamento{incompleteCosts === 1 ? "" : "s"} sin costo registrado.</p>}<div className="form-grid"><label>Venta total<input type="number" min="0" step="0.01" value={saleAmount} disabled={isSaving} placeholder="Opcional" onChange={(event) => setSaleAmount(event.target.value)} /></label><label>Moneda<select value={saleCurrency} disabled={isSaving || saleAmount === ""} onChange={(event) => setSaleCurrency(event.target.value)}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label></div>{profit != null ? <div className={profit >= 0 ? "profit-preview positive" : "profit-preview negative"}><TrendingUp size={18} /><span>Utilidad estimada</span><strong>{money(saleCurrency, profit)}</strong></div> : parsedSale != null && <p><AlertTriangle size={15} />No mezclamos monedas ni costos incompletos. La utilidad aparecerá cuando todos los costos sean comparables.</p>}</section>
+      <section className="project-recipe-section run-operating-costs">
+        <div className="section-head"><div><p className="eyebrow">Operación</p><h3>Tiempo, máquina y fallos</h3></div></div>
+        <div className="form-grid">
+          <label>Mano de obra real (min)<input type="number" min="0" value={actualLaborMinutes} disabled={isSaving} placeholder="Ej. 25" onChange={(event) => setActualLaborMinutes(event.target.value)} /></label>
+          <label>Fallos y desperdicio ({costCurrency})<input type="number" min="0" step="0.01" value={failureCostAmount} disabled={isSaving} placeholder="0" onChange={(event) => setFailureCostAmount(event.target.value)} /></label>
+        </div>
+        <div className="run-operating-grid">
+          <span><small>Electricidad</small><strong>{electricityCost == null ? "Por configurar" : money(costCurrency, electricityCost)}</strong></span>
+          <span><small>Uso de máquina</small><strong>{machineCost == null ? "Falta duración" : money(costCurrency, machineCost)}</strong></span>
+          <span><small>Mano de obra</small><strong>{laborCost == null ? "Falta tiempo" : money(costCurrency, laborCost)}</strong></span>
+          <span><small>Fallos</small><strong>{money(costCurrency, failureCost)}</strong></span>
+        </div>
+        {electricityCost == null && <p className="operating-cost-note"><AlertTriangle size={15} />Configurá el precio por kWh y la potencia promedio en Perfil para incluir electricidad.</p>}
+        <p className="operating-cost-note">Al cerrar, guardamos una copia de estas tarifas. El histórico no cambia si luego las actualizás.</p>
+      </section>
+
+      <section className="run-cost-preview"><div className="section-head"><div><p className="eyebrow">Vista previa</p><h3>Costo y utilidad</h3></div></div><div className="run-cost-currencies">{Array.from(previewTotals.entries()).map(([currency, total]) => <span key={currency}><small>Costo {currency}</small><strong>{money(currency, total)}</strong></span>)}{!previewTotals.size && <span><small>Costo</small><strong>Incompleto</strong></span>}</div>{incompleteFilamentCosts > 0 && <p><AlertTriangle size={15} />{incompleteFilamentCosts} filamento{incompleteFilamentCosts === 1 ? "" : "s"} sin costo registrado.</p>}<div className="form-grid"><label>Venta total<input type="number" min="0" step="0.01" value={saleAmount} disabled={isSaving} placeholder="Opcional" onChange={(event) => setSaleAmount(event.target.value)} /></label><label>Moneda<select value={saleCurrency} disabled={isSaving || saleAmount === ""} onChange={(event) => setSaleCurrency(event.target.value)}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label></div>{profit != null ? <div className={profit >= 0 ? "profit-preview positive" : "profit-preview negative"}><TrendingUp size={18} /><span>Utilidad estimada</span><strong>{money(saleCurrency, profit)}</strong></div> : parsedSale != null && <p><AlertTriangle size={15} />No mezclamos monedas ni costos incompletos. La utilidad aparecerá cuando todos los costos sean comparables.</p>}</section>
 
       {shortageMessages.length > 0 && <div className="run-blockers"><strong>No se puede cerrar todavía</strong>{shortageMessages.map((message) => <span key={message}>{message}</span>)}</div>}
       <label className="project-run-notes">Notas<textarea maxLength={1000} value={notes} disabled={isSaving} placeholder="Fallo, desperdicio, observaciones de calidad…" onChange={(event) => setNotes(event.target.value)} /></label>
@@ -402,8 +456,10 @@ export function ProjectsModal({
   runs,
   runFilaments,
   runComponents,
+  runCosts,
   rolls,
   baseCurrency,
+  profile,
   mode,
   isSavingProject,
   isSavingRun,
@@ -427,7 +483,7 @@ export function ProjectsModal({
         {showCreate ? (
           <ProjectForm rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => setShowCreate(false)} onCreate={onCreateProject} />
         ) : runProject ? (
-          <ProductionRunForm project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
+          <ProductionRunForm project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
         ) : (
           <>
             <div className="project-summary"><article><FolderKanban size={18} /><strong>{projects.length}</strong><span>proyectos</span></article><article><Printer size={18} /><strong>{runs.length}</strong><span>corridas</span></article><article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString("es-CR")} g</strong><span>por recetas</span></article><button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Nuevo proyecto</button></div>
@@ -440,10 +496,15 @@ export function ProjectsModal({
                 return <article className="project-card" key={project.id}><div className="project-card-head"><div><span className="project-icon"><FolderKanban size={20} /></span><div><h3>{project.name}</h3><p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes)} · {projectRuns.length} corrida{projectRuns.length === 1 ? "" : "s"}</p></div></div><div className="project-card-actions">{project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || "Archivo"}</button>}<button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />Registrar impresión</button></div></div>{project.description && <p className="project-description">{project.description}</p>}<div className="project-recipe-preview">{projectRequirements.map((item) => <span key={item.id}><i style={{ backgroundColor: item.color_hex }} /><strong>{item.label || item.color_name}</strong><small>{Number(item.planned_grams).toLocaleString("es-CR")} g</small></span>)}</div>{projectComponents.length > 0 && <p className="project-components-preview">+ {projectComponents.map((item) => `${Number(item.quantity).toLocaleString("es-CR")} ${item.unit} ${item.name}`).join(" · ")}</p>}{projectRuns.slice(0, 2).map((run) => {
                   const filamentLines = runFilaments.filter((line) => line.run_id === run.id);
                   const componentLines = runComponents.filter((line) => line.run_id === run.id);
-                  const totals = totalsByCurrency(filamentLines, componentLines);
-                  const incomplete = filamentLines.some((line) => line.cost_amount == null);
+                  const operatingCosts = runCosts.find((cost) => cost.run_id === run.id);
+                  const totals = totalsByCurrency(filamentLines, componentLines, operatingCosts);
+                  const incomplete = filamentLines.some((line) => line.cost_amount == null)
+                    || !operatingCosts
+                    || operatingCosts.electricity_cost_amount == null
+                    || operatingCosts.machine_cost_amount == null
+                    || operatingCosts.labor_cost_amount == null;
                   const comparable = run.sale_amount != null && run.sale_currency && totals.size === 1 && totals.has(run.sale_currency) && !incomplete ? totals.get(run.sale_currency) ?? null : null;
-                  return <div className="project-run-row" key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><div><strong>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</strong><small>{duration(run.actual_minutes)} · {filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString("es-CR")} g</small></div><div className="run-money">{Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{money(currency, total)}</span>)}{run.sale_amount != null && <strong>Venta {money(run.sale_currency || baseCurrency, run.sale_amount)}</strong>}{comparable != null && <small>Utilidad {money(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable)}</small>}</div></div>;
+                  return <div className="project-run-row" key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><div><strong>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</strong><small>{duration(run.actual_minutes)} · {filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString("es-CR")} g{operatingCosts ? ` · ${duration(operatingCosts.actual_labor_minutes)} de trabajo` : " · costos operativos pendientes"}</small></div><div className="run-money">{Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{money(currency, total)}</span>)}{run.sale_amount != null && <strong>Venta {money(run.sale_currency || baseCurrency, run.sale_amount)}</strong>}{comparable != null && <small>Utilidad {money(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable)}</small>}</div></div>;
                 })}</article>;
               }) : <div className="project-empty"><FolderKanban size={34} /><h3>Tu primera receta está lista para nacer</h3><p>Guardá el STL/3MF, los filamentos, gramos, tiempo e insumos que necesita.</p><button className="primary-action" type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Crear primer proyecto</button></div>}
             </div>
