@@ -1,6 +1,6 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
-Fecha de revisión: 29 de agosto de 2026.
+Fecha de revisión: 1 de septiembre de 2026.
 
 ## Qué significa “atómica” en Spool Vault
 
@@ -26,6 +26,8 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Crear orden y registrar pago multimoneda | Atómico, inmutable e idempotente | Bajo | Mantener `create_purchase_order_v2`; monto original, pago real y relación cambiaria se confirman juntos o ninguno se guarda. |
 | Guardar perfil financiero | Atómico e idempotente | Bajo | Mantener `save_user_profile`, RLS por propietario y CRC como valor inicial sin recalcular historia. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
+| Crear proyecto, receta e insumos | Atómico e idempotente | Bajo | Mantener `create_print_project`; el archivo privado se carga antes con una ruta estable y puede reintentarse sin duplicar el proyecto. |
+| Cerrar corrida y descontar varios rollos | Atómico, inmutable e idempotente | Bajo | Mantener `complete_production_run`; bloquear saldos en orden estable, congelar costos por lote y confirmar corrida, consumos e inventario juntos. |
 | Derivar estado del rollo | Regla central en base de datos | Bajo | `Nuevo`, `Abierto`, `Bajo` y `Agotado` se recalculan desde pesos y umbral; `Archivado` continúa siendo explícito. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Mantener estas lecturas solo para la interfaz operativa. |
 | Reporte de saldo financiero | Vista consistente con RLS | Bajo | Mantener `filament_balance_report` como fuente única; no sumar CRC y USD entre sí. |
@@ -39,6 +41,8 @@ El pago real vive en una tabla inmutable separada del monto original. Cada regis
 Desde el 29 de agosto, la base también valida la relación rollo-spool al confirmar cada transacción. Las funciones pueden cambiar ambas tablas juntas, pero una escritura parcial se rechaza. Un índice único impide reutilizar el mismo spool físico en otra ficha, incluso si una de las fichas está archivada; además, el cliente autenticado ya no puede borrar directamente rollos o spools.
 
 La misma revisión centralizó el estado operativo del rollo. Se corrigieron diez etiquetas antiguas de `new` a `open` sin cambiar sus gramos, compras, consumos ni pesajes. Desde entonces, cualquier modificación de peso, peso inicial o umbral pasa por un trigger y los límites físicos también están protegidos por una restricción de tabla.
+
+El 1 de septiembre se agregó el módulo mínimo de proyectos y producción. La receta y sus insumos se crean en una sola operación reintentable; los STL/3MF viven en un bucket privado y se abren con enlaces temporales. Al cerrar una corrida, la base bloquea todos los rollos implicados en orden estable, valida el saldo agregado, congela el costo por gramo del lote utilizado, crea los consumos y descuenta el inventario dentro de la misma transacción. Los registros de producción solo permiten lectura e inserción desde el cliente para evitar reescribir resultados históricos.
 
 ## Riesgos transversales
 

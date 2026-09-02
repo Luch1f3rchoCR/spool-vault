@@ -23,6 +23,8 @@ Incluye:
 - catálogo de tipos de spool con tara verificada/estimada y componentes separados;
 - historial inmutable de pesajes con reintentos seguros;
 - costo de cada consumo calculado con el rollo realmente utilizado;
+- proyectos con recetas reutilizables, archivos STL/3MF privados, tiempos, filamentos e insumos adicionales;
+- corridas de producción con consumo real, costos congelados, venta opcional y descuento atómico de todos los rollos;
 - reporte de saldo por moneda, con valor restante, costos incompletos y exportación CSV;
 - QR por rollo;
 - lectura/escritura NFC con Web NFC cuando el celular/navegador lo soporte;
