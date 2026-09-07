@@ -2031,6 +2031,49 @@ textarea:focus {
   font-weight: 800;
 }
 
+.value-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.value-summary article {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(47, 125, 95, 0.18);
+  border-radius: 8px;
+  background: rgba(47, 125, 95, 0.06);
+}
+
+.value-summary span,
+.value-summary strong,
+.value-summary small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.value-summary span,
+.value-summary small {
+  color: var(--muted);
+}
+
+.value-summary span {
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.value-summary strong {
+  margin: 5px 0 2px;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.value-summary small {
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
 .notes {
   padding: 10px;
   border-left: 4px solid var(--accent);

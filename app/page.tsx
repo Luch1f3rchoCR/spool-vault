@@ -3189,6 +3189,12 @@ export default function Home() {
   const selectedCostPerGram = selectedRoll?.filament_cost_amount && selectedRoll.initial_weight_g
     ? Number(selectedRoll.filament_cost_amount) / Number(selectedRoll.initial_weight_g)
     : null;
+  const selectedRemainingValue = selectedRoll?.filament_cost_amount != null && selectedRoll.initial_weight_g
+    ? Number(selectedRoll.available_weight_g) / Number(selectedRoll.initial_weight_g) * Number(selectedRoll.filament_cost_amount)
+    : null;
+  const selectedConsumedValue = selectedRoll?.filament_cost_amount != null && selectedRemainingValue !== null
+    ? Math.max(0, Number(selectedRoll.filament_cost_amount) - selectedRemainingValue)
+    : null;
   const isDemoMode = dataMode === "demo";
   const isAuthRedirectLocal =
     authRedirectUrl.includes("localhost") || authRedirectUrl.includes("127.0.0.1");
@@ -4374,24 +4380,52 @@ export default function Home() {
               <span>{Math.round(selectedRoll.available_weight_g)} g disponibles</span>
               <span>{Math.round(selectedRoll.initial_weight_g)} g iniciales</span>
               <span>{selectedRoll.location || "Sin ubicación"}</span>
-              <span>
-                {selectedRoll.price_amount
-                  ? `${selectedRoll.currency} ${selectedRoll.price_amount}`
-                  : "Sin precio"}
-              </span>
               <span>{selectedRoll.package_type === "refill" ? "Refill · sin spool" : "Comprado con spool"}</span>
               <span>{selectedSpool ? `Spool ${selectedSpool.code}` : "Sin spool asignado"}</span>
               <span>
                 {selectedCostPerGram === null
-                  ? "Sin costo por gramo"
-                  : `${selectedRoll.currency} ${selectedCostPerGram.toLocaleString("es-CR")} / g`}
-              </span>
-              <span>
-                {selectedRoll.filament_cost_amount == null
-                  ? "Sin costo consumible"
-                  : `${selectedRoll.currency} ${Number(selectedRoll.filament_cost_amount).toLocaleString("es-CR")} consumible`}
+                  ? "Costo por gramo pendiente"
+                  : `${formatMoney(selectedRoll.currency, selectedCostPerGram)} / g`}
               </span>
             </div>
+
+            <section className="value-summary" aria-label="Valor del rollo">
+              <article>
+                <span>Compra original</span>
+                <strong>
+                  {selectedRoll.price_amount == null
+                    ? "Sin precio"
+                    : formatMoney(selectedRoll.currency, Number(selectedRoll.price_amount))}
+                </strong>
+                <small>{selectedRoll.package_type === "spooled" ? "Incluye spool" : "Solo filamento"}</small>
+              </article>
+              <article>
+                <span>Filamento consumible</span>
+                <strong>
+                  {selectedRoll.filament_cost_amount == null
+                    ? "Sin dato"
+                    : formatMoney(selectedRoll.currency, Number(selectedRoll.filament_cost_amount))}
+                </strong>
+                <small>
+                  {selectedRoll.spool_cost_amount > 0
+                    ? `${formatMoney(selectedRoll.currency, Number(selectedRoll.spool_cost_amount))} separado del spool`
+                    : "Sin costo de spool separado"}
+                </small>
+              </article>
+              <article>
+                <span>Valor restante</span>
+                <strong>
+                  {selectedRemainingValue == null
+                    ? "Pendiente"
+                    : formatMoney(selectedRoll.currency, selectedRemainingValue)}
+                </strong>
+                <small>
+                  {selectedConsumedValue == null
+                    ? "Registrá costo para calcularlo"
+                    : `${formatMoney(selectedRoll.currency, selectedConsumedValue)} consumido`}
+                </small>
+              </article>
+            </section>
 
             {selectedSpool && (
               <button
