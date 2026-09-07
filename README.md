@@ -32,6 +32,8 @@ Incluye:
 
 El estado de implementación y los próximos bloques están en [`ROADMAP.md`](./ROADMAP.md). La estrategia de market de proveedores, integración AMS y proyectos/producción está en [`PRODUCT_EXPANSION_PLAN.md`](./PRODUCT_EXPANSION_PLAN.md).
 
+El programa de probadores, las licencias gratuitas de por vida, los formularios privados y las decisiones de correo están en [`TESTER_PROGRAM.md`](./TESTER_PROGRAM.md). La guía paso a paso y el punto actual de configuración de Resend/GoDaddy están en [`RESEND_SETUP.md`](./RESEND_SETUP.md). Estos documentos forman parte del repositorio para retomar el trabajo desde la PC o la Mac.
+
 ## NFC
 
 El MVP escribe una URL del rollo en etiquetas NFC. Web NFC funciona principalmente en Chrome para Android. Si el dispositivo no lo soporta, el QR queda como respaldo.
