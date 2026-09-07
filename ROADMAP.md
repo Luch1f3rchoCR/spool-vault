@@ -69,9 +69,10 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Pruebas de permisos, reintentos, errores de envío, exportación y pantalla móvil/escritorio.
 - [x] Cuenta de Resend creada por el propietario (confirmado el 7 de septiembre de 2026).
 - [x] `stonecollective.dev` figura Verified en Resend y API key creada (confirmado por el propietario).
-- [x] Variables de correo cargadas por el propietario en Vercel Production y redeploy Ready confirmado por captura; valores privados no inspeccionados. Entrega real pendiente en `RESEND_SETUP.md`.
+- [x] Variables de correo cargadas por el propietario en Vercel Production y redeploy Ready confirmado por captura; valores privados no inspeccionados. Seguimiento de entrega en `RESEND_SETUP.md`.
 - [x] Tu espacio como panel lateral, con vistas independientes para ideas, datos, probadores, facturación y tarifas; regreso al menú sin perder borradores durante la sesión del panel.
-- [ ] Confirmar recepción real de una bienvenida antes de invitar al grupo.
+- [x] Confirmar recepción real de una bienvenida: el fundador la recibió en Gmail/spam el 7 de septiembre.
+- [ ] Probar enlace/activación de esa bienvenida e investigar llegada a spam antes de ampliar invitaciones.
 - [ ] Configurar correo de autenticación de Supabase para resolver los límites del remitente predeterminado.
 - [ ] Confirmar alcance comercial definitivo del beneficio founder-v1 antes de ampliarlo.
 
@@ -167,7 +168,9 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 ## Experiencia y módulos siguientes
 
-- [ ] Completar branding: “by Stone Collective Dev”, About y Open Graph.
+- [ ] Revisar detalles de Stone Collective CR y artes en borrador que aportará el fundador; confirmar relación/nombre de marca antes de completar branding, About y Open Graph.
+- [x] Preparar contexto portátil e instrucciones para proyecto propio de ChatGPT en `docs/chatgpt/`.
+- [ ] Crear el proyecto privado Spool Vault, cargar fuentes y abrir chats de Dirección, Marca, Clientes, Marketing, Negocio y Desarrollo/QA.
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
 - [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.

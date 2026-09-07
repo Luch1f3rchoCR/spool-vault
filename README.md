@@ -2,6 +2,8 @@
 
 MVP móvil para administrar rollos de filamento de impresión 3D.
 
+El paquete de continuidad para organizar el proyecto propio de ChatGPT, marca, clientes y negocio está en [docs/chatgpt/00_EMPEZAR_AQUI.md](./docs/chatgpt/00_EMPEZAR_AQUI.md). Es una instantánea sin secretos; no reemplaza el código ni sincroniza automáticamente los chats.
+
 Incluye:
 
 - dashboard de rollos, gramos disponibles, materiales y rollos bajos;

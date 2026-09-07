@@ -18,11 +18,13 @@
 - [x] Clave de Resend guardada directamente en Vercel (captura del propietario).
 - [x] Remitente y clave privada de Supabase cargados por el propietario para Production; valores efectivos no inspeccionados.
 - [x] Nuevo despliegue de producción Ready confirmado por captura del propietario, commit `cc30c41`.
-- [ ] Invitación de prueba autorizada: correo recibido y enlace probado.
+- [x] Invitación de prueba recibida por el fundador en Gmail, dentro de spam; remitente y diseño confirmados por captura el 7 de septiembre.
+- [ ] Probar el enlace recibido y confirmar la activación de la licencia.
+- [ ] Investigar llegada a spam y validar entregabilidad con destinatarios de prueba autorizados.
 - [ ] Correo de inicio de sesión de Supabase configurado y probado por separado.
 - [ ] Decidir buzón, reenvío o Reply-To para las respuestas a `hello`.
 
-Punto actual confirmado el 7 de septiembre mediante las capturas del propietario: dominio Verified, variables agregadas en Vercel y redeploy de producción Ready. Continuar por el paso 4: invitación de prueba autorizada y recepción real. No se han inspeccionado las credenciales ni confirmado un envío real. Verificar el remitente exacto sin guiones bajos: `Spool Vault <hello@stonecollective.dev>`. Registrar aquí las confirmaciones, no las claves privadas.
+Punto actual confirmado el 7 de septiembre: primera bienvenida real recibida por el fundador en Gmail, dentro de spam, con remitente `Spool Vault <hello@stonecollective.dev>` y diseño aprobado. No se ha confirmado el enlace ni la activación de esa prueba. La captura no determina la causa del filtrado; revisar evidencia de autenticación y entrega antes de concluir. No se han inspeccionado ni almacenado credenciales en esta documentación.
 
 ## 1. Agregar el dominio
 

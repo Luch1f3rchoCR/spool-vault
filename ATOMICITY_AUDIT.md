@@ -140,7 +140,7 @@ Mensajes recomendados:
 - Resend recibe una clave de idempotencia estable por bienvenida. Los intentos inciertos de más de 23 horas requieren revisión para no duplicar tras la ventana de 24 horas del proveedor.
 - Cancelar una invitación pendiente bloquea su envío; una vez iniciado el envío o activada la licencia no se permite esa cancelación rápida.
 - Los clientes no pueden preparar envíos ni falsificar su aceptación. La aceptación del proveedor no equivale a recepción en la bandeja del destinatario.
-- Verificado con `supabase/tests/founder_testers.sql`, `supabase/tests/tester_welcome.sql`, pruebas del endpoint y pruebas de navegador con servicios simulados. Variables de correo y redeploy confirmados por capturas del propietario; recepción real pendiente.
+- Verificado con `supabase/tests/founder_testers.sql`, `supabase/tests/tester_welcome.sql`, pruebas del endpoint y pruebas de navegador con servicios simulados. Primera bienvenida real recibida por el fundador en Gmail/spam el 7 de septiembre; entregabilidad y prueba del enlace pendientes.
 - La navegación lateral de Tu espacio conserva los borradores al volver al menú y bloquea regreso/cierre durante escrituras. No cambia los contratos de persistencia, permisos ni envío.
 
 ## Criterio de terminación por fase

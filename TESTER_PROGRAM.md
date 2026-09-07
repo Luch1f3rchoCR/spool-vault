@@ -8,10 +8,10 @@ Tu espacio abre un panel lateral en computadora y ocupa la pantalla en celular. 
 
 - Implementación publicada en `https://spool-vault.vercel.app/`, PR #18, commit de producción `3dc9d5d`.
 - Migraciones de licencias y bienvenidas aplicadas. Cuenta del propietario habilitada como administradora; los identificadores de acceso permanecen en la base, no en este documento.
-- El propietario confirmó dominio Verified y mostró la carga de variables en Vercel Production y el redeploy Ready de `cc30c41`. Las credenciales efectivas no fueron inspeccionadas; falta probar una entrega real.
+- El propietario confirmó dominio Verified y mostró la carga de variables en Vercel Production y el redeploy Ready de `cc30c41`. Las credenciales efectivas no fueron inspeccionadas; posteriormente confirmó la primera recepción real en spam.
 - Remitente elegido: `Spool Vault <hello@stonecollective.dev>`; dominio registrado en GoDaddy, sin necesidad de alojamiento web.
-- Próximo paso: invitación de prueba autorizada y confirmación de recepción. Seguir el paso 4 de [RESEND_SETUP.md](./RESEND_SETUP.md).
-- La última comprobación encontró cero invitaciones y cero envíos reales. La recepción real sigue pendiente.
+- Próximo paso: probar enlace/activación y revisar entrega a spam. Seguir el paso 4 de [RESEND_SETUP.md](./RESEND_SETUP.md).
+- Primera bienvenida real recibida por el fundador en Gmail, dentro de spam, el 7 de septiembre. Remitente y diseño confirmados por captura. No equivale a entregabilidad general ni confirma la activación de esa prueba.
 
 Actualizar este estado y el checklist de correo al completar cada paso. No marcar un envío como entregado únicamente porque el proveedor lo aceptó.
 
