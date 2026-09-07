@@ -26,6 +26,7 @@ Organizar contexto, marca, investigación, negocio y producto sin reconstruir es
 El código y los documentos operativos viven en https://github.com/Luch1f3rchoCR/spool-vault.
 Producción: https://spool-vault.vercel.app/.
 Los archivos ROADMAP.md, ATOMICITY_AUDIT.md, TESTER_PROGRAM.md, RESEND_SETUP.md y PRODUCT_EXPANSION_PLAN.md son las referencias técnicas maestras.
+PROJECT_CONTEXT.md es el punto de entrada del repositorio y resume decisiones, evidencia y nuevas líneas de trabajo. Al preparar otra copia del paquete, contrastarla con ese archivo y el commit actual.
 La carpeta docs/chatgpt contiene este paquete. Los documentos adjuntos en ChatGPT son una instantánea: actualizar los modificados después de cada bloque, no asumir sincronización automática.
 
 ## Continuidad PC y Mac

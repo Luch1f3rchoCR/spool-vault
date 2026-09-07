@@ -2,6 +2,8 @@
 
 Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
+El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md). Las hipótesis de marca, clientes y negocio están separadas de las funciones implementadas.
+
 ## MVP operativo
 
 - [x] Inventario real conectado a Supabase con autenticación y RLS.
@@ -171,6 +173,10 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Revisar detalles de Stone Collective CR y artes en borrador que aportará el fundador; confirmar relación/nombre de marca antes de completar branding, About y Open Graph.
 - [x] Preparar contexto portátil e instrucciones para proyecto propio de ChatGPT en `docs/chatgpt/`.
 - [ ] Crear el proyecto privado Spool Vault, cargar fuentes y abrir chats de Dirección, Marca, Clientes, Marketing, Negocio y Desarrollo/QA.
+- [ ] Aprobar brief de marca después de revisar Stone Collective CR y los artes aportados.
+- [ ] Validar cliente inicial mediante entrevistas y tareas del piloto, sin dar los segmentos propuestos por confirmados.
+- [ ] Comparar modelos de negocio y costos antes de fijar precios o integrar cobros.
+- [ ] Preparar marketing basado en funciones reales y público validado, con aprobación previa a publicaciones o gasto.
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
 - [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.

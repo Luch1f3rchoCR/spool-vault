@@ -14,6 +14,7 @@ Corte: 2026-09-07. Registrar cambios nuevos sin borrar el historial.
 | D09 | Propuesta | Mantener Spool Vault como producto con firma secundaria Stone Collective | Pendiente de aprobación |
 | D10 | Pendiente | Cliente inicial, precios, modelo comercial y arquitectura final de marca | Sin validación registrada |
 | D11 | Pendiente de material | El fundador aportará detalles de Stone Collective CR y artes aún en desarrollo; no aprobar identidad antes de revisarlos | Fundador, 2026-09-07 |
+| D12 | Confirmado | Mantener en la documentación del repositorio de GitHub todo el contexto de producto y las nuevas ideas, sin secretos ni datos personales | Solicitud explícita del fundador, 2026-09-07 |
 
 ## Regla de actualización
 Cada entrada nueva debe incluir fecha, responsable de aprobación, motivo y enlaces de evidencia cuando existan.
