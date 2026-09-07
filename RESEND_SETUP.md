@@ -24,6 +24,8 @@
 
 Punto actual: entrar en Domains de Resend y agregar el dominio. Ningún estado posterior está confirmado todavía. Registrar aquí las confirmaciones, no las claves privadas.
 
+Actualización del 7 de septiembre: el propietario informó que Resend ya está configurado. Pendiente precisar si el dominio figura Verified, si creó la API key y si la cargó en Vercel. No asumir que el envío en producción ya está activo a partir de esa confirmación general.
+
 ## 1. Agregar el dominio
 
 1. Abrir [Domains en Resend](https://resend.com/domains).
