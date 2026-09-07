@@ -68,7 +68,7 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Envío automático preparado para Resend con remitente previsto `Spool Vault <hello@stonecollective.dev>`.
 - [x] Pruebas de permisos, reintentos, errores de envío, exportación y pantalla móvil/escritorio.
 - [x] Cuenta de Resend creada por el propietario (confirmado el 7 de septiembre de 2026).
-- [ ] Agregar y verificar `stonecollective.dev` en Resend mediante los DNS de GoDaddy.
+- [x] `stonecollective.dev` figura Verified en Resend y API key creada (confirmado por el propietario).
 - [ ] Configurar credenciales privadas y remitente en Vercel; seguir `RESEND_SETUP.md`.
 - [ ] Confirmar recepción real de una bienvenida antes de invitar al grupo.
 - [ ] Configurar correo de autenticación de Supabase para resolver los límites del remitente predeterminado.

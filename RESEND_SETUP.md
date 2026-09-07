@@ -12,19 +12,17 @@
 ## Checklist de configuración
 
 - [x] Cuenta de Resend creada (confirmado por el propietario).
-- [ ] Dominio agregado en Resend.
-- [ ] Registros de envío configurados en GoDaddy.
-- [ ] Resend muestra el dominio como Verified.
-- [ ] Clave de Resend creada para la app y guardada directamente en Vercel.
+- [x] Dominio agregado en Resend (confirmado por el propietario).
+- [x] Registros de envío configurados y dominio Verified (confirmado por el propietario).
+- [x] Clave de Resend creada para la app (confirmado por el propietario).
+- [ ] Clave de Resend guardada directamente en Vercel.
 - [ ] Remitente y clave privada de Supabase configurados en el servidor de Vercel.
 - [ ] Nuevo despliegue de producción con las variables cargadas.
 - [ ] Invitación de prueba autorizada: correo recibido y enlace probado.
 - [ ] Correo de inicio de sesión de Supabase configurado y probado por separado.
 - [ ] Decidir buzón, reenvío o Reply-To para las respuestas a `hello`.
 
-Punto actual: entrar en Domains de Resend y agregar el dominio. Ningún estado posterior está confirmado todavía. Registrar aquí las confirmaciones, no las claves privadas.
-
-Actualización del 7 de septiembre: el propietario informó que Resend ya está configurado. Pendiente precisar si el dominio figura Verified, si creó la API key y si la cargó en Vercel. No asumir que el envío en producción ya está activo a partir de esa confirmación general.
+Punto actual confirmado por el propietario el 7 de septiembre: dominio Verified y API key creada; falta ponerla en Vercel. Continuar por el paso 3. No se han inspeccionado las credenciales ni probado un envío real. Registrar aquí las confirmaciones, no las claves privadas.
 
 ## 1. Agregar el dominio
 

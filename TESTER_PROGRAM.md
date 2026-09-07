@@ -6,9 +6,9 @@ El panel vive en Perfil / Tu espacio / Grupo de pruebas y solo aparece a las cue
 
 - Implementación publicada en `https://spool-vault.vercel.app/`, PR #18, commit de producción `3dc9d5d`.
 - Migraciones de licencias y bienvenidas aplicadas. Cuenta del propietario habilitada como administradora; los identificadores de acceso permanecen en la base, no en este documento.
-- El propietario confirmó que creó su cuenta y posteriormente informó que Resend está configurado. Pendiente precisar el estado Verified del dominio, la API key y las variables de Vercel antes de afirmar que el envío está activo.
+- El propietario confirmó cuenta creada, dominio Verified y API key creada en Resend. Falta configurar las variables de Vercel y probar una entrega real.
 - Remitente elegido: `Spool Vault <hello@stonecollective.dev>`; dominio registrado en GoDaddy, sin necesidad de alojamiento web.
-- Próximo paso: agregar `stonecollective.dev` en Resend y verificar sus registros DNS en GoDaddy. Seguir [RESEND_SETUP.md](./RESEND_SETUP.md).
+- Próximo paso: conectar las variables privadas de correo en Vercel. Seguir el paso 3 de [RESEND_SETUP.md](./RESEND_SETUP.md).
 - La última comprobación encontró cero invitaciones y cero envíos reales. La recepción real sigue pendiente.
 
 Actualizar este estado y el checklist de correo al completar cada paso. No marcar un envío como entregado únicamente porque el proveedor lo aceptó.
