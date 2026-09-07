@@ -2,13 +2,15 @@
 
 El panel vive en Perfil / Tu espacio / Grupo de pruebas y solo aparece a las cuentas de `app_admins`. Los probadores comunes no pueden invitar, asignar licencias ni leer aportes ajenos. La administración no da acceso a sus inventarios.
 
+Tu espacio abre un panel lateral en computadora y ocupa la pantalla en celular. El menú se reemplaza por la vista elegida, sin desplegar formularios debajo. La flecha vuelve al menú y conserva los borradores mientras el panel siga abierto. Escape vuelve al menú desde una sección y cierra desde el inicio; la X cierra el panel. El encabezado permanece visible al desplazar el contenido y la navegación se bloquea durante un guardado o envío.
+
 ## Estado para retomar · 7 de septiembre de 2026
 
 - Implementación publicada en `https://spool-vault.vercel.app/`, PR #18, commit de producción `3dc9d5d`.
 - Migraciones de licencias y bienvenidas aplicadas. Cuenta del propietario habilitada como administradora; los identificadores de acceso permanecen en la base, no en este documento.
-- El propietario confirmó cuenta creada, dominio Verified y API key creada en Resend. Falta configurar las variables de Vercel y probar una entrega real.
+- El propietario confirmó dominio Verified y mostró la carga de variables en Vercel Production y el redeploy Ready de `cc30c41`. Las credenciales efectivas no fueron inspeccionadas; falta probar una entrega real.
 - Remitente elegido: `Spool Vault <hello@stonecollective.dev>`; dominio registrado en GoDaddy, sin necesidad de alojamiento web.
-- Próximo paso: conectar las variables privadas de correo en Vercel. Seguir el paso 3 de [RESEND_SETUP.md](./RESEND_SETUP.md).
+- Próximo paso: invitación de prueba autorizada y confirmación de recepción. Seguir el paso 4 de [RESEND_SETUP.md](./RESEND_SETUP.md).
 - La última comprobación encontró cero invitaciones y cero envíos reales. La recepción real sigue pendiente.
 
 Actualizar este estado y el checklist de correo al completar cada paso. No marcar un envío como entregado únicamente porque el proveedor lo aceptó.

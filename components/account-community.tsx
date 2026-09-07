@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Copy, CreditCard, Download, Lightbulb, Mail, RefreshCw, Send, UserPlus, Users, X } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { FOUNDER_SCOPE, welcomeText } from "@/lib/tester-welcome";
+import type { ProfileView } from "@/components/profile-panel";
 
 type Membership = {
   id: string; email: string; display_name: string; user_id: string | null;
@@ -22,11 +23,11 @@ type Feedback = {
 const statuses = { received: "Recibido", reviewing: "En revisión", planned: "Planeado", resolved: "Resuelto" };
 const founderScope = FOUNDER_SCOPE;
 
-export function AccountCommunity({ userId, mode, localData, onBusyChange }: {
+export function AccountCommunity({ userId, mode, localData, onBusyChange, view, onNavigate }: {
   userId: string; mode: "demo" | "local" | "authenticated" | "error";
   localData: Record<string, unknown>; onBusyChange: (busy: boolean) => void;
+  view: ProfileView; onNavigate: (view: ProfileView) => void;
 }) {
-  const [view, setView] = useState<"none" | "feedback" | "data" | "admin">("none");
   const [membership, setMembership] = useState<Membership | null>(null);
   const [members, setMembers] = useState<Membership[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
@@ -190,11 +191,11 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange }: {
     });
   }
 
-  function toggle(next: typeof view) { setView(view === next ? "none" : next); setNotice(""); }
+  useEffect(() => { setNotice(""); }, [view]);
   const ownFeedback = feedback.filter((item) => item.user_id === userId);
 
-  return <div className="account-community" aria-busy={busy}>
-    <div className="membership-card">
+  return <div className="account-community" aria-busy={busy} hidden={view === "preferences" || view === "production"}>
+    <div className="membership-card" hidden={view !== "home"}>
       <div className="membership-copy"><span className="membership-icon"><CreditCard size={20} aria-hidden="true" /></span><div>
         <p className="eyebrow">Licencia personal</p>
         <h3>{loading ? "Consultando membresía…" : membership?.activated_at ? "Probador fundador" : "Acceso anticipado"}</h3>
@@ -204,11 +205,11 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange }: {
     </div>
     {error && <div role="alert" className="account-error"><p>{error}</p><button type="button" onClick={() => void load()} disabled={busy || loading}><RefreshCw size={16} /> Reintentar carga</button></div>}
     {notice && <p role="status" className="account-notice">{notice}</p>}
-    <div className="profile-menu" aria-label="Opciones de tu espacio">
-      <button type="button" onClick={() => toggle("feedback")} aria-expanded={view === "feedback"} disabled={busy}><Lightbulb size={19} /><span><strong>Compartir una idea</strong><small>Ideas y reportes de errores</small></span><ChevronRight size={18} /></button>
-      <button type="button" onClick={() => toggle("data")} aria-expanded={view === "data"} disabled={busy}><Download size={19} /><span><strong>Mis datos</strong><small>Datos personales y respaldo</small></span><ChevronRight size={18} /></button>
-      {admin && <button type="button" onClick={() => toggle("admin")} aria-expanded={view === "admin"} disabled={busy}><Users size={19} /><span><strong>Grupo de pruebas</strong><small>{members.filter((m) => m.activated_at).length} activos · {members.filter((m) => !m.activated_at && !m.cancelled_at).length} pendientes</small></span><ChevronRight size={18} /></button>}
-    </div>
+    <nav className="profile-menu" aria-label="Opciones de tu espacio" hidden={view !== "home"}>
+      <button type="button" onClick={() => onNavigate("feedback")} disabled={busy}><Lightbulb size={19} /><span><strong>Compartir una idea</strong><small>Ideas y reportes de errores</small></span><ChevronRight size={18} /></button>
+      <button type="button" onClick={() => onNavigate("data")} disabled={busy}><Download size={19} /><span><strong>Mis datos</strong><small>Datos personales y respaldo</small></span><ChevronRight size={18} /></button>
+      {admin && <button type="button" onClick={() => onNavigate("admin")} disabled={busy}><Users size={19} /><span><strong>Grupo de pruebas</strong><small>{members.filter((m) => m.activated_at).length} activos · {members.filter((m) => !m.activated_at && !m.cancelled_at).length} pendientes</small></span><ChevronRight size={18} /></button>}
+    </nav>
 
     {view === "feedback" && <section className="account-section" aria-label="Compartir una idea">
       <h3>Tu aporte</h3>
@@ -230,7 +231,8 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange }: {
       <p>{connected ? "Datos de tu cuenta sincronizada." : mode === "demo" ? "Datos de demostración. No son un inventario sincronizado." : "Datos locales de este navegador."}</p>
       <p>El respaldo JSON incluye inventario, compras, consumos, pesajes, proyectos y perfil. Conserva referencias a fotos y archivos; no incluye los archivos en sí.</p>
       <button type="button" className="primary-action" onClick={() => void download()} disabled={busy || (!connected && mode === "error")}><Download size={18} />{busy ? "Preparando…" : "Descargar mis datos"}</button>
-      <p className="form-help">Los datos personales y de facturación se pueden editar en las preferencias de abajo. La restauración automática de este respaldo aún no está disponible.</p>
+      <p className="form-help">La restauración automática de este respaldo aún no está disponible.</p>
+      <button type="button" onClick={() => onNavigate("preferences")} disabled={busy}><CreditCard size={18} />Editar perfil y facturación<ChevronRight size={18} /></button>
     </section>}
 
     {view === "admin" && admin && <section className="account-section" aria-label="Grupo de pruebas">

@@ -51,18 +51,37 @@ async function run(browser, { admin, width, configured = false }) {
     } else if (name === 'user_feedback') {
       if (request.method() === 'PATCH') { Object.assign(feedback[0], payload); result = feedback[0]; }
       else result = feedback;
-    } else if (name === 'export_my_data') result = { format: 'spool-vault-account', version: 1, source: 'supabase', user_id: userId, tables: { user_feedback: feedback } };
+    } else if (name === 'export_my_data') {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      result = { format: 'spool-vault-account', version: 1, source: 'supabase', user_id: userId, tables: { user_feedback: feedback } };
+    }
     await route.fulfill({ json: result });
   });
 
   await page.goto(baseUrl);
   await page.getByRole('button', { name: /Perfil.*tester@example/ }).click();
   await page.getByRole('heading', { name: 'Probador fundador' }).waitFor();
+  assert.equal(await page.getByRole('textbox', { name: 'Nombre para mostrar' }).count(), 0);
+  const panel = page.getByRole('dialog');
+  assert.equal(await panel.count(), 1);
+  await panel.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)));
+  const frame = await panel.boundingBox();
+  assert.equal(Math.round(frame.x + frame.width), width, 'drawer must align with the right edge');
+  assert.equal(Math.round(frame.height), 844, 'drawer must use the viewport height');
+  await page.screenshot({ path: path.join(outputDir, `account-menu-${admin ? 'admin' : 'tester'}-${width}.png`) });
   await page.getByRole('button', { name: /Compartir una idea/ }).click();
   const section = page.getByRole('region', { name: 'Compartir una idea' });
   await section.getByLabel('Tipo de aporte').selectOption('bug');
   await section.getByLabel('Título', { exact: true }).fill('El QR no abre mi rollo');
   await section.getByLabel('Qué pasó y qué esperabas').fill('Escaneé la etiqueta y esperaba ver la ficha de mi filamento.');
+  await page.getByRole('button', { name: 'Volver a Tu espacio' }).click();
+  assert.match(await page.locator(':focus').innerText(), /Compartir una idea/);
+  await page.getByRole('button', { name: /Compartir una idea/ }).click();
+  assert.equal(await section.getByLabel('Título', { exact: true }).inputValue(), 'El QR no abre mi rollo', 'back navigation must preserve drafts');
+  assert.equal(await page.getByRole('dialog', { name: 'Compartir una idea', exact: true }).count(), 1);
+  await page.screenshot({ path: path.join(outputDir, `account-feedback-${width}.png`) });
+  const closeBounds = await page.getByRole('button', { name: 'Cerrar perfil' }).boundingBox();
+  assert.ok(closeBounds.x >= 0 && closeBounds.x + closeBounds.width <= width, 'close button must remain in the viewport');
   await section.getByRole('button', { name: 'Enviar aporte' }).click();
   await page.getByRole('alert').filter({ hasText: 'No pudimos confirmar' }).waitFor();
   assert.equal(await section.getByLabel('Título', { exact: true }).inputValue(), 'El QR no abre mi rollo');
@@ -70,12 +89,32 @@ async function run(browser, { admin, width, configured = false }) {
   await page.getByRole('status').filter({ hasText: 'Aporte recibido' }).waitFor();
   assert.equal(submitCalls, 2);
   assert.equal(feedback.length, 1, 'uncertain retry must reuse the same ID');
+  await page.getByRole('button', { name: 'Volver a Tu espacio' }).click();
   await page.getByRole('button', { name: /Mis datos/ }).click();
   const downloadPromise = page.waitForEvent('download');
+  void downloadPromise.catch(() => {});
   await page.getByRole('button', { name: 'Descargar mis datos' }).click();
+  await page.getByRole('button', { name: 'Preparando…' }).waitFor();
+  await page.locator('button[aria-label="Volver a Tu espacio"]:disabled').waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Volver a Tu espacio' }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { name: 'Cerrar perfil' }).isDisabled(), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('dialog', { name: 'Mis datos', exact: true }).count(), 1);
   const download = await downloadPromise;
   const exported = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
   assert.equal(exported.user_id, userId);
+  await page.getByRole('button', { name: 'Editar perfil y facturación' }).click();
+  await page.getByLabel('Nombre para mostrar', { exact: true }).fill('Borrador conservado');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Moneda y facturación/ }).click();
+  assert.equal(await page.getByLabel('Nombre para mostrar', { exact: true }).inputValue(), 'Borrador conservado');
+  await page.getByRole('button', { name: 'Volver a Tu espacio' }).click();
+  await page.getByRole('button', { name: /Tarifas de impresión/ }).click();
+  await page.getByLabel('Electricidad por kWh', { exact: true }).fill('95');
+  await page.getByRole('button', { name: 'Volver a Tu espacio' }).click();
+  await page.getByRole('button', { name: /Tarifas de impresión/ }).click();
+  assert.equal(await page.getByLabel('Electricidad por kWh', { exact: true }).inputValue(), '95');
+  await page.getByRole('button', { name: 'Volver a Tu espacio' }).click();
 
   if (admin) {
     await page.getByRole('button', { name: /Grupo de pruebas/ }).click();
@@ -97,11 +136,19 @@ async function run(browser, { admin, width, configured = false }) {
   } else {
     assert.equal(await page.getByRole('button', { name: /Grupo de pruebas/ }).count(), 0);
   }
-  const panel = page.getByRole('dialog', { name: 'Perfil', exact: true });
-  await panel.evaluate((element) => { element.scrollTop = 0; });
+  await page.locator('.profile-content').evaluate((element) => { element.scrollTop = 0; });
   const overflow = await panel.evaluate((element) => ({ scroll: element.scrollWidth, width: element.clientWidth }));
   assert.ok(overflow.scroll <= overflow.width + 1, JSON.stringify(overflow));
   await page.screenshot({ path: path.join(outputDir, `account-${admin ? 'admin' : 'tester'}-${width}.png`) });
+  if (admin) await page.getByRole('button', { name: 'Volver a Tu espacio' }).click();
+  await page.getByRole('button', { name: 'Cerrar perfil', exact: true }).focus();
+  await page.keyboard.press('Shift+Tab');
+  assert.match(await page.locator(':focus').innerText(), /Cerrar sesión/);
+  await page.keyboard.press('Tab');
+  assert.equal(await page.locator(':focus').getAttribute('aria-label'), 'Cerrar perfil');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('dialog').count(), 0);
+  assert.match(await page.locator(':focus').innerText(), /Perfil/);
   assert.deepEqual(errors, []);
   console.log(`PASS ${admin ? 'admin' : 'tester'} ${width}px: feedback retry, account export, role visibility, no overflow or page errors`);
   await context.close();
@@ -113,6 +160,7 @@ async function run(browser, { admin, width, configured = false }) {
   try {
     await run(browser, { admin: true, width: 390 });
     await run(browser, { admin: false, width: 390 });
+    await run(browser, { admin: false, width: 320 });
     await run(browser, { admin: true, width: 1280, configured: true });
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exitCode = 1; });

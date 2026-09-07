@@ -15,14 +15,14 @@
 - [x] Dominio agregado en Resend (confirmado por el propietario).
 - [x] Registros de envío configurados y dominio Verified (confirmado por el propietario).
 - [x] Clave de Resend creada para la app (confirmado por el propietario).
-- [ ] Clave de Resend guardada directamente en Vercel.
-- [ ] Remitente y clave privada de Supabase configurados en el servidor de Vercel.
-- [ ] Nuevo despliegue de producción con las variables cargadas.
+- [x] Clave de Resend guardada directamente en Vercel (captura del propietario).
+- [x] Remitente y clave privada de Supabase cargados por el propietario para Production; valores efectivos no inspeccionados.
+- [x] Nuevo despliegue de producción Ready confirmado por captura del propietario, commit `cc30c41`.
 - [ ] Invitación de prueba autorizada: correo recibido y enlace probado.
 - [ ] Correo de inicio de sesión de Supabase configurado y probado por separado.
 - [ ] Decidir buzón, reenvío o Reply-To para las respuestas a `hello`.
 
-Punto actual confirmado por el propietario el 7 de septiembre: dominio Verified y API key creada; falta ponerla en Vercel. Continuar por el paso 3. No se han inspeccionado las credenciales ni probado un envío real. Registrar aquí las confirmaciones, no las claves privadas.
+Punto actual confirmado el 7 de septiembre mediante las capturas del propietario: dominio Verified, variables agregadas en Vercel y redeploy de producción Ready. Continuar por el paso 4: invitación de prueba autorizada y recepción real. No se han inspeccionado las credenciales ni confirmado un envío real. Verificar el remitente exacto sin guiones bajos: `Spool Vault <hello@stonecollective.dev>`. Registrar aquí las confirmaciones, no las claves privadas.
 
 ## 1. Agregar el dominio
 
