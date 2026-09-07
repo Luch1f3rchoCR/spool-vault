@@ -131,6 +131,17 @@ Mensajes recomendados:
 3. Derivar estados por gramos y porcentaje.
 4. [Parcial] El reporte de saldo ya usa una vista consistente, conserva monedas originales y exporta CSV; falta agregar conversiones históricas cuando exista moneda base.
 
+## Licencias y bienvenida de probadores
+
+- `reserve_tester_details` guarda licencia y registro de bienvenida en una transacción. El correo normalizado es único; un reintento recupera el registro original.
+- La licencia se activa únicamente con el correo actual confirmado de `auth.users`; `user_metadata` y el campo editable `user_profiles.membership_status` no autorizan beneficios ni administración.
+- El envío externo ocurre después del commit. Nunca se informa una reserva como correo entregado.
+- El servidor verifica sesión y administrador antes de usar la clave privada. Destinatario, contenido y remitente quedan congelados antes del primer intento.
+- Resend recibe una clave de idempotencia estable por bienvenida. Los intentos inciertos de más de 23 horas requieren revisión para no duplicar tras la ventana de 24 horas del proveedor.
+- Cancelar una invitación pendiente bloquea su envío; una vez iniciado el envío o activada la licencia no se permite esa cancelación rápida.
+- Los clientes no pueden preparar envíos ni falsificar su aceptación. La aceptación del proveedor no equivale a recepción en la bandeja del destinatario.
+- Verificado con `supabase/tests/founder_testers.sql`, `supabase/tests/tester_welcome.sql`, pruebas del endpoint y pruebas de navegador con servicios simulados. Recepción real pendiente de configurar Resend.
+
 ## Criterio de terminación por fase
 
 Una fase solo se marca completa cuando incluye migración aditiva, políticas RLS, pruebas de éxito y reversión, compilación del proyecto, validación local y prueba de humo en producción.

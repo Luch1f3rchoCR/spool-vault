@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import {
-  ChevronRight,
   CreditCard,
-  Download,
-  Lightbulb,
   LogOut,
   Save,
   ShieldCheck,
@@ -14,6 +11,7 @@ import {
   X
 } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
+import { AccountCommunity } from "@/components/account-community";
 
 export type ProfileValues = {
   display_name: string;
@@ -31,6 +29,9 @@ export type ProfileValues = {
 
 type ProfilePanelProps = {
   email: string;
+  userId: string;
+  mode: "demo" | "local" | "authenticated" | "error";
+  localData: Record<string, unknown>;
   profile: UserProfile;
   isSaving: boolean;
   onClose: () => void;
@@ -38,7 +39,8 @@ type ProfilePanelProps = {
   onSignOut: () => void;
 };
 
-export function ProfilePanel({ email, profile, isSaving, onClose, onSave, onSignOut }: ProfilePanelProps) {
+export function ProfilePanel({ email, userId, mode, localData, profile, isSaving, onClose, onSave, onSignOut }: ProfilePanelProps) {
+  const [communityBusy, setCommunityBusy] = useState(false);
   const [values, setValues] = useState<ProfileValues>({
     display_name: profile.display_name ?? "",
     base_currency: profile.base_currency || "CRC",
@@ -63,7 +65,7 @@ export function ProfilePanel({ email, profile, isSaving, onClose, onSave, onSign
       className="modal-backdrop profile-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !isSaving) onClose();
+        if (event.target === event.currentTarget && !isSaving && !communityBusy) onClose();
       }}
     >
       <section className="panel modal-panel profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title">
@@ -72,7 +74,7 @@ export function ProfilePanel({ email, profile, isSaving, onClose, onSave, onSign
             <p className="eyebrow">Tu espacio</p>
             <h2 id="profile-title">Perfil</h2>
           </div>
-          <button className="modal-close" type="button" onClick={onClose} disabled={isSaving} aria-label="Cerrar perfil">
+          <button className="modal-close" type="button" onClick={onClose} disabled={isSaving || communityBusy} aria-label="Cerrar perfil">
             <X size={20} aria-hidden="true" />
           </button>
         </div>
@@ -84,6 +86,8 @@ export function ProfilePanel({ email, profile, isSaving, onClose, onSave, onSign
             <span>{email ? `${email} · cuenta sincronizada` : "Iniciá sesión para sincronizar tu cuenta"}</span>
           </div>
         </div>
+
+        <AccountCommunity key={userId || mode} userId={userId} mode={mode} localData={localData} onBusyChange={setCommunityBusy} />
 
         <form className="profile-preferences" onSubmit={submit} aria-busy={isSaving}>
           <div className="profile-section-head">
@@ -118,37 +122,13 @@ export function ProfilePanel({ email, profile, isSaving, onClose, onSave, onSign
           <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando tarifas…" : "Guardar tarifas"}</button>
         </form>
 
-        <div className="membership-card">
-          <div className="membership-copy">
-            <span className="membership-icon"><CreditCard size={20} aria-hidden="true" /></span>
-            <div>
-              <p className="eyebrow">Membresía</p>
-              <h3>Plan personal · acceso anticipado</h3>
-              <p>La pasarela de pago y los planes se conectarán acá cuando estén definidos.</p>
-            </div>
-          </div>
-          <button type="button" disabled>Ver planes · próximamente</button>
-        </div>
-
-        <div className="profile-menu" aria-label="Opciones de perfil">
-          <button type="button" disabled>
-            <Lightbulb size={19} aria-hidden="true" />
-            <span><strong>Compartir una idea</strong><small>Feedback y nuevas funciones</small></span>
-            <ChevronRight size={18} aria-hidden="true" />
-          </button>
-          <button type="button" disabled>
-            <Download size={19} aria-hidden="true" />
-            <span><strong>Mis datos</strong><small>Exportación y respaldo</small></span>
-            <ChevronRight size={18} aria-hidden="true" />
-          </button>
-          <div className="profile-security">
+        <div className="profile-security">
             <ShieldCheck size={18} aria-hidden="true" />
             <span>Spool Vault nunca guardará números de tarjeta.</span>
-          </div>
         </div>
 
         {email && (
-          <button className="profile-signout" type="button" onClick={onSignOut} disabled={isSaving}>
+          <button className="profile-signout" type="button" onClick={onSignOut} disabled={isSaving || communityBusy}>
             <LogOut size={18} aria-hidden="true" />
             Cerrar sesión
           </button>
