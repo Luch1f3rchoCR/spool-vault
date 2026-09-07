@@ -2,6 +2,17 @@
 
 El panel vive en Perfil / Tu espacio / Grupo de pruebas y solo aparece a las cuentas de `app_admins`. Los probadores comunes no pueden invitar, asignar licencias ni leer aportes ajenos. La administración no da acceso a sus inventarios.
 
+## Estado para retomar · 7 de septiembre de 2026
+
+- Implementación publicada en `https://spool-vault.vercel.app/`, PR #18, commit de producción `3dc9d5d`.
+- Migraciones de licencias y bienvenidas aplicadas. Cuenta del propietario habilitada como administradora; los identificadores de acceso permanecen en la base, no en este documento.
+- El propietario confirmó que creó su cuenta de Resend. Todavía no se ha confirmado dominio verificado ni configuración de correo en Vercel.
+- Remitente elegido: `Spool Vault <hello@stonecollective.dev>`; dominio registrado en GoDaddy, sin necesidad de alojamiento web.
+- Próximo paso: agregar `stonecollective.dev` en Resend y verificar sus registros DNS en GoDaddy. Seguir [RESEND_SETUP.md](./RESEND_SETUP.md).
+- La última comprobación encontró cero invitaciones y cero envíos reales. La recepción real sigue pendiente.
+
+Actualizar este estado y el checklist de correo al completar cada paso. No marcar un envío como entregado únicamente porque el proveedor lo aceptó.
+
 ## Licencia
 
 `founder_personal_v1` representa acceso personal gratuito y sin vencimiento al inventario, compras, pesajes, etiquetas y proyectos de esta versión. No tiene renovación ni cobros recurrentes. El beneficio se vincula al usuario cuando abre Tu espacio con su correo verificado. Servicios externos y futuros planes adicionales quedan fuera de esta versión del beneficio. No se modifican los planes de cuentas existentes.
