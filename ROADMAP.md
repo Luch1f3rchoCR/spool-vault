@@ -69,7 +69,8 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [x] Pruebas de permisos, reintentos, errores de envío, exportación y pantalla móvil/escritorio.
 - [x] Cuenta de Resend creada por el propietario (confirmado el 7 de septiembre de 2026).
 - [x] `stonecollective.dev` figura Verified en Resend y API key creada (confirmado por el propietario).
-- [ ] Configurar credenciales privadas y remitente en Vercel; seguir `RESEND_SETUP.md`.
+- [x] Variables de correo cargadas por el propietario en Vercel Production y redeploy Ready confirmado por captura; valores privados no inspeccionados. Entrega real pendiente en `RESEND_SETUP.md`.
+- [x] Tu espacio como panel lateral, con vistas independientes para ideas, datos, probadores, facturación y tarifas; regreso al menú sin perder borradores durante la sesión del panel.
 - [ ] Confirmar recepción real de una bienvenida antes de invitar al grupo.
 - [ ] Configurar correo de autenticación de Supabase para resolver los límites del remitente predeterminado.
 - [ ] Confirmar alcance comercial definitivo del beneficio founder-v1 antes de ampliarlo.

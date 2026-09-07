@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  ArrowLeft,
+  ChevronRight,
   CreditCard,
   LogOut,
   Save,
@@ -12,6 +14,12 @@ import {
 } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
 import { AccountCommunity } from "@/components/account-community";
+
+export type ProfileView = "home" | "feedback" | "data" | "admin" | "preferences" | "production";
+const viewTitles: Record<ProfileView, string> = {
+  home: "Perfil", feedback: "Compartir una idea", data: "Mis datos",
+  admin: "Grupo de pruebas", preferences: "Moneda y facturación", production: "Tarifas de impresión"
+};
 
 export type ProfileValues = {
   display_name: string;
@@ -41,6 +49,31 @@ type ProfilePanelProps = {
 
 export function ProfilePanel({ email, userId, mode, localData, profile, isSaving, onClose, onSave, onSignOut }: ProfilePanelProps) {
   const [communityBusy, setCommunityBusy] = useState(false);
+  const [view, setView] = useState<ProfileView>("home");
+  const [saved, setSaved] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const menuTrigger = useRef<HTMLElement | null>(null);
+  const blocked = isSaving || communityBusy;
+
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    return () => { if (opener?.isConnected) opener.focus(); };
+  }, []);
+
+  useEffect(() => {
+    contentRef.current?.scrollTo(0, 0);
+    if (view === "home" && menuTrigger.current?.isConnected) menuTrigger.current.focus();
+    else headingRef.current?.focus();
+  }, [view]);
+
+  function navigate(next: ProfileView) {
+    if (blocked) return;
+    if (view === "home") menuTrigger.current = document.activeElement as HTMLElement;
+    setSaved(false);
+    setView(next);
+  }
   const [values, setValues] = useState<ProfileValues>({
     display_name: profile.display_name ?? "",
     base_currency: profile.base_currency || "CRC",
@@ -57,7 +90,7 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onSave(values);
+    setSaved(await onSave(values));
   }
 
   return (
@@ -68,18 +101,39 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
         if (event.target === event.currentTarget && !isSaving && !communityBusy) onClose();
       }}
     >
-      <section className="panel modal-panel profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+      <section ref={panelRef} className="panel modal-panel profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!blocked) { if (view === "home") onClose(); else navigate("home"); }
+          }
+          if (event.key === "Tab") {
+            const focusable = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(
+              'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]'
+            ) ?? []).filter((element) => element.getClientRects().length > 0);
+            const first = focusable[0], last = focusable[focusable.length - 1];
+            if (!first) { event.preventDefault(); headingRef.current?.focus(); }
+            else if (event.shiftKey && (document.activeElement === first || !focusable.includes(document.activeElement as HTMLElement))) {
+              event.preventDefault(); last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !focusable.includes(document.activeElement as HTMLElement))) {
+              event.preventDefault(); first.focus();
+            }
+          }
+        }}>
         <div className="modal-head profile-head">
+          {view !== "home" && <button className="modal-close profile-back" type="button" onClick={() => navigate("home")} disabled={blocked} aria-label="Volver a Tu espacio" title="Volver a Tu espacio"><ArrowLeft size={20} aria-hidden="true" /></button>}
           <div>
             <p className="eyebrow">Tu espacio</p>
-            <h2 id="profile-title">Perfil</h2>
+            <h2 id="profile-title" ref={headingRef} tabIndex={-1}>{viewTitles[view]}</h2>
           </div>
           <button className="modal-close" type="button" onClick={onClose} disabled={isSaving || communityBusy} aria-label="Cerrar perfil">
             <X size={20} aria-hidden="true" />
           </button>
         </div>
 
-        <div className="profile-identity">
+        <div className="profile-content" ref={contentRef}>
+        <div className="profile-identity" hidden={view !== "home"}>
           <span className="profile-avatar"><UserRound size={24} aria-hidden="true" /></span>
           <div>
             <strong>{profile.display_name || email || "Modo local"}</strong>
@@ -87,9 +141,15 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
           </div>
         </div>
 
-        <AccountCommunity key={userId || mode} userId={userId} mode={mode} localData={localData} onBusyChange={setCommunityBusy} />
+        <AccountCommunity key={userId || mode} userId={userId} mode={mode} localData={localData} onBusyChange={setCommunityBusy} view={view} onNavigate={navigate} />
 
-        <form className="profile-preferences" onSubmit={submit} aria-busy={isSaving}>
+        <nav className="profile-menu profile-settings-menu" aria-label="Preferencias de tu espacio" hidden={view !== "home"}>
+          <button type="button" disabled={blocked} onClick={() => navigate("preferences")}><WalletCards size={19} /><span><strong>Moneda y facturación</strong><small>Perfil y preferencias financieras</small></span><ChevronRight size={18} /></button>
+          <button type="button" disabled={blocked} onClick={() => navigate("production")}><CreditCard size={19} /><span><strong>Tarifas de impresión</strong><small>Electricidad, máquina y mano de obra</small></span><ChevronRight size={18} /></button>
+        </nav>
+        {saved && <p className="account-notice" role="status">Cambios guardados.</p>}
+
+        <form className="profile-preferences" onSubmit={submit} onChange={() => setSaved(false)} aria-busy={isSaving} hidden={view !== "preferences"}>
           <div className="profile-section-head">
             <span><WalletCards size={19} aria-hidden="true" /></span>
             <div><p className="eyebrow">Preferencias financieras</p><h3>Moneda y facturación</h3></div>
@@ -106,7 +166,7 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
           <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando perfil…" : "Guardar preferencias"}</button>
         </form>
 
-        <form className="profile-preferences production-settings" onSubmit={submit} aria-busy={isSaving}>
+        <form className="profile-preferences production-settings" onSubmit={submit} onChange={() => setSaved(false)} aria-busy={isSaving} hidden={view !== "production"}>
           <div className="profile-section-head">
             <span><CreditCard size={19} aria-hidden="true" /></span>
             <div><p className="eyebrow">Producción</p><h3>Tarifas para calcular impresiones</h3></div>
@@ -122,17 +182,18 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
           <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando tarifas…" : "Guardar tarifas"}</button>
         </form>
 
-        <div className="profile-security">
+        <div className="profile-security" hidden={view !== "preferences"}>
             <ShieldCheck size={18} aria-hidden="true" />
             <span>Spool Vault nunca guardará números de tarjeta.</span>
         </div>
 
-        {email && (
+        {email && view === "home" && (
           <button className="profile-signout" type="button" onClick={onSignOut} disabled={isSaving || communityBusy}>
             <LogOut size={18} aria-hidden="true" />
             Cerrar sesión
           </button>
         )}
+        </div>
       </section>
     </div>
   );
