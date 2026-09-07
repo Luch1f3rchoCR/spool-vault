@@ -2553,6 +2553,36 @@ textarea:focus {
   padding: 18px;
 }
 
+.account-community { min-width: 0; }
+.account-section { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.account-section h3 { font-size: 1.15rem; margin: 0 0 10px; }
+.account-section h4 { margin: 22px 0 8px; }
+.account-section p { line-height: 1.5; font-size: 0.88rem; }
+.account-section fieldset { display: grid; gap: 12px; padding: 0; margin: 0; border: 0; min-width: 0; }
+.account-section label { display: grid; gap: 6px; font-size: 0.85rem; font-weight: 650; }
+.account-section input, .account-section textarea, .account-section select { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: white; font: inherit; font-size: 16px; }
+.account-section button, .account-error button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 0.86rem; }
+.account-section button svg { flex-shrink: 0; }
+.account-section .primary-action { width: 100%; }
+.account-list-row { display: grid; gap: 5px; padding: 14px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.account-list-row > small { color: var(--muted); }
+.account-list-row > p { margin: 4px 0; }
+.account-list-row > button { justify-self: start; }
+.account-list-row form { margin-top: 10px; }
+.feedback-details { white-space: pre-wrap; }
+.account-notice, .account-error { padding: 12px; border-radius: 6px; overflow-wrap: anywhere; font-size: 0.88rem; }
+.account-notice { color: #14583e; background: #e1f2e9; }
+.account-error { color: #8b2020; background: #fcecec; }
+.membership-terms { margin-top: 12px; font-size: 0.85rem; }
+.membership-terms summary { cursor: pointer; padding: 8px 0; }
+.account-copy { margin-top: 12px; }
+.account-section .account-checkbox { display: flex; align-items: center; gap: 10px; }
+.account-section .account-checkbox input { width: 20px; height: 20px; flex-shrink: 0; }
+.welcome-preview summary { cursor: pointer; padding: 10px 0; font-size: 0.9rem; }
+.account-mail-link { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; color: var(--accent-dark); font-size: 0.85rem; }
+.account-mail-link svg { flex-shrink: 0; }
+.profile-identity > div { min-width: 0; overflow-wrap: anywhere; }
+
 .profile-head {
   margin-bottom: 16px;
 }

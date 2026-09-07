@@ -4174,7 +4174,20 @@ export default function Home() {
 
       {showProfile && (
         <ProfilePanel
+          key={signedInUserId || dataMode}
           email={signedInEmail}
+          userId={signedInUserId}
+          mode={dataMode}
+          localData={{
+            user_profiles: [userProfile], filament_rolls: rolls, consumption_logs: logs,
+            spools, spool_types: spoolTypes, weighing_events: weighingEvents, suppliers,
+            purchase_history: purchases, purchase_corrections: purchaseCorrections,
+            purchase_orders: purchaseOrders, purchase_order_items: purchaseOrderItems,
+            purchase_order_payments: purchaseOrderPayments, print_projects: projects,
+            project_filament_requirements: projectRequirements, project_components: projectComponents,
+            production_runs: productionRuns, production_run_filaments: productionRunFilaments,
+            production_run_components: productionRunComponents, production_run_costs: productionRunCosts
+          }}
           profile={userProfile}
           isSaving={isSavingProfile}
           onClose={() => setShowProfile(false)}

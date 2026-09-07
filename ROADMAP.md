@@ -56,6 +56,22 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 - [ ] Prueba final de instalación en iPhone y Android reales.
 - [ ] Splash e iconos PNG optimizados para cada plataforma.
 
+## Probadores fundadores
+
+- [x] Licencia personal `founder_personal_v1`, gratuita, sin vencimiento y separada del perfil editable.
+- [x] Administración privada por cuenta autorizada; sin acceso al inventario de otros usuarios.
+- [x] Formulario de probadores con nombre, correo, país, impresoras, dispositivo, experiencia y enfoque de prueba.
+- [x] Reserva atómica de licencia y registro de bienvenida; activación por correo verificado en Tu espacio.
+- [x] Compartir ideas y errores, consultar estado y responder desde administración.
+- [x] Mis datos: respaldo JSON consistente de la cuenta, sin truncar en 1.000 registros; no incluye archivos binarios ni restauración automática.
+- [x] Vista previa de bienvenida y apertura en el correo del administrador como alternativa manual.
+- [x] Envío automático preparado para Resend con remitente previsto `Spool Vault <hello@stonecollective.dev>`.
+- [x] Pruebas de permisos, reintentos, errores de envío, exportación y pantalla móvil/escritorio.
+- [ ] Crear/conectar Resend, verificar `stonecollective.dev` en GoDaddy y configurar secretos en Vercel.
+- [ ] Confirmar recepción real de una bienvenida antes de invitar al grupo.
+- [ ] Configurar correo de autenticación de Supabase para resolver los límites del remitente predeterminado.
+- [ ] Confirmar alcance comercial definitivo del beneficio founder-v1 antes de ampliarlo.
+
 ## Peso y tara
 
 - [x] Tara configurable por spool.
