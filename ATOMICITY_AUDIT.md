@@ -6,6 +6,8 @@ Fecha de revisión: 1 de septiembre de 2026.
 
 Una acción es atómica cuando todos sus cambios se confirman juntos o ninguno se guarda. También debe ser idempotente: si el navegador reintenta la misma solicitud, no puede duplicar el resultado.
 
+Actualización de navegación: + Agregar centraliza accesos, pero cada alta/asignación conserva su operación transaccional existente. Las vistas de spools se bloquean durante escrituras y conservan los formularios al cambiar de sección. El detalle de compra es de solo lectura: muestra las partidas congeladas de la orden, no reconstruye costos desde el rollo actual. El importe del spool ya forma parte del producto; no se vuelve a sumar. No se agregan impuestos ni números de factura ficticios.
+
 Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es que se guarden las tres piezas o que no se guarde ninguna. No debe existir un estado permanente de “rollo guardado, historial pendiente”.
 
 ## Resultado de la revisión actual

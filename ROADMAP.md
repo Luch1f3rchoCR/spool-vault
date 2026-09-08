@@ -19,6 +19,8 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [x] Operaciones atómicas para asignar, liberar, inactivar y reactivar spools.
 - [x] Estados claros para inventario real, local, demo y error de conexión.
 - [x] Datos demo visualmente marcados para que no parezcan inventario real.
+- [x] Unificar + Agregar: nuevo filamento, crear spool y asignar spool; administración de spools desde el mismo acceso.
+- [x] Separar creación, asignación e inventario de spools en vistas que conservan borradores mientras el modal está abierto.
 
 ## Integridad, atomicidad y UX segura
 
@@ -110,6 +112,7 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 ## Compras, proveedores y costos
 
 - [x] Separar la compra/orden de sus productos mediante encabezado y partidas.
+- [x] Mostrar compras agrupadas como tarjetas de encabezado y abrir sus líneas y cargos congelados en un modal de detalle.
 - [x] Guardar envío/express y otros cargos en la compra, no directamente en el filamento.
 - [x] Prorratear envío por unidad, por valor o manualmente; usar por unidad como valor inicial.
 - [x] Marcar confianza del costo como Real, Estimado o Incompleto.
@@ -181,6 +184,8 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.
 - [ ] Agregar impresoras y costo por hora.
+
+Nota de continuidad Mac: el trabajo previo de impresoras sigue sin publicar, conservado en Git como “WIP impresoras Mac antes de navegacion y facturas 2026-09-07” desde feat/printer-profiles. Este bloque de navegación parte de main 76bb7b0; no incluye ni valida ese módulo pendiente. Antes de retomarlo, revisar también el estado de la migración de impresoras aplicada previamente.
 
 ## Market de proveedores
 

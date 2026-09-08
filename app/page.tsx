@@ -27,6 +27,8 @@ import {
   X
 } from "lucide-react";
 import { InventoryReportModal } from "@/components/inventory-report-modal";
+import { AddActionsModal } from "@/components/add-actions-modal";
+import { ModalFrame } from "@/components/modal-frame";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import {
   MissingPurchaseModal,
@@ -684,6 +686,8 @@ export default function Home() {
   const [materialFilter, setMaterialFilter] = useState("Todos");
   const [lowOnly, setLowOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddActions, setShowAddActions] = useState(false);
+  const [spoolView, setSpoolView] = useState<"create" | "assign" | "inventory">("inventory");
   const [showQuickWeigh, setShowQuickWeigh] = useState(false);
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [scanActionRollId, setScanActionRollId] = useState("");
@@ -1113,7 +1117,7 @@ export default function Home() {
   }, [dataMode, productionRunCosts, usingSupabase]);
 
   useEffect(() => {
-    document.body.style.overflow = showAdd || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
+    document.body.style.overflow = showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
       || showSpools || showReport || showPurchaseOrders || showProjects || showProfile
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
@@ -1124,6 +1128,7 @@ export default function Home() {
     editingRollId,
     missingPurchaseRollId,
     showAdd,
+    showAddActions,
     showPurchaseOrders,
     showProfile,
     showProjects,
@@ -3313,11 +3318,7 @@ export default function Home() {
             <BarChart3 size={20} aria-hidden="true" />
             <span>Reportes</span>
           </button>
-          <button className="icon-action secondary" type="button" onClick={() => setShowSpools(true)}>
-            <PackagePlus size={20} aria-hidden="true" />
-            <span>Spools</span>
-          </button>
-          <button className="icon-action" type="button" onClick={() => setShowAdd(true)}>
+          <button className="icon-action" type="button" aria-haspopup="dialog" onClick={() => setShowAddActions(true)}>
             <Plus size={22} aria-hidden="true" />
             <span>Agregar</span>
           </button>
@@ -3393,35 +3394,18 @@ export default function Home() {
         </section>
       )}
 
+      {showAddActions && <AddActionsModal onClose={() => setShowAddActions(false)} onSelect={(action) => {
+        setShowAddActions(false);
+        if (action === "filament") setShowAdd(true);
+        else {
+          setSpoolView(action === "create-spool" ? "create" : action === "assign-spool" ? "assign" : "inventory");
+          setShowSpools(true);
+        }
+      }} />}
+
       {showAdd && (
-        <div
-          className="modal-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeAddRoll();
-          }}
-        >
-          <section
-            className="panel add-panel modal-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="add-roll-title"
-          >
-            <div className="modal-head">
-              <div>
-                <p className="eyebrow">Inventario</p>
-                <h2 id="add-roll-title">Nuevo rollo</h2>
-              </div>
-              <button
-                className="modal-close"
-                type="button"
-                onClick={closeAddRoll}
-                disabled={isAddingRoll}
-                aria-label="Cerrar formulario"
-              >
-                <X size={20} aria-hidden="true" />
-              </button>
-            </div>
+        <ModalFrame className="add-panel" title="Nuevo rollo" titleId="add-roll-title" eyebrow="Inventario"
+          busy={isAddingRoll} onClose={closeAddRoll}>
             <form className="form-grid" onSubmit={addRoll} aria-busy={isAddingRoll}>
             {pendingQrPayload && (
               <div className="pending-qr-banner wide">
@@ -3630,8 +3614,7 @@ export default function Home() {
                 <option key={supplier} value={supplier} />
               ))}
             </datalist>
-          </section>
-        </div>
+        </ModalFrame>
       )}
 
       {showQuickWeigh && selectedRoll && (
@@ -3972,34 +3955,15 @@ export default function Home() {
       )}
 
       {showSpools && (
-        <div
-          className="modal-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !pendingSpoolAction) setShowSpools(false);
-          }}
-        >
-          <section
-            className="panel modal-panel spool-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="spool-modal-title"
-          >
-            <div className="modal-head">
-              <div>
-                <p className="eyebrow">Spools reutilizables</p>
-                <h2 id="spool-modal-title">Asignar y controlar spools</h2>
-              </div>
-              <button
-                className="modal-close"
-                type="button"
-                onClick={() => setShowSpools(false)}
-                disabled={Boolean(pendingSpoolAction)}
-                aria-label="Cerrar spools"
-              >
-                <X size={20} aria-hidden="true" />
-              </button>
-            </div>
+        <ModalFrame className="spool-modal" titleId="spool-modal-title" eyebrow="Spools reutilizables"
+          title={spoolView === "create" ? "Crear spool" : spoolView === "assign" ? "Asignar spool" : "Mis spools"}
+          viewKey={spoolView} busy={Boolean(pendingSpoolAction)} onClose={() => setShowSpools(false)}>
+            <nav className="spool-view-nav" aria-label="Opciones de spools">
+              <button type="button" aria-current={spoolView === "create" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("create")}>Crear spool</button>
+              <button type="button" aria-current={spoolView === "assign" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("assign")}>Asignar spool</button>
+              <button type="button" aria-current={spoolView === "inventory" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("inventory")}>Mis spools</button>
+            </nav>
+            <p className="spool-operation-note" role="status">{syncNote}</p>
 
             <div className="spool-summary">
               <article><strong>{spools.length}</strong><span>registrados</span></article>
@@ -4008,7 +3972,7 @@ export default function Home() {
               <article><strong>{spools.filter((spool) => spool.status === "retired").length}</strong><span>inactivos</span></article>
             </div>
 
-            <form className="form-grid compact-form" onSubmit={addSpool} aria-busy={pendingSpoolAction === "create"}>
+            <form hidden={spoolView !== "create"} className="form-grid compact-form" onSubmit={addSpool} aria-busy={pendingSpoolAction === "create"}>
               <h3 className="wide">Registrar spool vacío</h3>
               <label className="wide">
                 Tipo de spool
@@ -4071,8 +4035,11 @@ export default function Home() {
               </button>
             </form>
 
-            <form className="form-grid compact-form" onSubmit={assignSpool} aria-busy={pendingSpoolAction === "assign"}>
+            <form hidden={spoolView !== "assign"} className="form-grid compact-form" onSubmit={assignSpool} aria-busy={pendingSpoolAction === "assign"}>
               <h3 className="wide">Asignar spool a un filamento</h3>
+              {(!unassignedRolls.length || !emptySpools.length) && <p className="form-help wide">
+                {!unassignedRolls.length ? "No hay filamentos sin spool. Registrá un filamento o liberá su spool desde Mis spools." : "No hay spools vacíos. Creá uno o liberá uno desde Mis spools."}
+              </p>}
               <label>
                 Filamento sin spool
                 <select name="roll_id" required disabled={!unassignedRolls.length || Boolean(pendingSpoolAction)}>
@@ -4096,7 +4063,7 @@ export default function Home() {
               </button>
             </form>
 
-            <div className="spool-list">
+            <div className="spool-list" hidden={spoolView !== "inventory"}>
               <h3>Inventario de spools</h3>
               {spools.length ? spools.map((spool) => {
                 const assignedRoll = rolls.find((roll) => roll.spool_id === spool.id);
@@ -4168,8 +4135,7 @@ export default function Home() {
                 );
               }) : <p className="empty-state">Todavía no hay spools registrados.</p>}
             </div>
-          </section>
-        </div>
+        </ModalFrame>
       )}
 
       {showProfile && (

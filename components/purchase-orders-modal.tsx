@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Calculator, CreditCard, PackageCheck, Plus, ReceiptText, Save, Truck, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Calculator, CreditCard, PackageCheck, Plus, ReceiptText, Save, Truck } from "lucide-react";
+import { ModalFrame } from "@/components/modal-frame";
 import type {
   CostConfidence,
   ExchangeRateKind,
@@ -67,7 +68,7 @@ function money(currency: string, value: number) {
   return new Intl.NumberFormat("es-CR", {
     style: "currency",
     currency,
-    maximumFractionDigits: currency === "CRC" ? 0 : 2
+    maximumFractionDigits: 2
   }).format(Number(value));
 }
 
@@ -101,6 +102,12 @@ function allocate(
 }
 
 export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCurrency, mode, isSaving, onClose, onCreate }: Props) {
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const detailOpener = useRef<HTMLElement | null>(null);
+  const selectedOrder = orders.find((order) => order.id === selectedOrderId);
+  useEffect(() => {
+    if (!selectedOrderId && detailOpener.current?.isConnected) detailOpener.current.focus();
+  }, [selectedOrderId]);
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [purchasedAt, setPurchasedAt] = useState(new Date().toISOString().slice(0, 10));
@@ -231,15 +238,16 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !isSaving && onClose()}>
-      <section className="panel modal-panel purchase-orders-modal" role="dialog" aria-modal="true" aria-labelledby="purchase-orders-title">
-        <div className="modal-head">
-          <div><p className="eyebrow">Compras y costos</p><h2 id="purchase-orders-title">Órdenes de compra</h2></div>
-          <button className="modal-close" type="button" onClick={onClose} disabled={isSaving} aria-label="Cerrar órdenes"><X size={20} aria-hidden="true" /></button>
-        </div>
+    <ModalFrame className="purchase-orders-modal" titleId="purchase-orders-title" eyebrow="Compras y costos"
+      title={selectedOrder ? "Detalle de compra" : "Mis compras"} busy={isSaving} onClose={onClose}
+      onBack={selectedOrder ? () => setSelectedOrderId(null) : undefined} viewKey={selectedOrderId ?? "list"}>
 
         {mode !== "authenticated" && <p className="purchase-order-mode">Vista {mode === "demo" ? "de demostración" : "local"} · estas órdenes no están sincronizadas.</p>}
 
+        {selectedOrder ? <PurchaseOrderDetail order={selectedOrder} items={items.filter((item) => item.order_id === selectedOrder.id)}
+          payment={payments.find((payment) => payment.order_id === selectedOrder.id)} /> : null}
+
+        <div hidden={Boolean(selectedOrder)}>
         <div className="purchase-order-summary">
           <div><ReceiptText size={19} aria-hidden="true" /><span><strong>{orders.length}</strong> órdenes</span></div>
           <div><PackageCheck size={19} aria-hidden="true" /><span><strong>{availablePurchases.length}</strong> compras por agrupar</span></div>
@@ -325,19 +333,58 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
           </form>
         )}
 
-        <div className="purchase-order-list">
+        <div className="purchase-invoice-grid">
           {sortedOrders.length ? sortedOrders.map((order) => {
             const orderItems = items.filter((item) => item.order_id === order.id);
             const payment = payments.find((candidate) => candidate.order_id === order.id);
             return (
-              <article key={order.id}>
-                <div><span className={`cost-confidence ${order.cost_confidence}`}>{confidenceLabels[order.cost_confidence]}</span><strong>{order.supplier_name}</strong><small>{order.purchased_at} · {orderItems.length} partida{orderItems.length === 1 ? "" : "s"} · {allocationLabels[order.allocation_method]}</small></div>
-                <div className="order-cost"><strong>{money(order.currency, order.total_amount)}</strong><small>{money(order.currency, order.shipping_amount + order.other_charges_amount)} en cargos</small>{payment && <small>Pagado: {money(payment.paid_currency, payment.paid_amount)} · {exchangeRateLabels[payment.exchange_rate_kind]}</small>}</div>
+              <article className="purchase-invoice-card" key={order.id}>
+                <header><span>Proveedor</span><h3>{order.supplier_name || "Sin proveedor"}</h3></header>
+                <div className="invoice-status"><span className={`cost-confidence ${order.cost_confidence}`}>Costo {confidenceLabels[order.cost_confidence].toLowerCase()}</span><span>{orderItems.length} línea{orderItems.length === 1 ? "" : "s"}</span></div>
+                <dl className="invoice-meta">
+                  <div><dt>Fecha de compra</dt><dd>{order.purchased_at}</dd></div>
+                  <div><dt>Moneda</dt><dd>{order.currency}</dd></div>
+                  <div><dt>Distribución de cargos</dt><dd>{allocationLabels[order.allocation_method]}</dd></div>
+                  <div><dt>Subtotal de productos</dt><dd>{money(order.currency, order.subtotal_amount)}</dd></div>
+                </dl>
+                <footer><div><small>Total de compra</small><strong>{money(order.currency, order.total_amount)}</strong></div><div className="invoice-charge-summary"><small>Envío {money(order.currency, order.shipping_amount)}</small><small>Otros {money(order.currency, order.other_charges_amount)}</small></div></footer>
+                {payment && <p className="invoice-payment">Pago registrado: {money(payment.paid_currency, payment.paid_amount)}</p>}
+                <button className="invoice-detail-button" type="button" disabled={isSaving} aria-label={`Ver líneas de compra de ${order.supplier_name} del ${order.purchased_at}`} onClick={(event) => {
+                  detailOpener.current = event.currentTarget;
+                  setSelectedOrderId(order.id);
+                }}><ReceiptText size={17} aria-hidden="true" /> Ver líneas de compra</button>
               </article>
             );
           }) : <p className="empty-state">Todavía no hay órdenes agrupadas. Tus compras históricas siguen intactas.</p>}
         </div>
-      </section>
-    </div>
+        </div>
+    </ModalFrame>
   );
+}
+
+function PurchaseOrderDetail({ order, items, payment }: { order: PurchaseOrder; items: PurchaseOrderItem[]; payment?: PurchaseOrderPayment }) {
+  return <div className="invoice-detail">
+    <header className="invoice-detail-heading"><h3>{order.supplier_name || "Sin proveedor"}</h3><span>{order.purchased_at} · {order.currency}</span>
+      <span className={`cost-confidence ${order.cost_confidence}`}>Costo {confidenceLabels[order.cost_confidence].toLowerCase()}</span>
+    </header>
+    <p className="form-help">Importes guardados al agrupar esta compra. Los cargos de cada línea ya están incluidos en su total.</p>
+    <div className="invoice-lines">{items.length ? items.map((item, index) => <article key={item.id}>
+      <div className="invoice-line-title"><span className="mini-swatch" style={{ backgroundColor: item.color_hex }} /><div><h4>{index + 1}. {item.brand} · {item.color_name}</h4><p>{item.product_line || item.material} · {Number(item.quantity_g).toLocaleString("es-CR")} g · {item.package_type === "refill" ? "Sin spool" : "Con spool"}</p></div></div>
+      <dl className="invoice-line-costs">
+        <div><dt>Producto</dt><dd>{money(item.currency, item.base_amount)}</dd></div>
+        <div><dt>Spool incluido en producto</dt><dd>{money(item.currency, item.spool_cost)}</dd></div>
+        <div><dt>Envío asignado</dt><dd>{money(item.currency, item.allocated_shipping)}</dd></div>
+        <div><dt>Otros cargos asignados</dt><dd>{money(item.currency, item.allocated_other_charges)}</dd></div>
+        <div className="invoice-line-total"><dt>Total de la línea</dt><dd>{money(item.currency, item.landed_total)}</dd></div>
+      </dl>
+    </article>) : <p className="empty-state">No hay líneas disponibles para esta compra.</p>}</div>
+    <dl className="invoice-totals">
+      <div><dt>Subtotal de productos</dt><dd>{money(order.currency, order.subtotal_amount)}</dd></div>
+      <div><dt>Envío / express</dt><dd>{money(order.currency, order.shipping_amount)}</dd></div>
+      <div><dt>Otros cargos</dt><dd>{money(order.currency, order.other_charges_amount)}</dd></div>
+      <div><dt>Total de compra</dt><dd>{money(order.currency, order.total_amount)}</dd></div>
+    </dl>
+    {payment && <section className="invoice-payment-detail"><h3>Pago registrado</h3><p>{money(payment.paid_currency, payment.paid_amount)} · {exchangeRateLabels[payment.exchange_rate_kind]}</p><p>1 {order.currency} = {Number(payment.exchange_rate).toLocaleString("es-CR", { maximumFractionDigits: 8 })} {payment.paid_currency} · {payment.exchange_rate_date}</p>{payment.exchange_rate_source && <p>Fuente: {payment.exchange_rate_source}</p>}</section>}
+    {order.notes && <section className="invoice-notes"><h3>Notas de la compra</h3><p>{order.notes}</p></section>}
+  </div>;
 }
