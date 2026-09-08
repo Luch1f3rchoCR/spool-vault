@@ -1,5 +1,9 @@
 # Spool Vault
 
+Navegación de inventario: **+ Agregar** reúne nuevo filamento, crear spool, asignar spool y acceso a Mis spools. En **Compras**, cada orden agrupada se muestra como tarjeta y **Ver líneas de compra** abre productos, cargos y pago registrado. Los importes históricos se muestran con sus monedas y decimales; estas tarjetas no generan facturas fiscales.
+
+Prueba de esta navegación: `node tests/add-purchase-navigation.browser.cjs` con Playwright disponible y la app local en el puerto 3100 (configurable con `TEST_BASE_URL`). Usa datos aislados de prueba y comprueba 320, 390 y 1280 px.
+
 MVP móvil para administrar rollos de filamento de impresión 3D.
 
 Para retomar desde otra tarea, PC o Mac, comenzar por [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md): decisiones recientes, estado real, nuevas ideas y mapa de documentación.
