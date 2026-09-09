@@ -6,19 +6,21 @@ import {
   ChevronRight,
   CreditCard,
   LogOut,
+  Printer,
   Save,
   ShieldCheck,
   UserRound,
   WalletCards,
   X
 } from "lucide-react";
-import type { UserProfile } from "@/lib/types";
+import type { PrinterProfile, UserProfile } from "@/lib/types";
+import { PrinterManager, type PrinterValues } from "@/components/printer-manager";
 import { AccountCommunity } from "@/components/account-community";
 
-export type ProfileView = "home" | "feedback" | "data" | "admin" | "preferences" | "production";
+export type ProfileView = "home" | "feedback" | "data" | "admin" | "preferences" | "production" | "printers";
 const viewTitles: Record<ProfileView, string> = {
   home: "Perfil", feedback: "Compartir una idea", data: "Mis datos",
-  admin: "Grupo de pruebas", preferences: "Moneda y facturación", production: "Tarifas de impresión"
+  admin: "Grupo de pruebas", preferences: "Moneda y facturación", production: "Tarifas de impresión", printers: "Mis impresoras"
 };
 
 export type ProfileValues = {
@@ -42,12 +44,16 @@ type ProfilePanelProps = {
   localData: Record<string, unknown>;
   profile: UserProfile;
   isSaving: boolean;
+  printers: PrinterProfile[];
+  isSavingPrinter: boolean;
+  printerStatusMessage: string;
+  onSavePrinter: (values: PrinterValues) => Promise<boolean>;
   onClose: () => void;
   onSave: (values: ProfileValues) => Promise<boolean>;
   onSignOut: () => void;
 };
 
-export function ProfilePanel({ email, userId, mode, localData, profile, isSaving, onClose, onSave, onSignOut }: ProfilePanelProps) {
+export function ProfilePanel({ email, userId, mode, localData, profile, isSaving, printers, isSavingPrinter, printerStatusMessage, onSavePrinter, onClose, onSave, onSignOut }: ProfilePanelProps) {
   const [communityBusy, setCommunityBusy] = useState(false);
   const [view, setView] = useState<ProfileView>("home");
   const [saved, setSaved] = useState(false);
@@ -55,7 +61,7 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
   const contentRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const menuTrigger = useRef<HTMLElement | null>(null);
-  const blocked = isSaving || communityBusy;
+  const blocked = isSaving || isSavingPrinter || communityBusy;
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -98,7 +104,7 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
       className="modal-backdrop profile-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !isSaving && !communityBusy) onClose();
+        if (event.target === event.currentTarget && !blocked) onClose();
       }}
     >
       <section ref={panelRef} className="panel modal-panel profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title"
@@ -127,7 +133,7 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
             <p className="eyebrow">Tu espacio</p>
             <h2 id="profile-title" ref={headingRef} tabIndex={-1}>{viewTitles[view]}</h2>
           </div>
-          <button className="modal-close" type="button" onClick={onClose} disabled={isSaving || communityBusy} aria-label="Cerrar perfil">
+          <button className="modal-close" type="button" onClick={onClose} disabled={blocked} aria-label="Cerrar perfil">
             <X size={20} aria-hidden="true" />
           </button>
         </div>
@@ -144,10 +150,15 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
         <AccountCommunity key={userId || mode} userId={userId} mode={mode} localData={localData} onBusyChange={setCommunityBusy} view={view} onNavigate={navigate} />
 
         <nav className="profile-menu profile-settings-menu" aria-label="Preferencias de tu espacio" hidden={view !== "home"}>
+          <button type="button" disabled={blocked} onClick={() => navigate("printers")}><Printer size={19} /><span><strong>Mis impresoras</strong><small>Equipo, ubicación y tarifas por máquina</small></span><ChevronRight size={18} /></button>
           <button type="button" disabled={blocked} onClick={() => navigate("preferences")}><WalletCards size={19} /><span><strong>Moneda y facturación</strong><small>Perfil y preferencias financieras</small></span><ChevronRight size={18} /></button>
           <button type="button" disabled={blocked} onClick={() => navigate("production")}><CreditCard size={19} /><span><strong>Tarifas de impresión</strong><small>Electricidad, máquina y mano de obra</small></span><ChevronRight size={18} /></button>
         </nav>
         {saved && <p className="account-notice" role="status">Cambios guardados.</p>}
+        <div hidden={view !== "printers"}>
+          <p className="account-notice" role="status">{printerStatusMessage}</p>
+          <PrinterManager printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => navigate("home")} onSave={onSavePrinter} backLabel="Tu espacio" />
+        </div>
 
         <form className="profile-preferences" onSubmit={submit} onChange={() => setSaved(false)} aria-busy={isSaving} hidden={view !== "preferences"}>
           <div className="profile-section-head">

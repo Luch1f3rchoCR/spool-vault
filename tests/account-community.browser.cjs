@@ -37,10 +37,11 @@ async function run(browser, { admin, width, configured = false }) {
     if (url.pathname === '/auth/v1/user') result = user;
     else if (name === 'user_profiles') result = { user_id: userId, display_name: 'Tester', base_currency: 'CRC', membership_status: 'early_access' };
     else if (name === 'app_admins') result = admin ? { user_id: userId } : null;
+    else if (name === 'get_tester_first_visit') result = { status: 'active' };
     else if (name === 'claim_tester_membership') result = { id: 'active-member', email: user.email, user_id: userId, activated_at: new Date().toISOString(), plan_code: 'founder_personal_v1' };
     else if (name === 'tester_memberships') result = members;
     else if (name === 'tester_welcome_deliveries') result = deliveries;
-    else if (name === 'reserve_tester_details') {
+    else if (name === 'reserve_tester_invitation') {
       result = members.find((m) => m.email === payload.p_email) || { id: 'new-member', email: payload.p_email, display_name: payload.p_name, printers: payload.p_printers, user_id: null, activated_at: null, cancelled_at: null };
       if (!members.length) members.push(result);
     } else if (name === 'submit_feedback') {
@@ -121,8 +122,8 @@ async function run(browser, { admin, width, configured = false }) {
     const group = page.getByRole('region', { name: 'Grupo de pruebas' });
     await group.getByLabel('Nombre', { exact: true }).fill('Probador de iPhone');
     await group.getByLabel('Correo de acceso').fill('iphone@example.invalid');
-    await group.getByLabel('Impresoras (opcional)').fill('Bambu P1S');
-    await group.getByLabel(/^Dispositivo/).selectOption('ios');
+    await group.getByLabel('Por qué invitamos a esta persona').fill('Experiencia probando inventarios');
+    await group.getByLabel('Qué nos gustaría que pruebe (opcional)').fill('Uso desde iPhone');
     await group.getByRole('button', { name: configured ? 'Guardar y enviar bienvenida' : 'Dar acceso gratuito de por vida' }).click();
     await group.getByText('Pendiente de primer ingreso', { exact: true }).waitFor();
     await group.getByRole('link', { name: 'Abrir bienvenida en mi correo' }).waitFor();

@@ -3,7 +3,7 @@ export const FOUNDER_EXCLUSIONS = "Los servicios externos y futuros planes adici
 export const APP_URL = "https://spool-vault.vercel.app/";
 
 export function welcomeText(name: string, email: string) {
-  return `Hola, ${name || "probador fundador"}:\n\nTe damos la bienvenida al grupo de pruebas de Spool Vault.\n\nTu licencia: Probador fundador · gratis de por vida.\n${FOUNDER_SCOPE}\n${FOUNDER_EXCLUSIONS}\n\nEntrá a ${APP_URL} e iniciá sesión con ${email}. La licencia se vinculará a esa cuenta cuando abras Tu espacio.\n\nNos gustaría que probés la app con tus filamentos y nos contés qué falla, qué resulta confuso y qué ideas tenés. Podés enviar tus aportes desde Tu espacio > Compartir una idea.\n\nGracias por ayudarnos a mejorar Spool Vault.\nEl equipo de Spool Vault`;
+  return `Hola, ${name || "probador fundador"}:\n\nTe damos la bienvenida al grupo de pruebas de Spool Vault.\n\nTu licencia: Probador fundador · gratis de por vida.\n${FOUNDER_SCOPE}\n${FOUNDER_EXCLUSIONS}\n\nEntrá a ${APP_URL} e iniciá sesión con ${email}. Recibirás un enlace seguro para verificar tu correo. Al ingresar por primera vez, completá un breve formulario sobre tu experiencia, uso e impresoras y activá tu acceso de probador. Después podrás administrar tus máquinas desde Perfil > Mis impresoras.\n\nNos gustaría que probés la app con tus filamentos y nos contés qué falla, qué resulta confuso y qué ideas tenés. Podés enviar tus aportes desde Tu espacio > Compartir una idea.\n\nGracias por ayudarnos a mejorar Spool Vault.\nEl equipo de Spool Vault`;
 }
 
 function escapeHtml(value: string) {

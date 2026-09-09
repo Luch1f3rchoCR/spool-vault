@@ -1,5 +1,13 @@
 # Supabase setup
 
+## Local SQL checks (no production connection)
+
+The disposable container must be named spool-vault-sql-test-20260909, labelled app=spool-vault-sql-test, have network mode none, and an empty database. Use PostgreSQL 17 with temporary data storage and no published ports. Run `node tests/local-database.cjs`; the harness refuses an unlabelled or nonempty database.
+
+It installs the minimal Auth/Storage SQL contracts from tests/local-bootstrap.sql, then the base schema and every migration, and tests permissions, rollback, retry and cost preservation. The bootstrap is TEST ONLY and must never be run in Supabase. These tests do not simulate HTTP authentication, email delivery or file storage.
+
+For the existing cloud project, printer_profiles was applied previously. The new pending migrations are printer_cost_safety and tester_first_visit; do not reapply the initial printer migration or bootstrap.
+
 1. Create a Supabase project.
 2. In the SQL editor, run `supabase/schema.sql` for a new installation.
 3. Apply every file in `supabase/migrations/` in version order. Production migrations are also tracked in Supabase.

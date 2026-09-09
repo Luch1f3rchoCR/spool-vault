@@ -186,7 +186,8 @@ Cada componente debe mostrar si es real, estimado o incompleto. La app puede rec
 
 ### Entrega D — impresora y AMS
 
-- Registro de P1S y conector local.
+- [ ] Registro configurable de impresoras y selección de máquina por corrida: código local preparado; pendiente de validar base y publicar.
+- Registro de P1S real y conector local.
 - Estado de impresión y lectura de slots.
 - Mapeo slot-rollo y conciliación de una corrida.
 

@@ -260,6 +260,24 @@ export type ProjectComponent = {
 
 export type ProductionRunStatus = "completed" | "partial" | "failed";
 
+export type PrinterProfile = {
+  id: string;
+  creation_request_id: string;
+  last_update_request_id: string | null;
+  name: string;
+  manufacturer: string | null;
+  model: string | null;
+  nozzle_diameter_mm: number | null;
+  location: string | null;
+  average_power_w: number | null;
+  machine_cost_per_hour: number | null;
+  machine_cost_currency: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ProductionRun = {
   id: string;
   request_id: string;
@@ -318,6 +336,10 @@ export type ProductionRunCost = {
   machine_cost_amount: number | null;
   labor_cost_amount: number | null;
   failure_cost_amount: number;
+  printer_id: string | null;
+  printer_name: string | null;
+  printer_manufacturer: string | null;
+  printer_model: string | null;
   created_at: string;
 };
 

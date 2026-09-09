@@ -1,6 +1,12 @@
 # Spool Vault: contexto para continuar
 
-Actualizado: 2026-09-07. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
+Actualizado: 2026-09-09. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
+
+## Bloque local en curso · no publicado
+
+Main local confirmado: `558a636`, PR #22 (menú Agregar y tarjetas de compras). Rama `feat/printer-profiles-safe`: impresoras en Perfil, cuestionario único de primer ingreso de probadores y correcciones de costos. Las migraciones nuevas aún no están aplicadas. Compilación, navegador simulado y pruebas SQL en PostgreSQL 17 local aprobadas. No equivalen a una activación real ni al despliegue.
+
+Prioridad previa al piloto: publicar la corrección del doble descuento y el primer ingreso (ambos validados localmente), verificar el despliegue y probar el alta real/correo. Hay un primer candidato según el fundador; no se comprobó su activación. Quiere reclutar otros 8–10. Ver ROADMAP y ATOMICITY_AUDIT antes de publicar.
 
 ## Qué estamos construyendo
 

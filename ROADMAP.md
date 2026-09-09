@@ -183,9 +183,17 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
 - [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.
-- [ ] Agregar impresoras y costo por hora.
+- [ ] Agregar impresoras y costo por hora. Implementación local; pendiente de validación de base y publicación.
 
-Nota de continuidad Mac: el trabajo previo de impresoras sigue sin publicar, conservado en Git como “WIP impresoras Mac antes de navegacion y facturas 2026-09-07” desde feat/printer-profiles. Este bloque de navegación parte de main 76bb7b0; no incluye ni valida ese módulo pendiente. Antes de retomarlo, revisar también el estado de la migración de impresoras aplicada previamente.
+Continuidad Mac · 9 de septiembre: trabajo recuperado en `feat/printer-profiles-safe`, sobre main `558a636` (PR #22). El respaldo anterior sigue en stash. Las migraciones `printer_cost_safety` y `tester_first_visit` son locales, NO aplicadas. No publicar esta rama hasta validar la base: se detectó un descuento duplicado entre la función de producción y el trigger de consumos; la corrección no modifica saldos históricos.
+
+- [ ] Primer ingreso de probadores: cuestionario único tras verificar correo, con experiencia, hobby/profesional, uso y múltiples impresoras. Implementado localmente; falta validación de base y publicación.
+- [ ] Separar motivo y enfoque de invitación (solo administración) de respuestas del invitado.
+- [ ] Administrar las mismas impresoras desde Perfil → Mis impresoras; sin conexión ni consumo automático todavía.
+- [ ] Completar un alta real de punta a punta con el primer invitado antes de convocar al resto.
+- [x] Validar localmente desde cero las migraciones, permisos, reintentos y corrección del doble descuento, sin datos personales.
+- [ ] Aplicar las migraciones nuevas y publicar el bloque de primer ingreso antes de enviar la primera invitación.
+- [ ] Siguiente bloque solicitado: crear filamentos nuevos desde las líneas de una orden, además de vincular compras existentes. Confirmar orden, rollos, costos e historial juntos; reintentar sin duplicarlos ni sumar monedas distintas.
 
 ## Market de proveedores
 
@@ -200,7 +208,7 @@ Nota de continuidad Mac: el trabajo previo de impresoras sigue sin publicar, con
 
 ## Impresoras y AMS
 
-- [ ] Registrar impresoras, modelo, boquilla, ubicación y costo por hora.
+- [ ] Registrar impresoras, modelo, boquilla, ubicación y costo por hora. Pendiente de publicar el bloque local.
 - [ ] Diseñar un conector local seguro para la P1S; nunca guardar la clave LAN ni credenciales Bambu en texto plano en Supabase.
 - [ ] Implementar primero sincronización de solo lectura: estado de impresión, archivo/tarea, tiempo y bandejas AMS.
 - [ ] Mapear cada bandeja AMS a un rollo real de Spool Vault, incluyendo filamentos sin RFID o recargas.
@@ -217,7 +225,8 @@ Nota de continuidad Mac: el trabajo previo de impresoras sigue sin publicar, con
 - [x] Validar existencias antes de cerrar una impresión.
 - [ ] Sugerir ofertas del market cuando falte material.
 - [x] Crear corridas de producción con fecha, cantidad, resultado y duración.
-- [ ] Incorporar impresora utilizada y desperdicio separado del consumo útil.
+- [ ] Incorporar la impresora utilizada y congelarla en cada corrida. Pendiente de validar y publicar.
+- [ ] Registrar desperdicio separado del consumo útil.
 - [x] Asociar cada consumo real al rollo utilizado y descontarlo atómicamente al cerrar la corrida.
 - [x] Congelar en la corrida los costos de material y extras según el lote realmente usado.
 - [x] Agregar electricidad, máquina, mano de obra y fallos al costo congelado.
