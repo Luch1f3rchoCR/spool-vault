@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ModalFrame } from "@/components/modal-frame";
+import { PrinterManager, type PrinterValues } from "@/components/printer-manager";
 import {
   AlertTriangle,
   Boxes,
@@ -19,6 +21,7 @@ import {
 import type {
   FilamentRoll,
   PrintProject,
+  PrinterProfile,
   ProductionRun,
   ProductionRunComponent,
   ProductionRunCost,
@@ -56,6 +59,7 @@ export type ProductionRunValues = {
   actual_minutes: number | null;
   actual_labor_minutes: number | null;
   failure_cost_amount: number;
+  printer_id: string | null;
   sale_amount: number | null;
   sale_currency: string | null;
   notes: string;
@@ -71,15 +75,19 @@ type Props = {
   runFilaments: ProductionRunFilament[];
   runComponents: ProductionRunComponent[];
   runCosts: ProductionRunCost[];
+  printers: PrinterProfile[];
   rolls: FilamentRoll[];
   baseCurrency: string;
   profile: UserProfile;
   mode: "authenticated" | "demo" | "local" | "error";
   isSavingProject: boolean;
   isSavingRun: boolean;
+  isSavingPrinter: boolean;
+  statusMessage: string;
   onClose: () => void;
   onCreateProject: (values: ProjectCreateValues, file: File | null) => Promise<boolean>;
   onCompleteRun: (values: ProductionRunValues) => Promise<boolean>;
+  onSavePrinter: (values: PrinterValues) => Promise<boolean>;
   onOpenFile: (project: PrintProject) => Promise<void>;
 };
 
@@ -295,6 +303,7 @@ function ProductionRunForm({
   rolls,
   baseCurrency,
   profile,
+  printers,
   isSaving,
   onCancel,
   onSave
@@ -305,6 +314,7 @@ function ProductionRunForm({
   rolls: FilamentRoll[];
   baseCurrency: string;
   profile: UserProfile;
+  printers: PrinterProfile[];
   isSaving: boolean;
   onCancel: () => void;
   onSave: Props["onCompleteRun"];
@@ -313,6 +323,7 @@ function ProductionRunForm({
   const [quantity, setQuantity] = useState(1);
   const [status, setStatus] = useState<ProductionRunStatus>("completed");
   const [actualMinutes, setActualMinutes] = useState(project.estimated_minutes == null ? "" : String(project.estimated_minutes));
+  const [printerId, setPrinterId] = useState("");
   const [actualLaborMinutes, setActualLaborMinutes] = useState("0");
   const [failureCostAmount, setFailureCostAmount] = useState("0");
   const [saleAmount, setSaleAmount] = useState("");
@@ -357,15 +368,20 @@ function ProductionRunForm({
     else previewTotals.set(component.currency, (previewTotals.get(component.currency) ?? 0) + used * Number(component.unit_cost));
   });
 
+  const selectedPrinter = printers.find((printer) => printer.id === printerId);
+  const resolvedPower = selectedPrinter?.average_power_w ?? profile.printer_average_power_w;
+  const resolvedMachineRate = selectedPrinter?.machine_cost_per_hour ?? profile.machine_cost_per_hour;
   const costCurrency = profile.production_cost_currency || baseCurrency;
+  const printerCurrencyMismatch = selectedPrinter?.machine_cost_per_hour != null && selectedPrinter.machine_cost_currency !== costCurrency;
+  if (printerCurrencyMismatch) shortageMessages.push("La tarifa de esta impresora usa otra moneda. Revisá su tarifa o la moneda de costos de Perfil; no convertimos montos automáticamente.");
   const actualHours = actualMinutes === "" ? null : Number(actualMinutes) / 60;
   const laborHours = actualLaborMinutes === "" ? null : Number(actualLaborMinutes) / 60;
   const electricityCost = actualHours == null
     || profile.electricity_price_per_kwh == null
-    || profile.printer_average_power_w == null
+    || resolvedPower == null
     ? null
-    : actualHours * (Number(profile.printer_average_power_w) / 1000) * Number(profile.electricity_price_per_kwh);
-  const machineCost = actualHours == null ? null : actualHours * Number(profile.machine_cost_per_hour);
+    : actualHours * (Number(resolvedPower) / 1000) * Number(profile.electricity_price_per_kwh);
+  const machineCost = actualHours == null || printerCurrencyMismatch ? null : actualHours * Number(resolvedMachineRate);
   const laborCost = laborHours == null ? null : laborHours * Number(profile.labor_cost_per_hour);
   const failureCost = Number(failureCostAmount || 0);
   [electricityCost, machineCost, laborCost, failureCost].forEach((value) => {
@@ -390,6 +406,7 @@ function ProductionRunForm({
       actual_minutes: actualMinutes === "" ? null : Number(actualMinutes),
       actual_labor_minutes: actualLaborMinutes === "" ? null : Number(actualLaborMinutes),
       failure_cost_amount: failureCost,
+      printer_id: printerId || null,
       sale_amount: parsedSale,
       sale_currency: parsedSale == null ? null : saleCurrency,
       notes: notes.trim(),
@@ -414,6 +431,7 @@ function ProductionRunForm({
         <label>Cantidad producida<input required type="number" min="1" value={quantity} disabled={isSaving} onChange={(event) => applyQuantity(Number(event.target.value))} /></label>
         <label>Resultado<select value={status} disabled={isSaving} onChange={(event) => setStatus(event.target.value as ProductionRunStatus)}><option value="completed">Exitosa</option><option value="partial">Parcial</option><option value="failed">Fallida / reimpresión</option></select></label>
         <label>Minutos reales<input type="number" min="0" value={actualMinutes} disabled={isSaving} placeholder="300" onChange={(event) => setActualMinutes(event.target.value)} /></label>
+        <label className="wide">Impresora<select value={printerId} disabled={isSaving} onChange={(event) => setPrinterId(event.target.value)}><option value="">Tarifa general de Perfil</option>{printers.filter((printer) => printer.is_active).map((printer) => <option key={printer.id} value={printer.id}>{printer.name}{printer.model ? ` · ${printer.model}` : ""}</option>)}</select></label>
       </div>
 
       <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">Consumo real</p><h3>Rollos utilizados</h3></div></div>{requirements.map((requirement) => {
@@ -431,8 +449,8 @@ function ProductionRunForm({
           <label>Fallos y desperdicio ({costCurrency})<input type="number" min="0" step="0.01" value={failureCostAmount} disabled={isSaving} placeholder="0" onChange={(event) => setFailureCostAmount(event.target.value)} /></label>
         </div>
         <div className="run-operating-grid">
-          <span><small>Electricidad</small><strong>{electricityCost == null ? "Por configurar" : money(costCurrency, electricityCost)}</strong></span>
-          <span><small>Uso de máquina</small><strong>{machineCost == null ? "Falta duración" : money(costCurrency, machineCost)}</strong></span>
+          <span><small>Electricidad{selectedPrinter ? ` · ${selectedPrinter.name}` : ""}</small><strong>{electricityCost == null ? "Por configurar" : money(costCurrency, electricityCost)}</strong></span>
+          <span><small>Uso de máquina</small><strong>{printerCurrencyMismatch ? "Revisar moneda" : machineCost == null ? "Falta duración" : money(costCurrency, machineCost)}</strong></span>
           <span><small>Mano de obra</small><strong>{laborCost == null ? "Falta tiempo" : money(costCurrency, laborCost)}</strong></span>
           <span><small>Fallos</small><strong>{money(costCurrency, failureCost)}</strong></span>
         </div>
@@ -457,36 +475,44 @@ export function ProjectsModal({
   runFilaments,
   runComponents,
   runCosts,
+  printers,
   rolls,
   baseCurrency,
   profile,
   mode,
   isSavingProject,
   isSavingRun,
+  isSavingPrinter,
+  statusMessage,
   onClose,
   onCreateProject,
   onCompleteRun,
+  onSavePrinter,
   onOpenFile
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+  const [showPrinters, setShowPrinters] = useState(false);
   const [runProjectId, setRunProjectId] = useState("");
   const runProject = projects.find((project) => project.id === runProjectId);
   const sortedProjects = [...projects].sort((a, b) => b.created_at.localeCompare(a.created_at));
   const sortedRuns = [...runs].sort((a, b) => b.produced_at.localeCompare(a.produced_at) || b.created_at.localeCompare(a.created_at));
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSavingProject && !isSavingRun) onClose(); }}>
-      <section className="panel modal-panel projects-modal" role="dialog" aria-modal="true" aria-labelledby="projects-title">
-        <div className="modal-head"><div><p className="eyebrow">Producción</p><h2 id="projects-title">Proyectos</h2></div><button className="modal-close" type="button" onClick={onClose} disabled={isSavingProject || isSavingRun} aria-label="Cerrar proyectos"><X size={20} /></button></div>
+    <ModalFrame title="Proyectos" titleId="projects-title" eyebrow="Producción" className="projects-modal"
+      busy={isSavingProject || isSavingRun || isSavingPrinter} onClose={onClose}
+      viewKey={showPrinters ? "printers" : showCreate ? "create" : runProjectId || "list"}>
+        <p className="spool-operation-note" role="status">{statusMessage}</p>
         {mode !== "authenticated" && <p className="project-mode-note">Los proyectos guardados en este modo quedan solamente en este navegador. Iniciá sesión para sincronizar archivos y producción.</p>}
 
-        {showCreate ? (
+        {showPrinters ? (
+          <PrinterManager printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
+        ) : showCreate ? (
           <ProjectForm rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => setShowCreate(false)} onCreate={onCreateProject} />
         ) : runProject ? (
-          <ProductionRunForm project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
+          <ProductionRunForm project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
         ) : (
           <>
-            <div className="project-summary"><article><FolderKanban size={18} /><strong>{projects.length}</strong><span>proyectos</span></article><article><Printer size={18} /><strong>{runs.length}</strong><span>corridas</span></article><article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString("es-CR")} g</strong><span>por recetas</span></article><button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Nuevo proyecto</button></div>
+            <div className="project-summary"><article><FolderKanban size={18} /><strong>{projects.length}</strong><span>proyectos</span></article><article><Printer size={18} /><strong>{runs.length}</strong><span>corridas</span></article><article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString("es-CR")} g</strong><span>por recetas</span></article><button type="button" onClick={() => setShowPrinters(true)}><Printer size={18} />Impresoras</button><button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Nuevo proyecto</button></div>
 
             <div className="project-list">
               {sortedProjects.length ? sortedProjects.map((project) => {
@@ -504,7 +530,7 @@ export function ProjectsModal({
                     || operatingCosts.machine_cost_amount == null
                     || operatingCosts.labor_cost_amount == null;
                   const comparable = run.sale_amount != null && run.sale_currency && totals.size === 1 && totals.has(run.sale_currency) && !incomplete ? totals.get(run.sale_currency) ?? null : null;
-                  return <div className="project-run-row" key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><div><strong>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</strong><small>{duration(run.actual_minutes)} · {filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString("es-CR")} g{operatingCosts ? ` · ${duration(operatingCosts.actual_labor_minutes)} de trabajo` : " · costos operativos pendientes"}</small></div><div className="run-money">{Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{money(currency, total)}</span>)}{run.sale_amount != null && <strong>Venta {money(run.sale_currency || baseCurrency, run.sale_amount)}</strong>}{comparable != null && <small>Utilidad {money(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable)}</small>}</div></div>;
+                  return <div className="project-run-row" key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><div><strong>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</strong><small>{duration(run.actual_minutes)} · {filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString("es-CR")} g{operatingCosts ? ` · ${duration(operatingCosts.actual_labor_minutes)} de trabajo` : " · costos operativos pendientes"}{operatingCosts?.printer_name ? ` · ${operatingCosts.printer_name}` : ""}</small></div><div className="run-money">{Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{money(currency, total)}</span>)}{run.sale_amount != null && <strong>Venta {money(run.sale_currency || baseCurrency, run.sale_amount)}</strong>}{comparable != null && <small>Utilidad {money(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable)}</small>}</div></div>;
                 })}</article>;
               }) : <div className="project-empty"><FolderKanban size={34} /><h3>Tu primera receta está lista para nacer</h3><p>Guardá el STL/3MF, los filamentos, gramos, tiempo e insumos que necesita.</p><button className="primary-action" type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Crear primer proyecto</button></div>}
             </div>
@@ -512,7 +538,6 @@ export function ProjectsModal({
             {runs.length > 0 && <section className="production-history"><div className="section-head"><div><p className="eyebrow">Histórico</p><h3>Producción reciente</h3></div><span>{runs.length} registros</span></div>{sortedRuns.slice(0, 8).map((run) => <div key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><strong>{run.project_name}</strong><span>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</span></div>)}</section>}
           </>
         )}
-      </section>
-    </div>
+    </ModalFrame>
   );
 }

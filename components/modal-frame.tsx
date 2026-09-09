@@ -3,9 +3,10 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { ArrowLeft, X } from "lucide-react";
 
-export function ModalFrame({ title, titleId, eyebrow, className = "", busy = false, onClose, onBack, viewKey, children }: {
+export function ModalFrame({ title, titleId, eyebrow, className = "", busy = false, onClose, onBack, viewKey, children, closeLabel = "Cerrar ventana" }: {
   title: string; titleId: string; eyebrow: string; className?: string; busy?: boolean;
   onClose: () => void; onBack?: () => void; viewKey?: string; children: ReactNode;
+  closeLabel?: string;
 }) {
   const panel = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -40,7 +41,7 @@ export function ModalFrame({ title, titleId, eyebrow, className = "", busy = fal
       <div className="modal-head">
         {onBack && <button className="modal-close" type="button" onClick={onBack} disabled={busy} aria-label="Volver"><ArrowLeft size={20} aria-hidden="true" /></button>}
         <div className="modal-frame-heading"><p className="eyebrow">{eyebrow}</p><h2 ref={heading} tabIndex={-1} id={titleId}>{title}</h2></div>
-        <button className="modal-close" type="button" onClick={onClose} disabled={busy} aria-label="Cerrar ventana"><X size={20} aria-hidden="true" /></button>
+        <button className="modal-close" type="button" onClick={onClose} disabled={busy} aria-label={closeLabel} title={closeLabel}><X size={20} aria-hidden="true" /></button>
       </div>
       {children}
     </section>

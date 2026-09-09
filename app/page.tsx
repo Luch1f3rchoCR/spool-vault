@@ -35,6 +35,8 @@ import {
   type MissingPurchaseValues
 } from "@/components/missing-purchase-modal";
 import { ProfilePanel, type ProfileValues } from "@/components/profile-panel";
+import type { PrinterValues } from "@/components/printer-manager";
+import { TesterFirstVisit } from "@/components/tester-first-visit";
 import {
   ProjectsModal,
   type ProductionRunValues,
@@ -62,6 +64,7 @@ import type {
   InventoryBalanceRow,
   PackageType,
   PrintProject,
+  PrinterProfile,
   ProductionRun,
   ProductionRunComponent,
   ProductionRunCost,
@@ -100,6 +103,7 @@ const LOCAL_PRODUCTION_RUNS_KEY = "spool-vault-production-runs";
 const LOCAL_RUN_FILAMENTS_KEY = "spool-vault-run-filaments";
 const LOCAL_RUN_COMPONENTS_KEY = "spool-vault-run-components";
 const LOCAL_RUN_COSTS_KEY = "spool-vault-run-costs";
+const LOCAL_PRINTERS_KEY = "spool-vault-printers";
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
 const WEIGHT_DELTA_EPSILON_G = 0.01;
 
@@ -153,6 +157,7 @@ type ProductionRunMutationResult = {
   logs: ConsumptionLog[];
   replayed: boolean;
 };
+type PrinterMutationResult = { printer: PrinterProfile; replayed: boolean };
 type PurchaseView = {
   original: PurchaseRecord;
   effective: PurchaseRecord;
@@ -353,7 +358,22 @@ function normalizeProductionRunCost(cost: ProductionRunCost): ProductionRunCost 
     electricity_cost_amount: cost.electricity_cost_amount == null ? null : Number(cost.electricity_cost_amount),
     machine_cost_amount: cost.machine_cost_amount == null ? null : Number(cost.machine_cost_amount),
     labor_cost_amount: cost.labor_cost_amount == null ? null : Number(cost.labor_cost_amount),
-    failure_cost_amount: Number(cost.failure_cost_amount)
+    failure_cost_amount: Number(cost.failure_cost_amount),
+    printer_id: cost.printer_id ?? null,
+    printer_name: cost.printer_name ?? null,
+    printer_manufacturer: cost.printer_manufacturer ?? null,
+    printer_model: cost.printer_model ?? null
+  };
+}
+
+function normalizePrinter(printer: PrinterProfile): PrinterProfile {
+  return {
+    ...printer,
+    last_update_request_id: printer.last_update_request_id ?? null,
+    machine_cost_currency: printer.machine_cost_currency ?? null,
+    nozzle_diameter_mm: printer.nozzle_diameter_mm == null ? null : Number(printer.nozzle_diameter_mm),
+    average_power_w: printer.average_power_w == null ? null : Number(printer.average_power_w),
+    machine_cost_per_hour: printer.machine_cost_per_hour == null ? null : Number(printer.machine_cost_per_hour)
   };
 }
 
@@ -672,6 +692,7 @@ export default function Home() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([]);
   const [purchaseOrderPayments, setPurchaseOrderPayments] = useState<PurchaseOrderPayment[]>([]);
+  const [printers, setPrinters] = useState<PrinterProfile[]>([]);
   const [projects, setProjects] = useState<PrintProject[]>([]);
   const [projectRequirements, setProjectRequirements] = useState<ProjectFilamentRequirement[]>([]);
   const [projectComponents, setProjectComponents] = useState<ProjectComponent[]>([]);
@@ -731,6 +752,7 @@ export default function Home() {
   const [isSavingPurchaseOrder, setIsSavingPurchaseOrder] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [isSavingProductionRun, setIsSavingProductionRun] = useState(false);
+  const [isSavingPrinter, setIsSavingPrinter] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isRecordingConsumption, setIsRecordingConsumption] = useState(false);
   const [isSavingWeight, setIsSavingWeight] = useState(false);
@@ -744,6 +766,7 @@ export default function Home() {
   const purchaseOrderRequest = useRef<{ id: string; fingerprint: string } | null>(null);
   const projectRequest = useRef<{ id: string; projectId: string; fingerprint: string; filePath: string | null } | null>(null);
   const productionRunRequest = useRef<{ id: string; projectId: string; fingerprint: string } | null>(null);
+  const printerRequests = useRef<Record<string, { id: string; fingerprint: string }>>({});
   const consumptionRequest = useRef<{ id: string; rollId: string } | null>(null);
   const weightRequest = useRef<{ id: string; rollId: string; fingerprint: string } | null>(null);
   const createSpoolRequestId = useRef<string | null>(null);
@@ -805,6 +828,7 @@ export default function Home() {
           setPurchaseOrders([]);
           setPurchaseOrderItems([]);
           setPurchaseOrderPayments([]);
+          setPrinters([]);
           setProjects([]);
           setProjectRequirements([]);
           setProjectComponents([]);
@@ -831,6 +855,7 @@ export default function Home() {
           const localPurchaseOrders = readLocal<PurchaseOrder[]>(LOCAL_PURCHASE_ORDERS_KEY, []);
           const localPurchaseOrderItems = readLocal<PurchaseOrderItem[]>(LOCAL_PURCHASE_ORDER_ITEMS_KEY, []);
           const localPurchaseOrderPayments = readLocal<PurchaseOrderPayment[]>(LOCAL_PURCHASE_ORDER_PAYMENTS_KEY, []);
+          const localPrinters = readLocal<PrinterProfile[]>(LOCAL_PRINTERS_KEY, []).map(normalizePrinter);
           const localProjects = readLocal<PrintProject[]>(LOCAL_PROJECTS_KEY, []);
           const localProjectRequirements = readLocal<ProjectFilamentRequirement[]>(LOCAL_PROJECT_REQUIREMENTS_KEY, []);
           const localProjectComponents = readLocal<ProjectComponent[]>(LOCAL_PROJECT_COMPONENTS_KEY, []);
@@ -852,6 +877,7 @@ export default function Home() {
           setPurchaseOrders(localPurchaseOrders);
           setPurchaseOrderItems(localPurchaseOrderItems);
           setPurchaseOrderPayments(localPurchaseOrderPayments);
+          setPrinters(localPrinters);
           setProjects(localProjects);
           setProjectRequirements(localProjectRequirements);
           setProjectComponents(localProjectComponents);
@@ -886,6 +912,7 @@ export default function Home() {
           { data: purchaseOrderData, error: purchaseOrderError },
           { data: purchaseOrderItemData, error: purchaseOrderItemError },
           { data: purchaseOrderPaymentData, error: purchaseOrderPaymentError },
+          { data: printerData, error: printerError },
           { data: profileData, error: profileError },
           { data: projectData, error: projectError },
           { data: projectRequirementData, error: projectRequirementError },
@@ -907,6 +934,7 @@ export default function Home() {
             supabase.from("purchase_orders").select("*").order("purchased_at", { ascending: false }),
             supabase.from("purchase_order_items").select("*").order("created_at", { ascending: false }),
             supabase.from("purchase_order_payments").select("*").order("created_at", { ascending: false }),
+            supabase.from("printers").select("*").order("is_active", { ascending: false }).order("name"),
             supabase.from("user_profiles").select("*").maybeSingle(),
             supabase.from("print_projects").select("*").order("created_at", { ascending: false }),
             supabase.from("project_filament_requirements").select("*").order("position"),
@@ -920,7 +948,7 @@ export default function Home() {
         if (
           !rollError && !logError && !spoolError && !spoolTypeError && !weighingError
           && !supplierError && !purchaseError && !purchaseCorrectionError
-          && !purchaseOrderError && !purchaseOrderItemError && !purchaseOrderPaymentError
+          && !purchaseOrderError && !purchaseOrderItemError && !purchaseOrderPaymentError && !printerError
           && !profileError && !projectError && !projectRequirementError && !projectComponentError
           && !productionRunError && !productionRunFilamentError && !productionRunComponentError && !productionRunCostError
           && rollData
@@ -941,6 +969,7 @@ export default function Home() {
           setPurchaseOrders((purchaseOrderData ?? []) as PurchaseOrder[]);
           setPurchaseOrderItems((purchaseOrderItemData ?? []) as PurchaseOrderItem[]);
           setPurchaseOrderPayments((purchaseOrderPaymentData ?? []) as PurchaseOrderPayment[]);
+          setPrinters(((printerData ?? []) as PrinterProfile[]).map(normalizePrinter));
           setProjects((projectData ?? []) as PrintProject[]);
           setProjectRequirements((projectRequirementData ?? []) as ProjectFilamentRequirement[]);
           setProjectComponents((projectComponentData ?? []) as ProjectComponent[]);
@@ -967,6 +996,7 @@ export default function Home() {
         setPurchaseOrders([]);
         setPurchaseOrderItems([]);
         setPurchaseOrderPayments([]);
+        setPrinters([]);
         setProjects([]);
         setProjectRequirements([]);
         setProjectComponents([]);
@@ -991,6 +1021,7 @@ export default function Home() {
       const localPurchaseOrders = readLocal<PurchaseOrder[]>(LOCAL_PURCHASE_ORDERS_KEY, []);
       const localPurchaseOrderItems = readLocal<PurchaseOrderItem[]>(LOCAL_PURCHASE_ORDER_ITEMS_KEY, []);
       const localPurchaseOrderPayments = readLocal<PurchaseOrderPayment[]>(LOCAL_PURCHASE_ORDER_PAYMENTS_KEY, []);
+      const localPrinters = readLocal<PrinterProfile[]>(LOCAL_PRINTERS_KEY, []).map(normalizePrinter);
       const localProjects = readLocal<PrintProject[]>(LOCAL_PROJECTS_KEY, []);
       const localProjectRequirements = readLocal<ProjectFilamentRequirement[]>(LOCAL_PROJECT_REQUIREMENTS_KEY, []);
       const localProjectComponents = readLocal<ProjectComponent[]>(LOCAL_PROJECT_COMPONENTS_KEY, []);
@@ -1010,6 +1041,7 @@ export default function Home() {
       setPurchaseOrders(localPurchaseOrders);
       setPurchaseOrderItems(localPurchaseOrderItems);
       setPurchaseOrderPayments(localPurchaseOrderPayments);
+      setPrinters(localPrinters);
       setProjects(localProjects);
       setProjectRequirements(localProjectRequirements);
       setProjectComponents(localProjectComponents);
@@ -1083,6 +1115,10 @@ export default function Home() {
   useEffect(() => {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PROFILE_KEY, userProfile);
   }, [dataMode, userProfile, usingSupabase]);
+
+  useEffect(() => {
+    if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_PRINTERS_KEY, printers);
+  }, [dataMode, printers, usingSupabase]);
 
   useEffect(() => {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_WEIGHINGS_KEY, weighingEvents);
@@ -2184,6 +2220,100 @@ export default function Home() {
     }
   }
 
+  async function savePrinter(values: PrinterValues) {
+    if (isSavingPrinter) return false;
+    activateLocalMode();
+    const requestKey = values.printer_id ?? "new";
+    const fingerprint = JSON.stringify(values);
+    const pending = printerRequests.current[requestKey];
+    const requestId = pending?.fingerprint === fingerprint ? pending.id : crypto.randomUUID();
+    printerRequests.current[requestKey] = { id: requestId, fingerprint };
+    setIsSavingPrinter(true);
+
+    try {
+      if (usingSupabase && supabase) {
+        const { data, error } = await supabase.rpc("save_printer_v2", {
+          p_request_id: requestId,
+          p_printer_id: values.printer_id,
+          p_name: values.name.trim(),
+          p_manufacturer: values.manufacturer.trim() || null,
+          p_model: values.model.trim() || null,
+          p_nozzle_diameter_mm: values.nozzle_diameter_mm === "" ? null : Number(values.nozzle_diameter_mm),
+          p_location: values.location.trim() || null,
+          p_average_power_w: values.average_power_w === "" ? null : Number(values.average_power_w),
+          p_machine_cost_per_hour: values.machine_cost_per_hour === "" ? null : Number(values.machine_cost_per_hour),
+          p_machine_cost_currency: values.machine_cost_currency,
+          p_notes: values.notes.trim() || null,
+          p_is_active: values.is_active
+        });
+
+        if (error || !data) {
+          setSyncNote(`No se pudo guardar la impresora. Podés reintentar sin duplicarla: ${error?.message ?? "respuesta vacía"}`);
+          return false;
+        }
+
+        const result = data as PrinterMutationResult;
+        const savedPrinter = normalizePrinter(result.printer);
+        setPrinters((current) => [savedPrinter, ...current.filter((printer) => printer.id !== savedPrinter.id)]);
+        delete printerRequests.current[requestKey];
+        setSyncNote(result.replayed
+          ? `La impresora ${savedPrinter.name} ya estaba guardada; recuperamos el resultado.`
+          : `Impresora ${savedPrinter.name} guardada.`);
+        return true;
+      }
+
+      const now = new Date().toISOString();
+      if (values.printer_id) {
+        const existing = printers.find((printer) => printer.id === values.printer_id);
+        if (!existing) throw new Error("Impresora no encontrada.");
+        const updated = normalizePrinter({
+          ...existing,
+          last_update_request_id: requestId,
+          name: values.name.trim(),
+          manufacturer: values.manufacturer.trim() || null,
+          model: values.model.trim() || null,
+          nozzle_diameter_mm: values.nozzle_diameter_mm === "" ? null : Number(values.nozzle_diameter_mm),
+          location: values.location.trim() || null,
+          average_power_w: values.average_power_w === "" ? null : Number(values.average_power_w),
+          machine_cost_per_hour: values.machine_cost_per_hour === "" ? null : Number(values.machine_cost_per_hour),
+          machine_cost_currency: values.machine_cost_currency,
+          notes: values.notes.trim() || null,
+          is_active: values.is_active,
+          updated_at: now
+        });
+        setPrinters((current) => [updated, ...current.filter((printer) => printer.id !== updated.id)]);
+      } else {
+        const created: PrinterProfile = {
+          id: crypto.randomUUID(),
+          creation_request_id: requestId,
+          last_update_request_id: null,
+          name: values.name.trim(),
+          manufacturer: values.manufacturer.trim() || null,
+          model: values.model.trim() || null,
+          nozzle_diameter_mm: values.nozzle_diameter_mm === "" ? null : Number(values.nozzle_diameter_mm),
+          location: values.location.trim() || null,
+          average_power_w: values.average_power_w === "" ? null : Number(values.average_power_w),
+          machine_cost_per_hour: values.machine_cost_per_hour === "" ? null : Number(values.machine_cost_per_hour),
+          machine_cost_currency: values.machine_cost_currency,
+          notes: values.notes.trim() || null,
+          is_active: values.is_active,
+          created_at: now,
+          updated_at: now
+        };
+        setPrinters((current) => [created, ...current]);
+      }
+      delete printerRequests.current[requestKey];
+      setDataMode("local");
+      setSyncNote(`Impresora ${values.name.trim()} guardada en este dispositivo.`);
+      return true;
+    } catch (error) {
+      setSyncNote(`No se pudo guardar la impresora: ${error instanceof Error ? error.message : "error inesperado"}`);
+      return false;
+    } finally {
+      setIsSavingPrinter(false);
+    }
+  }
+
   async function completeProductionRun(values: ProductionRunValues) {
     if (isSavingProductionRun) return false;
     activateLocalMode();
@@ -2198,7 +2328,7 @@ export default function Home() {
           : { id: crypto.randomUUID(), projectId: values.project_id, fingerprint };
         productionRunRequest.current = request;
 
-        const { data, error } = await supabase.rpc("complete_production_run_v2", {
+        const { data, error } = await supabase.rpc("complete_production_run_v3", {
           p_request_id: request.id,
           p_project_id: values.project_id,
           p_produced_at: values.produced_at,
@@ -2211,7 +2341,8 @@ export default function Home() {
           p_filaments: values.filaments,
           p_components: values.components,
           p_actual_labor_minutes: values.actual_labor_minutes,
-          p_failure_cost_amount: values.failure_cost_amount
+          p_failure_cost_amount: values.failure_cost_amount,
+          p_printer_id: values.printer_id
         });
 
         if (error || !data) {
@@ -2336,23 +2467,32 @@ export default function Home() {
       });
       const actualHours = values.actual_minutes == null ? null : values.actual_minutes / 60;
       const laborHours = values.actual_labor_minutes == null ? null : values.actual_labor_minutes / 60;
+      const selectedPrinter = printers.find((printer) => printer.id === values.printer_id);
+      if (values.printer_id && (!selectedPrinter || !selectedPrinter.is_active)) throw new Error("Elegí una impresora activa.");
+      if (selectedPrinter?.machine_cost_per_hour != null && selectedPrinter.machine_cost_currency !== userProfile.production_cost_currency) throw new Error("La moneda de la tarifa de impresora no coincide con Perfil.");
+      const resolvedPower = selectedPrinter?.average_power_w ?? userProfile.printer_average_power_w;
+      const resolvedMachineRate = selectedPrinter?.machine_cost_per_hour ?? userProfile.machine_cost_per_hour;
       const electricityCost = actualHours == null
         || userProfile.electricity_price_per_kwh == null
-        || userProfile.printer_average_power_w == null
+        || resolvedPower == null
         ? null
-        : actualHours * (Number(userProfile.printer_average_power_w) / 1000) * Number(userProfile.electricity_price_per_kwh);
+        : actualHours * (Number(resolvedPower) / 1000) * Number(userProfile.electricity_price_per_kwh);
       const localCosts: ProductionRunCost = {
         run_id: runId,
         actual_labor_minutes: values.actual_labor_minutes,
         currency: userProfile.production_cost_currency || userProfile.base_currency,
         electricity_price_per_kwh: userProfile.electricity_price_per_kwh,
-        printer_average_power_w: userProfile.printer_average_power_w,
-        machine_cost_per_hour: Number(userProfile.machine_cost_per_hour),
+        printer_average_power_w: resolvedPower,
+        machine_cost_per_hour: Number(resolvedMachineRate),
         labor_cost_per_hour: Number(userProfile.labor_cost_per_hour),
         electricity_cost_amount: electricityCost,
-        machine_cost_amount: actualHours == null ? null : actualHours * Number(userProfile.machine_cost_per_hour),
+        machine_cost_amount: actualHours == null ? null : actualHours * Number(resolvedMachineRate),
         labor_cost_amount: laborHours == null ? null : laborHours * Number(userProfile.labor_cost_per_hour),
         failure_cost_amount: values.failure_cost_amount,
+        printer_id: selectedPrinter?.id ?? null,
+        printer_name: selectedPrinter?.name ?? null,
+        printer_manufacturer: selectedPrinter?.manufacturer ?? null,
+        printer_model: selectedPrinter?.model ?? null,
         created_at: now
       };
       const localLogs = localFilaments.map((line) => ({
@@ -4138,9 +4278,17 @@ export default function Home() {
         </ModalFrame>
       )}
 
+      {signedInUserId && dataMode === "authenticated" && (
+        <TesterFirstVisit key={`first-visit:${signedInUserId}`} userId={signedInUserId} onSignOut={signOut}
+          onComplete={(savedPrinters) => {
+            setPrinters(savedPrinters.map(normalizePrinter));
+            setSyncNote("¡Bienvenido! Acceso de probador activado. Tus impresoras están en Perfil.");
+          }} />
+      )}
+
       {showProfile && (
         <ProfilePanel
-          key={signedInUserId || dataMode}
+          key={`profile:${signedInUserId || dataMode}`}
           email={signedInEmail}
           userId={signedInUserId}
           mode={dataMode}
@@ -4152,10 +4300,14 @@ export default function Home() {
             purchase_order_payments: purchaseOrderPayments, print_projects: projects,
             project_filament_requirements: projectRequirements, project_components: projectComponents,
             production_runs: productionRuns, production_run_filaments: productionRunFilaments,
-            production_run_components: productionRunComponents, production_run_costs: productionRunCosts
+            production_run_components: productionRunComponents, production_run_costs: productionRunCosts, printers
           }}
           profile={userProfile}
           isSaving={isSavingProfile}
+          printers={printers}
+          isSavingPrinter={isSavingPrinter}
+          printerStatusMessage={syncNote}
+          onSavePrinter={savePrinter}
           onClose={() => setShowProfile(false)}
           onSave={saveProfile}
           onSignOut={signOut}
@@ -4195,15 +4347,19 @@ export default function Home() {
           runFilaments={productionRunFilaments}
           runComponents={productionRunComponents}
           runCosts={productionRunCosts}
+          printers={printers}
           rolls={rolls}
           baseCurrency={userProfile.base_currency}
           profile={userProfile}
           mode={dataMode}
           isSavingProject={isSavingProject}
           isSavingRun={isSavingProductionRun}
+          isSavingPrinter={isSavingPrinter}
+          statusMessage={syncNote}
           onClose={() => setShowProjects(false)}
           onCreateProject={createProject}
           onCompleteRun={completeProductionRun}
+          onSavePrinter={savePrinter}
           onOpenFile={openProjectFile}
         />
       )}

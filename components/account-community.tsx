@@ -41,7 +41,10 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
   const [details, setDetails] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteDetails, setInviteDetails] = useState({ country: "", printers: "", platform: "unspecified", experience: "unspecified", testing_focus: "" });
+  const [inviteReason, setInviteReason] = useState("");
+  const [expectedFocus, setExpectedFocus] = useState("");
+  const [inviteNotes, setInviteNotes] = useState<Array<{ membership_id: string; reason: string; expected_focus: string }>>([]);
+  const [firstVisits, setFirstVisits] = useState<Array<{ membership_id: string; answers: { display_name: string; country: string; experience: string; usage: string; purpose: string; platform: string; printers: Array<{ name: string; manufacturer: string; model: string }> } }>>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [mailConfigured, setMailConfigured] = useState(false);
   const [sendOnSave, setSendOnSave] = useState(true);
@@ -71,6 +74,9 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
         ? await client.from("tester_memberships").select("*").order("granted_at", { ascending: false }).limit(100)
         : { data: [], error: null };
       if (membersResult.error) throw membersResult.error;
+      const notesResult = isAdmin ? await client.from("tester_invitation_notes").select("*") : { data: [], error: null };
+      const visitsResult = isAdmin ? await client.from("tester_first_visits").select("membership_id,answers") : { data: [], error: null };
+      if (notesResult.error || visitsResult.error) throw notesResult.error || visitsResult.error;
       let deliveryData: Delivery[] = [];
       let configured = false;
       if (isAdmin) {
@@ -90,6 +96,8 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
       setAdmin(isAdmin);
       setFeedback(feedbackResult.data ?? []);
       setMembers(membersResult.data ?? []);
+      setInviteNotes(notesResult.data ?? []);
+      setFirstVisits(visitsResult.data ?? []);
       setDeliveries(deliveryData); setMailConfigured(configured);
     } catch {
       if (mounted.current) setError("No pudimos cargar la membresía y los aportes. Revisá tu conexión y reintentá.");
@@ -139,10 +147,9 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
     const client = getSupabaseClient();
     if (!client || !admin) return;
     await perform(async () => {
-      const { data, error: writeError } = await client.rpc("reserve_tester_details", {
+      const { data, error: writeError } = await client.rpc("reserve_tester_invitation", {
         p_email: inviteEmail.trim(), p_name: inviteName.trim(),
-        p_country: inviteDetails.country, p_printers: inviteDetails.printers,
-        p_platform: inviteDetails.platform, p_experience: inviteDetails.experience, p_testing_focus: inviteDetails.testing_focus
+        p_reason: inviteReason.trim(), p_expected_focus: expectedFocus.trim()
       });
       if (writeError || !data?.id) throw writeError || new Error("missing confirmation");
       setMembers((current) => [data, ...current.filter((item) => item.id !== data.id)]);
@@ -194,7 +201,7 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
   useEffect(() => { setNotice(""); }, [view]);
   const ownFeedback = feedback.filter((item) => item.user_id === userId);
 
-  return <div className="account-community" aria-busy={busy} hidden={view === "preferences" || view === "production"}>
+  return <div className="account-community" aria-busy={busy} hidden={view === "preferences" || view === "production" || view === "printers"}>
     <div className="membership-card" hidden={view !== "home"}>
       <div className="membership-copy"><span className="membership-icon"><CreditCard size={20} aria-hidden="true" /></span><div>
         <p className="eyebrow">Licencia personal</p>
@@ -243,11 +250,9 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
       <form onSubmit={reserve}><fieldset disabled={busy || loading}>
         <label>Nombre<input required minLength={2} maxLength={120} value={inviteName} onChange={(event) => { setInviteName(event.target.value); setInviteReady(false); }} /></label>
         <label>Correo de acceso<input required type="email" maxLength={254} autoCapitalize="none" value={inviteEmail} onChange={(event) => { setInviteEmail(event.target.value); setInviteReady(false); }} /></label>
-        <label>País (opcional)<input maxLength={80} value={inviteDetails.country} onChange={(event) => setInviteDetails({ ...inviteDetails, country: event.target.value })} /></label>
-        <label>Impresoras (opcional)<input maxLength={300} value={inviteDetails.printers} onChange={(event) => setInviteDetails({ ...inviteDetails, printers: event.target.value })} /></label>
-        <label>Dispositivo<select value={inviteDetails.platform} onChange={(event) => setInviteDetails({ ...inviteDetails, platform: event.target.value })}><option value="unspecified">Sin especificar</option><option value="ios">iPhone / iPad</option><option value="android">Android</option><option value="desktop">Computadora</option><option value="mixed">Varios dispositivos</option></select></label>
-        <label>Experiencia en impresión 3D<select value={inviteDetails.experience} onChange={(event) => setInviteDetails({ ...inviteDetails, experience: event.target.value })}><option value="unspecified">Sin especificar</option><option value="beginner">Principiante</option><option value="intermediate">Intermedia</option><option value="advanced">Avanzada</option></select></label>
-        <label>Qué nos ayudará a probar (opcional)<textarea maxLength={1000} rows={3} value={inviteDetails.testing_focus} onChange={(event) => setInviteDetails({ ...inviteDetails, testing_focus: event.target.value })} /></label>
+        <label>Por qué invitamos a esta persona<input required minLength={3} maxLength={1000} value={inviteReason} onChange={(event) => setInviteReason(event.target.value)} /></label>
+        <label>Qué nos gustaría que pruebe (opcional)<textarea maxLength={1000} rows={3} value={expectedFocus} onChange={(event) => setExpectedFocus(event.target.value)} /></label>
+        <p className="form-help">Estas notas son solo para administración. La persona completará su experiencia, uso e impresoras al activar el acceso por primera vez. Repetir un correo recupera la invitación original sin cambiar sus notas.</p>
         {mailConfigured && <label className="account-checkbox"><input type="checkbox" checked={sendOnSave} onChange={(event) => setSendOnSave(event.target.checked)} />Enviar correo de bienvenida al guardar</label>}
         <details className="welcome-preview"><summary>Vista previa del correo de bienvenida</summary><p className="feedback-details">{welcomeText(inviteName.trim(), inviteEmail.trim() || "el correo registrado")}</p></details>
         <button className="primary-action" type="submit"><UserPlus size={18} />{busy ? "Procesando…" : mailConfigured && sendOnSave ? "Guardar y enviar bienvenida" : "Dar acceso gratuito de por vida"}</button>
@@ -262,7 +267,15 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
         <strong>{member.display_name || member.email}</strong><span>{member.email}</span>
         <small>{member.cancelled_at ? "Invitación cancelada" : member.activated_at ? "Activa · gratis de por vida" : "Pendiente de primer ingreso"}</small>
         <small>{[member.country, member.printers].filter(Boolean).join(" · ")}</small>
-        {member.testing_focus && <p>{member.testing_focus}</p>}
+        {member.testing_focus && <p>Referencia de la invitación anterior: {member.testing_focus}</p>}
+        {inviteNotes.filter((note) => note.membership_id === member.id).map((note) => <div key={note.membership_id}><p><strong>Motivo:</strong> {note.reason}</p>{note.expected_focus && <p><strong>Pruebas previstas:</strong> {note.expected_focus}</p>}</div>)}
+        {firstVisits.filter((visit) => visit.membership_id === member.id).map(({ answers }) => <details key={member.id}><summary>Respuestas del primer ingreso</summary>
+          <p>{answers.display_name} · {answers.country || "País no indicado"}</p>
+          <p>Experiencia: {({ beginner: "Principiante", intermediate: "Intermedia", advanced: "Avanzada" } as Record<string, string>)[answers.experience] || answers.experience}</p>
+          <p>Uso: {({ hobby: "Hobby", professional: "Profesional", both: "Hobby y profesional" } as Record<string, string>)[answers.usage] || answers.usage}</p>
+          <p>{answers.purpose}</p><p>Dispositivo: {answers.platform}</p>
+          <p>Impresoras al ingresar: {answers.printers.map((printer) => [printer.name, printer.manufacturer, printer.model].filter(Boolean).join(" · ")).join("; ") || "Sin impresoras"}</p>
+        </details>)}
         <small>{deliveryLabels[deliveries.find((delivery) => delivery.membership_id === member.id)?.status || "pending"]}</small>
         {!member.cancelled_at && <>
           <a className="account-mail-link" href={`mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent("Bienvenido a Spool Vault · Probador fundador")}&body=${encodeURIComponent(welcomeText(member.display_name, member.email))}`}><Mail size={16} />Abrir bienvenida en mi correo</a>

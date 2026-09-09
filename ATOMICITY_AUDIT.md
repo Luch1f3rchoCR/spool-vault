@@ -27,9 +27,10 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Crear orden, partidas y prorratear cargos | Atómico, inmutable e idempotente | Bajo | Mantener `create_purchase_order`; la orden solo se confirma si sus partidas y cargos asignados cuadran completamente. |
 | Crear orden y registrar pago multimoneda | Atómico, inmutable e idempotente | Bajo | Mantener `create_purchase_order_v2`; monto original, pago real y relación cambiaria se confirman juntos o ninguno se guarda. |
 | Guardar perfil financiero y tarifas productivas | Atómico e idempotente | Bajo | Mantener `save_user_profile_v2`, RLS por propietario y CRC como valor inicial sin recalcular historia. |
+| Agregar, editar o inactivar impresora | Corrección verificada localmente; pendiente de publicar | Medio | `save_printer_v2` propone registro persistente de reintentos y moneda por tarifa. No está publicado. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
 | Crear proyecto, receta e insumos | Atómico e idempotente | Bajo | Mantener `create_print_project`; el archivo privado se carga antes con una ruta estable y puede reintentarse sin duplicar el proyecto. |
-| Cerrar corrida, congelar costos y descontar varios rollos | Atómico, inmutable e idempotente | Bajo | Mantener `complete_production_run_v2`; bloquear saldos en orden estable y confirmar corrida, consumos, inventario, electricidad, máquina, mano de obra y fallos juntos. |
+| Cerrar corrida, congelar costos y descontar varios rollos | Revisión requerida antes del piloto | Alto | Prueba revertida detectó doble descuento: trigger de consumos + resta explícita en `complete_production_run`. Corrección probada desde cero en PostgreSQL 17 local; todavía no aplicada en producción. No se recalculan saldos históricos. |
 | Derivar estado del rollo | Regla central en base de datos | Bajo | `Nuevo`, `Abierto`, `Bajo` y `Agotado` se recalculan desde pesos y umbral; `Archivado` continúa siendo explícito. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Mantener estas lecturas solo para la interfaz operativa. |
 | Reporte de saldo financiero | Vista consistente con RLS | Bajo | Mantener `filament_balance_report` como fuente única; no sumar CRC y USD entre sí. |
@@ -47,6 +48,10 @@ La misma revisión centralizó el estado operativo del rollo. Se corrigieron die
 El 1 de septiembre se agregó el módulo mínimo de proyectos y producción. La receta y sus insumos se crean en una sola operación reintentable; los STL/3MF viven en un bucket privado y se abren con enlaces temporales. Al cerrar una corrida, la base bloquea todos los rollos implicados en orden estable, valida el saldo agregado, congela el costo por gramo del lote utilizado, crea los consumos y descuenta el inventario dentro de la misma transacción. Los registros de producción solo permiten lectura e inserción desde el cliente para evitar reescribir resultados históricos.
 
 El 2 de septiembre se extendió ese cierre transaccional con costos operativos. El perfil conserva las tarifas actuales de electricidad, potencia promedio, máquina y mano de obra; cada corrida guarda una copia inmutable de esas tarifas, su tiempo laboral y el costo declarado de fallos. El cálculo histórico no depende de preferencias futuras y el cliente autenticado solo puede leer o insertar la copia mediante la operación transaccional.
+
+El catálogo de impresoras tiene esquema inicial aplicado y UI local sin publicar. El bloque del 9 de septiembre propone moneda explícita por tarifa, recuperación de costos congelados antes de consultar preferencias actuales y rechazo de impresoras inactivas. Validación completada en PostgreSQL 17 local después de que el fundador abrió Docker. Pasaron reintentos, costos congelados tras editar tarifas, moneda distinta, impresora inactiva, RLS, rollback y consumo único. No se repitió la prueba bloqueada en producción; no quedaron usuarios de prueba en el laboratorio.
+
+El primer ingreso propuesto guarda respuestas, impresoras y activación en una sola función con bloqueo de membresía. Cuentas ya activadas no repiten el formulario. Pasaron permisos, rollback cuando falla la segunda impresora, reintento sin duplicados, notas administrativas privadas y preservación de respuestas iniciales. Pendiente aplicar las migraciones y verificar producción.
 
 ## Riesgos transversales
 
