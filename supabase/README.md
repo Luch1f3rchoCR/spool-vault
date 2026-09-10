@@ -6,7 +6,7 @@ The disposable container must be named spool-vault-sql-test-20260909, labelled a
 
 It installs the minimal Auth/Storage SQL contracts from tests/local-bootstrap.sql, then the base schema and every migration, and tests permissions, rollback, retry and cost preservation. The bootstrap is TEST ONLY and must never be run in Supabase. These tests do not simulate HTTP authentication, email delivery or file storage.
 
-For the existing cloud project, printer_profiles was applied previously. The new pending migrations are printer_cost_safety and tester_first_visit; do not reapply the initial printer migration or bootstrap.
+For the existing cloud project, printer_profiles was applied previously. On September 9, printer_cost_safety and tester_first_visit were applied as cloud versions 20260909203554 and 20260909203604. Their local filenames retain their original CLI-generated timestamps. Do not reapply these migrations, the initial printer migration, or the test bootstrap. Post-DDL verification confirmed RLS and restricted function permissions. Advisors reported only the existing disabled leaked-password protection warning and informational unused indexes.
 
 1. Create a Supabase project.
 2. In the SQL editor, run `supabase/schema.sql` for a new installation.

@@ -1,6 +1,6 @@
 # Spool Vault
 
-Estado de esta rama (9 de septiembre): impresoras, primer ingreso de probadores y correcciones de costos están en preparación local, **no publicados**. Compilación, pruebas de navegador simuladas y migraciones en PostgreSQL 17 local aprobadas; pendiente aplicar/publicar y probar el ingreso real. Ver PROJECT_CONTEXT.md antes de desplegar.
+Estado al 9 de septiembre: impresoras, primer ingreso de probadores y correcciones de costos **publicados** mediante PR #23 (`a431c42`), con ambas migraciones aplicadas. Pruebas locales y humo de producción aprobados; pendiente el primer ingreso real por correo. Ver PROJECT_CONTEXT.md para continuar.
 
 Navegación de inventario: **+ Agregar** reúne nuevo filamento, crear spool, asignar spool y acceso a Mis spools. En **Compras**, cada orden agrupada se muestra como tarjeta y **Ver líneas de compra** abre productos, cargos y pago registrado. Los importes históricos se muestran con sus monedas y decimales; estas tarjetas no generan facturas fiscales.
 
