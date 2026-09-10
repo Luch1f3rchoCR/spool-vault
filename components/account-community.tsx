@@ -49,6 +49,9 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
   const [mailConfigured, setMailConfigured] = useState(false);
   const [sendOnSave, setSendOnSave] = useState(true);
   const [inviteReady, setInviteReady] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ id: string; message: string } | null>(null);
+  const inviteResultRef = useRef<HTMLElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const [requestId, setRequestId] = useState("");
   const pending = useRef(false);
   const mounted = useRef(true);
@@ -117,7 +120,7 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
   async function perform(action: () => Promise<void>) {
     if (pending.current) return;
     pending.current = true;
-    setBusy(true); setError(""); setNotice("");
+    setBusy(true); setError(""); setNotice(""); setInviteResult(null);
     try { await action(); }
     catch (cause) {
       const message = cause && typeof cause === "object" && "message" in cause ? String(cause.message) : "";
@@ -154,9 +157,18 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
       if (writeError || !data?.id) throw writeError || new Error("missing confirmation");
       setMembers((current) => [data, ...current.filter((item) => item.id !== data.id)]);
       setInviteReady(!data.cancelled_at);
-      setNotice(data.cancelled_at ? "Este correo tiene una invitación cancelada." : data.activated_at
-        ? "Esta persona ya tiene su membresía activa." : "Acceso reservado. Compartile el enlace de la app para entrar con este correo.");
-      if (!data.cancelled_at && mailConfigured && sendOnSave) await sendWelcome(data.id);
+      if (data.cancelled_at) {
+        throw new AccountActionError("Este correo tiene una invitación cancelada. No se envió una bienvenida.");
+      }
+      let message = data.activated_at
+        ? "Esta persona ya tiene su membresía activa."
+        : "Invitación guardada. No se envió un correo; podés compartir la bienvenida desde esta ficha.";
+      if (mailConfigured && sendOnSave) message = await sendWelcome(data.id);
+      // Only clear the draft after the requested reservation/send is confirmed.
+      // An uncertain send keeps the entered values and the saved membership.
+      setInviteName(""); setInviteEmail(""); setInviteReason(""); setExpectedFocus("");
+      setNotice("");
+      setInviteResult({ id: data.id, message });
     });
   }
 
@@ -172,8 +184,10 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
     } catch { throw new AccountActionError("La licencia está guardada. No pudimos confirmar el correo; revisá su estado antes de reintentar."); }
     const result = await response.json();
     await load();
-    if (!response.ok) throw new AccountActionError(result.error || "No pudimos confirmar el envío de la bienvenida.");
-    setNotice(result.already_sent ? "Esta bienvenida ya fue aceptada para envío. No se envió otra." : "Licencia guardada y bienvenida aceptada por el servicio de correo. La entrega al destinatario aún no está confirmada.");
+    if (!response.ok || result.status !== "accepted") throw new AccountActionError(result.error || "La invitación está guardada, pero no pudimos confirmar el envío de la bienvenida.");
+    const message = result.already_sent ? "Esta bienvenida ya fue aceptada para envío. No se envió otra." : "Invitación guardada y bienvenida aceptada por el servicio de correo. La entrega al destinatario aún no está confirmada.";
+    setNotice(message);
+    return message;
   }
 
   async function download() {
@@ -198,7 +212,13 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
     });
   }
 
-  useEffect(() => { setNotice(""); }, [view]);
+  useEffect(() => { setNotice(""); setInviteResult(null); }, [view]);
+  useEffect(() => {
+    if (busy || view !== "admin") return;
+    const target = error ? errorRef.current : inviteResult ? inviteResultRef.current : null;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [busy, error, inviteResult, view]);
   const ownFeedback = feedback.filter((item) => item.user_id === userId);
 
   return <div className="account-community" aria-busy={busy} hidden={view === "preferences" || view === "production" || view === "printers"}>
@@ -210,7 +230,7 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
       </div></div>
       {membership?.activated_at && <details className="membership-terms"><summary>Qué incluye mi membresía</summary><p>{founderScope}</p><p>Beneficio founder-v1. Los servicios externos y futuros planes adicionales no están incluidos.</p></details>}
     </div>
-    {error && <div role="alert" className="account-error"><p>{error}</p><button type="button" onClick={() => void load()} disabled={busy || loading}><RefreshCw size={16} /> Reintentar carga</button></div>}
+    {error && <div ref={errorRef} tabIndex={-1} role="alert" className="account-error"><p>{error}</p><button type="button" onClick={() => void load()} disabled={busy || loading}><RefreshCw size={16} /> Reintentar carga</button></div>}
     {notice && <p role="status" className="account-notice">{notice}</p>}
     <nav className="profile-menu" aria-label="Opciones de tu espacio" hidden={view !== "home"}>
       <button type="button" onClick={() => onNavigate("feedback")} disabled={busy}><Lightbulb size={19} /><span><strong>Compartir una idea</strong><small>Ideas y reportes de errores</small></span><ChevronRight size={18} /></button>
@@ -263,7 +283,11 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
       })}><Copy size={18} />Copiar enlace de la app</button>}
       <h4>Probadores</h4>
       {!members.length && <p>Todavía no has agregado probadores.</p>}
-      {members.map((member) => <article className="account-list-row" key={member.id}>
+      {members.map((member) => <article className="account-list-row" key={member.id}
+        ref={inviteResult?.id === member.id ? inviteResultRef : undefined}
+        tabIndex={inviteResult?.id === member.id ? -1 : undefined}
+        aria-label={`Invitación de ${member.display_name || member.email}`}>
+        {inviteResult?.id === member.id && <p role="status" className="account-notice">{inviteResult.message}</p>}
         <strong>{member.display_name || member.email}</strong><span>{member.email}</span>
         <small>{member.cancelled_at ? "Invitación cancelada" : member.activated_at ? "Activa · gratis de por vida" : "Pendiente de primer ingreso"}</small>
         <small>{[member.country, member.printers].filter(Boolean).join(" · ")}</small>
@@ -279,7 +303,10 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
         <small>{deliveryLabels[deliveries.find((delivery) => delivery.membership_id === member.id)?.status || "pending"]}</small>
         {!member.cancelled_at && <>
           <a className="account-mail-link" href={`mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent("Bienvenido a Spool Vault · Probador fundador")}&body=${encodeURIComponent(welcomeText(member.display_name, member.email))}`}><Mail size={16} />Abrir bienvenida en mi correo</a>
-          {mailConfigured && <button type="button" disabled={busy || ["accepted", "review_required"].includes(deliveries.find((delivery) => delivery.membership_id === member.id)?.status || "")} onClick={() => void perform(() => sendWelcome(member.id))}><Send size={16} />Enviar bienvenida</button>}
+          {mailConfigured && <button type="button" disabled={busy || ["accepted", "review_required"].includes(deliveries.find((delivery) => delivery.membership_id === member.id)?.status || "")} onClick={() => void perform(async () => {
+            const message = await sendWelcome(member.id);
+            setNotice(""); setInviteResult({ id: member.id, message });
+          })}><Send size={16} />Enviar bienvenida</button>}
         </>}
         {!member.activated_at && !member.cancelled_at && !deliveries.find((delivery) => delivery.membership_id === member.id)?.first_attempt_at && <button type="button" disabled={busy} title="Cancelar invitación pendiente" onClick={() => void perform(async () => {
           const { error: cancelError } = await getSupabaseClient()!.rpc("cancel_tester_invitation", { p_id: member.id });

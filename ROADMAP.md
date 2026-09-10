@@ -75,6 +75,7 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [x] `stonecollective.dev` figura Verified en Resend y API key creada (confirmado por el propietario).
 - [x] Variables de correo cargadas por el propietario en Vercel Production y redeploy Ready confirmado por captura; valores privados no inspeccionados. Seguimiento de entrega en `RESEND_SETUP.md`.
 - [x] Tu espacio como panel lateral, con vistas independientes para ideas, datos, probadores, facturación y tarifas; regreso al menú sin perder borradores durante la sesión del panel.
+- [x] Implementar confirmación visible de invitaciones: limpiar el formulario solo tras éxito confirmado y enfocar la ficha guardada; conservar borrador ante respuesta incierta. Regresión simulada aprobada en 320/390/1280 px; publicación rastreable mediante el PR de `fix/invitation-confirmation`.
 - [x] Confirmar recepción real de una bienvenida: el fundador la recibió en Gmail/spam el 7 de septiembre.
 - [ ] Probar enlace/activación de esa bienvenida e investigar llegada a spam antes de ampliar invitaciones.
 - [ ] Configurar correo de autenticación de Supabase para resolver los límites del remitente predeterminado.

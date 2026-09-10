@@ -7,7 +7,7 @@ const baseUrl = process.env.TEST_BASE_URL || 'http://127.0.0.1:3000';
 const userId = 'a0000000-0000-4000-8000-000000000002';
 const outputDir = path.resolve('node_modules/.tools/evidence');
 
-async function run(browser, { admin, width, configured = false }) {
+async function run(browser, { admin, width, configured = false, uncertainWelcome = false }) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, acceptDownloads: true });
   const page = await context.newPage();
   const errors = [];
@@ -17,12 +17,15 @@ async function run(browser, { admin, width, configured = false }) {
   await context.addInitScript(({ user, token }) => localStorage.setItem('sb-spool-test-auth-token', JSON.stringify({ access_token: token, refresh_token: 'test', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer', user })), { user, token });
   await page.route('**/api/supabase-config', (route) => route.fulfill({ json: { url: 'https://spool-test.supabase.co', publishableKey: 'sb_publishable_test' } }));
   let welcomeCalls = 0;
+  let failFirstReservation = true;
   const deliveries = [];
-  await page.route('**/api/admin/tester-welcome', (route) => {
+  await page.route('**/api/admin/tester-welcome', async (route) => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { configured } });
     welcomeCalls++;
-    deliveries.push({ membership_id: 'new-member', status: 'accepted', first_attempt_at: new Date().toISOString() });
-    return route.fulfill({ json: { status: 'accepted' } });
+    const alreadySent = deliveries.length > 0;
+    if (!alreadySent) deliveries.push({ membership_id: 'new-member', status: 'accepted', first_attempt_at: new Date().toISOString() });
+    if (uncertainWelcome && welcomeCalls === 1) return route.fulfill({ status: 503, json: { error: 'La licencia está guardada. No pudimos confirmar el correo; revisá su estado antes de reintentar.' } });
+    return route.fulfill({ json: { status: 'accepted', already_sent: alreadySent } });
   });
   const members = [];
   const feedback = [];
@@ -44,6 +47,10 @@ async function run(browser, { admin, width, configured = false }) {
     else if (name === 'reserve_tester_invitation') {
       result = members.find((m) => m.email === payload.p_email) || { id: 'new-member', email: payload.p_email, display_name: payload.p_name, printers: payload.p_printers, user_id: null, activated_at: null, cancelled_at: null };
       if (!members.length) members.push(result);
+      if (failFirstReservation) {
+        failFirstReservation = false;
+        return route.fulfill({ status: 503, json: { message: 'Simulated lost reservation response' } });
+      }
     } else if (name === 'submit_feedback') {
       submitCalls++;
       result = feedback.find((f) => f.id === payload.p_id) || { id: payload.p_id, user_id: userId, title: payload.p_title, details: payload.p_details, kind: payload.p_kind, status: 'received', admin_reply: '', created_at: new Date().toISOString() };
@@ -125,10 +132,35 @@ async function run(browser, { admin, width, configured = false }) {
     await group.getByLabel('Por qué invitamos a esta persona').fill('Experiencia probando inventarios');
     await group.getByLabel('Qué nos gustaría que pruebe (opcional)').fill('Uso desde iPhone');
     await group.getByRole('button', { name: configured ? 'Guardar y enviar bienvenida' : 'Dar acceso gratuito de por vida' }).click();
+    await page.getByRole('alert').filter({ hasText: 'No pudimos confirmar' }).waitFor();
+    assert.equal(await group.getByLabel('Correo de acceso').inputValue(), 'iphone@example.invalid');
+    assert.equal(await page.locator(':focus').getAttribute('role'), 'alert', 'uncertain reservation must reveal the error');
+    assert.equal(welcomeCalls, 0, 'an unconfirmed reservation must not send email');
+    await group.getByRole('button', { name: configured ? 'Guardar y enviar bienvenida' : 'Dar acceso gratuito de por vida' }).click();
+    if (uncertainWelcome) {
+      await page.getByRole('alert').filter({ hasText: 'No pudimos confirmar el correo' }).waitFor();
+      assert.equal(await group.getByLabel('Nombre', { exact: true }).inputValue(), 'Probador de iPhone');
+      assert.equal(await group.getByLabel('Por qué invitamos a esta persona').inputValue(), 'Experiencia probando inventarios');
+      assert.equal(welcomeCalls, 1, 'must not retry the email automatically');
+      await group.getByRole('button', { name: 'Guardar y enviar bienvenida' }).click();
+    }
+    const invitation = group.getByRole('article', { name: 'Invitación de Probador de iPhone', exact: true });
+    await invitation.getByRole('status').waitFor();
+    assert.equal(await group.getByLabel('Nombre', { exact: true }).inputValue(), '');
+    assert.equal(await group.getByLabel('Correo de acceso').inputValue(), '');
+    assert.equal(await group.getByLabel('Por qué invitamos a esta persona').inputValue(), '');
+    assert.equal(await group.getByLabel('Qué nos gustaría que pruebe (opcional)').inputValue(), '');
+    assert.equal(await page.locator(':focus').getAttribute('aria-label'), 'Invitación de Probador de iPhone');
+    const confirmationBounds = await invitation.getByRole('status').boundingBox();
+    assert.ok(confirmationBounds.y >= 0 && confirmationBounds.y + confirmationBounds.height <= 844, 'confirmation must be inside the viewport');
+    assert.equal(members.length, 1, 'retry must recover the existing membership');
+    assert.equal(deliveries.length, configured ? 1 : 0, 'retry must not duplicate the email');
+    assert.equal(await page.getByRole('dialog').count(), 1, 'keep the saved invitation available in the panel');
+    await page.screenshot({ path: path.join(outputDir, `invitation-confirmed-${width}.png`) });
     await group.getByText('Pendiente de primer ingreso', { exact: true }).waitFor();
     await group.getByRole('link', { name: 'Abrir bienvenida en mi correo' }).waitFor();
     if (configured) await group.getByText('Bienvenida aceptada para envío', { exact: true }).waitFor();
-    assert.equal(welcomeCalls, configured ? 1 : 0);
+    assert.equal(welcomeCalls, configured ? uncertainWelcome ? 2 : 1 : 0);
     await group.getByLabel(/^Estado/).selectOption('reviewing');
     await group.getByLabel('Respuesta', { exact: true }).fill('Estamos revisando la lectura de esta etiqueta.');
     await group.getByRole('button', { name: 'Guardar seguimiento' }).click();
@@ -163,5 +195,6 @@ async function run(browser, { admin, width, configured = false }) {
     await run(browser, { admin: false, width: 390 });
     await run(browser, { admin: false, width: 320 });
     await run(browser, { admin: true, width: 1280, configured: true });
+    await run(browser, { admin: true, width: 320, configured: true, uncertainWelcome: true });
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exitCode = 1; });
