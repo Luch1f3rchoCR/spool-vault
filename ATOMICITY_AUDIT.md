@@ -149,6 +149,7 @@ Mensajes recomendados:
 - Los clientes no pueden preparar envíos ni falsificar su aceptación. La aceptación del proveedor no equivale a recepción en la bandeja del destinatario.
 - Verificado con `supabase/tests/founder_testers.sql`, `supabase/tests/tester_welcome.sql`, pruebas del endpoint y pruebas de navegador con servicios simulados. Primera bienvenida real recibida por el fundador en Gmail/spam el 7 de septiembre; entregabilidad y prueba del enlace pendientes.
 - La navegación lateral de Tu espacio conserva los borradores al volver al menú y bloquea regreso/cierre durante escrituras. No cambia los contratos de persistencia, permisos ni envío.
+- Corrección UI en `fix/invitation-confirmation`: el resultado de guardar/enviar vive junto a la ficha del invitado y recibe foco; solo se limpian los campos después de confirmar la reserva y, si se solicitó, la aceptación del envío. Ante error se enfoca el aviso y se conserva el borrador. Sin reenvío automático ni cambios de esquema. Regresión simulada en 320/390/1280 px: respuesta perdida al reservar y al enviar, recuperación de la misma invitación, un solo envío aceptado y confirmación visible. No se envían correos reales durante las pruebas.
 
 ## Criterio de terminación por fase
 
