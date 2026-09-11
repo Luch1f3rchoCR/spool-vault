@@ -44,6 +44,7 @@ import {
 } from "@/components/projects-modal";
 import {
   PurchaseOrdersModal,
+  newOrderPurchase,
   type PurchaseOrderValues
 } from "@/components/purchase-orders-modal";
 import {
@@ -137,6 +138,9 @@ type MissingPurchaseResult = {
   replayed: boolean;
 };
 type PurchaseOrderMutationResult = {
+  rolls?: FilamentRoll[];
+  purchases?: PurchaseRecord[];
+  suppliers?: Supplier[];
   order: PurchaseOrder;
   items: PurchaseOrderItem[];
   payment: PurchaseOrderPayment | null;
@@ -1426,18 +1430,20 @@ export default function Home() {
   }
 
   async function createPurchaseOrder(values: PurchaseOrderValues) {
-    if (isSavingPurchaseOrder) return false;
+    if (isSavingPurchaseOrder || dataMode === "error") return false;
     activateLocalMode();
     const selectedPurchases = values.purchase_ids
       .map((id) => effectivePurchases.find((purchase) => purchase.id === id))
       .filter(Boolean) as PurchaseRecord[];
-    if (!selectedPurchases.length) {
+    const newPurchases = values.new_rolls.map((line) => newOrderPurchase(line, values.supplier_name, values.currency, values.purchased_at));
+    const allPurchases = [...selectedPurchases, ...newPurchases];
+    if (!allPurchases.length || selectedPurchases.length !== values.purchase_ids.length) {
       setSyncNote("Seleccioná al menos una compra para crear la orden.");
       return false;
     }
-    const supplierKey = selectedPurchases[0].supplier_name.trim().toLowerCase();
-    const currency = selectedPurchases[0].currency;
-    if (selectedPurchases.some((purchase) => purchase.supplier_name.trim().toLowerCase() !== supplierKey || purchase.currency !== currency)) {
+    const supplierKey = allPurchases[0].supplier_name.trim().toLowerCase();
+    const currency = allPurchases[0].currency;
+    if (allPurchases.some((purchase) => purchase.supplier_name.trim().toLowerCase() !== supplierKey || purchase.currency !== currency)) {
       setSyncNote("Una orden solo puede agrupar compras del mismo proveedor y moneda.");
       return false;
     }
@@ -1447,32 +1453,27 @@ export default function Home() {
     try {
       if (usingSupabase && supabase) {
         const pending = purchaseOrderRequest.current;
-        const request = pending?.fingerprint === fingerprint
-          ? pending
-          : { id: crypto.randomUUID(), fingerprint };
+        // Keep the operation ID until confirmed. Editing after a lost response
+        // must not silently create a second order with duplicate new rolls.
+        const request = { id: pending?.id ?? crypto.randomUUID(), fingerprint };
         purchaseOrderRequest.current = request;
-        const { data, error } = await supabase.rpc("create_purchase_order_v2", {
+        const { data, error } = await supabase.rpc("create_purchase_order_v3", {
           p_request_id: request.id,
-          p_purchase_ids: values.purchase_ids,
-          p_purchased_at: values.purchased_at,
-          p_shipping_amount: values.shipping_amount,
-          p_other_charges_amount: values.other_charges_amount,
-          p_allocation_method: values.allocation_method,
-          p_cost_confidence: values.cost_confidence,
-          p_notes: values.notes || null,
-          p_manual_allocations: values.manual_allocations,
-          p_paid_amount: values.paid_amount,
-          p_paid_currency: values.paid_currency,
-          p_exchange_rate: values.exchange_rate,
-          p_exchange_rate_date: values.exchange_rate_date,
-          p_exchange_rate_kind: values.exchange_rate_kind,
-          p_exchange_rate_source: values.exchange_rate_source || null
+          p_order: values
         });
         if (error || !data) {
           setSyncNote(`No se pudo confirmar la orden. Podés reintentar sin duplicarla: ${error?.message ?? "respuesta vacía"}`);
           return false;
         }
         const result = data as PurchaseOrderMutationResult;
+        if (!result.order?.id || !Array.isArray(result.items) || !Array.isArray(result.rolls) || !Array.isArray(result.purchases)) {
+          setSyncNote("La respuesta de la orden no está completa. Conservamos las partidas para reintentar.");
+          return false;
+        }
+        const savedRolls = result.rolls.map(normalizeRollData);
+        setRolls((current) => [...savedRolls, ...current.filter((roll) => !savedRolls.some((saved) => saved.id === roll.id))]);
+        setPurchases((current) => [...result.purchases!, ...current.filter((purchase) => !result.purchases!.some((saved) => saved.id === purchase.id))]);
+        if (result.suppliers) setSuppliers((current) => [...result.suppliers!, ...current.filter((supplier) => !result.suppliers!.some((saved) => saved.id === supplier.id))]);
         setPurchaseOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
         setPurchaseOrderItems((current) => [
           ...result.items,
@@ -1490,7 +1491,19 @@ export default function Home() {
       }
 
       const requestId = crypto.randomUUID();
-      const result = buildLocalPurchaseOrder(requestId, values, selectedPurchases);
+      const localRolls: FilamentRoll[] = values.new_rolls.map((line) => ({
+        id: crypto.randomUUID(), brand: line.brand, material: line.material, product_line: line.product_line,
+        color_name: line.color_name, color_hex: line.color_hex, initial_weight_g: line.quantity_g,
+        available_weight_g: line.quantity_g, low_threshold_g: 200, status: line.quantity_g <= 200 ? "low" : "new",
+        location: line.location || null, purchase_date: values.purchased_at, price_amount: Number(line.total_price),
+        currency: values.currency, supplier_id: null, supplier_name: values.supplier_name, package_type: line.package_type,
+        spool_id: null, spool_cost_amount: line.spool_cost, filament_cost_amount: Number(line.total_price) - line.spool_cost,
+        drying_notes: null, photo_url: null, purchase_url: null, nfc_tag_id: null, qr_payload: null
+      }));
+      const localPurchases = newPurchases.map((purchase, index) => ({ ...purchase, roll_id: localRolls[index].id }));
+      const result = buildLocalPurchaseOrder(requestId, values, [...selectedPurchases, ...localPurchases]);
+      setRolls((current) => [...localRolls, ...current]);
+      setPurchases((current) => [...localPurchases, ...current]);
       setPurchaseOrders((current) => [result.order, ...current]);
       setPurchaseOrderItems((current) => [...result.items, ...current]);
       if (result.payment) setPurchaseOrderPayments((current) => [result.payment as PurchaseOrderPayment, ...current]);
@@ -4331,6 +4344,11 @@ export default function Home() {
           items={purchaseOrderItems}
           payments={purchaseOrderPayments}
           baseCurrency={userProfile.base_currency}
+          brandOptions={brandOptions}
+          materialOptions={materialOptions}
+          lineOptionsByMaterial={lineOptionsByMaterial}
+          supplierNames={suppliers.map((supplier) => supplier.name)}
+          operationNote={syncNote}
           mode={dataMode}
           isSaving={isSavingPurchaseOrder}
           onClose={() => setShowPurchaseOrders(false)}

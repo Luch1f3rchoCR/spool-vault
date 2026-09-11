@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Calculator, CreditCard, PackageCheck, Plus, ReceiptText, Save, Truck } from "lucide-react";
+import { Calculator, CreditCard, PackageCheck, Plus, ReceiptText, Save, Truck, Trash2 } from "lucide-react";
 import { ModalFrame } from "@/components/modal-frame";
 import type {
   CostConfidence,
@@ -10,10 +10,14 @@ import type {
   PurchaseOrder,
   PurchaseOrderItem,
   PurchaseOrderPayment,
+  PackageType,
   PurchaseRecord
 } from "@/lib/types";
 
 export type PurchaseOrderValues = {
+  new_rolls: NewOrderRoll[];
+  supplier_name: string;
+  currency: string;
   purchase_ids: string[];
   purchased_at: string;
   shipping_amount: number;
@@ -30,12 +34,31 @@ export type PurchaseOrderValues = {
   exchange_rate_source: string;
 };
 
+export type NewOrderRoll = {
+  line_id: string; brand: string; material: string; product_line: string;
+  color_name: string; color_hex: string; quantity_g: number;
+  total_price: number | ""; package_type: PackageType; spool_cost: number; location: string;
+};
+
+export function newOrderPurchase(line: NewOrderRoll, supplier: string, currency: string, date: string): PurchaseRecord {
+  return { id: line.line_id, roll_id: null, supplier_id: null, supplier_name: supplier,
+    brand: line.brand, material: line.material, product_line: line.product_line,
+    color_name: line.color_name, color_hex: line.color_hex, purchased_at: date,
+    package_type: line.package_type, total_price: Number(line.total_price), spool_cost: line.spool_cost,
+    filament_cost: Number(line.total_price) - line.spool_cost, currency, quantity_g: line.quantity_g };
+}
+
 type Props = {
   purchases: PurchaseRecord[];
   orders: PurchaseOrder[];
   items: PurchaseOrderItem[];
   payments: PurchaseOrderPayment[];
   baseCurrency: string;
+  brandOptions: string[];
+  materialOptions: string[];
+  lineOptionsByMaterial: Record<string, string[]>;
+  supplierNames: string[];
+  operationNote: string;
   mode: "authenticated" | "demo" | "local" | "error";
   isSaving: boolean;
   onClose: () => void;
@@ -101,7 +124,7 @@ function allocate(
   return result;
 }
 
-export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCurrency, mode, isSaving, onClose, onCreate }: Props) {
+export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCurrency, brandOptions, materialOptions, lineOptionsByMaterial, supplierNames, operationNote, mode, isSaving, onClose, onCreate }: Props) {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const detailOpener = useRef<HTMLElement | null>(null);
   const selectedOrder = orders.find((order) => order.id === selectedOrderId);
@@ -110,6 +133,13 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
   }, [selectedOrderId]);
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [newRolls, setNewRolls] = useState<NewOrderRoll[]>([]);
+  const [supplierName, setSupplierName] = useState("");
+  const [currency, setCurrency] = useState(baseCurrency);
+  const [feedback, setFeedback] = useState("");
+  const [saveFailed, setSaveFailed] = useState(false);
+  const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const submitting = useRef(false);
   const [purchasedAt, setPurchasedAt] = useState(new Date().toISOString().slice(0, 10));
   const [shipping, setShipping] = useState(0);
   const [otherCharges, setOtherCharges] = useState(0);
@@ -132,10 +162,15 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
     () => purchases.filter((purchase) => !assignedPurchaseIds.has(purchase.id)),
     [assignedPurchaseIds, purchases]
   );
-  const selectedPurchases = useMemo(
+  const existingPurchases = useMemo(
     () => selectedIds.map((id) => availablePurchases.find((purchase) => purchase.id === id)).filter(Boolean) as PurchaseRecord[],
     [availablePurchases, selectedIds]
   );
+  const orderSupplier = existingPurchases[0]?.supplier_name ?? supplierName;
+  const orderCurrency = existingPurchases[0]?.currency ?? currency;
+  const selectedPurchases = useMemo(() => [...existingPurchases,
+    ...newRolls.map((line) => newOrderPurchase(line, orderSupplier, orderCurrency, purchasedAt))],
+    [existingPurchases, newRolls, orderSupplier, orderCurrency, purchasedAt]);
   const anchor = selectedPurchases[0];
   const subtotal = selectedPurchases.reduce((sum, purchase) => sum + Number(purchase.total_price), 0);
   const shippingAllocation = useMemo(
@@ -189,13 +224,15 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
       setSelectedIds((current) => current.filter((id) => id !== purchase.id));
       return;
     }
-    if (!selectedIds.length) setPurchasedAt(purchase.purchased_at);
+    if (!selectedIds.length && !newRolls.length) setPurchasedAt(purchase.purchased_at);
+    if (!selectedIds.length) { setSupplierName(purchase.supplier_name); setCurrency(purchase.currency); }
     setSelectedIds((current) => [...current, purchase.id]);
   }
 
   function resetForm() {
     setShowForm(false);
     setSelectedIds([]);
+    setNewRolls([]); setSupplierName(""); setCurrency(baseCurrency);
     setShipping(0);
     setOtherCharges(0);
     setAllocationMethod("per_unit");
@@ -213,12 +250,16 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
 
   async function submitOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedPurchases.length || !manualMatches || !paymentValid) return;
+    if (submitting.current || isSaving || !selectedPurchases.length || !manualMatches || !paymentValid) return;
+    submitting.current = true;
+    setFeedback("");
     const manualAllocations = Object.fromEntries(selectedPurchases.map((purchase) => [purchase.id, {
       shipping: shippingAllocation.get(purchase.id) ?? 0,
       other: otherAllocation.get(purchase.id) ?? 0
     }]));
+    try {
     const saved = await onCreate({
+      new_rolls: newRolls, supplier_name: orderSupplier.trim(), currency: orderCurrency,
       purchase_ids: selectedIds,
       purchased_at: purchasedAt,
       shipping_amount: shipping,
@@ -235,6 +276,16 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
       exchange_rate_source: includePayment ? exchangeRateSource : ""
     });
     if (saved) resetForm();
+    setSaveFailed(!saved);
+    setFeedback(saved ? "Orden guardada. El inventario está actualizado." : "No pudimos confirmar la orden. Conservamos las partidas: podés reintentar sin duplicarlas.");
+    } catch { setSaveFailed(true); setFeedback("No pudimos confirmar la orden. Conservamos las partidas para reintentar."); }
+    finally { submitting.current = false; }
+  }
+
+  useEffect(() => { if (feedback && !isSaving) { feedbackRef.current?.focus(); feedbackRef.current?.scrollIntoView({ block: "nearest" }); } }, [feedback, isSaving]);
+
+  function updateLine(id: string, patch: Partial<NewOrderRoll>) {
+    setNewRolls((rows) => rows.map((row) => row.line_id === id ? { ...row, ...patch } : row));
   }
 
   return (
@@ -248,22 +299,53 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
           payment={payments.find((payment) => payment.order_id === selectedOrder.id)} /> : null}
 
         <div hidden={Boolean(selectedOrder)}>
+        {feedback && <p ref={feedbackRef} tabIndex={-1} role={saveFailed ? "alert" : "status"} className={saveFailed ? "account-error" : "account-notice"}>{feedback}{saveFailed && operationNote && <><br />{operationNote}</>}</p>}
         <div className="purchase-order-summary">
           <div><ReceiptText size={19} aria-hidden="true" /><span><strong>{orders.length}</strong> órdenes</span></div>
           <div><PackageCheck size={19} aria-hidden="true" /><span><strong>{availablePurchases.length}</strong> compras por agrupar</span></div>
-          <button type="button" onClick={() => setShowForm((value) => !value)} disabled={isSaving || !availablePurchases.length}><Plus size={17} aria-hidden="true" /> Nueva orden</button>
+          <button type="button" onClick={() => { setShowForm((value) => !value); setFeedback(""); }} disabled={isSaving}><Plus size={17} aria-hidden="true" /> Nueva orden</button>
         </div>
 
         {showForm && (
           <form className="purchase-order-form" onSubmit={submitOrder} aria-busy={isSaving}>
+            <fieldset disabled={isSaving} className="purchase-order-fields">
             <div className="purchase-order-step">
               <div className="section-head"><div><p className="eyebrow">Paso 1</p><h3>Elegí las partidas</h3></div><span>{selectedPurchases.length} seleccionadas</span></div>
               <p className="form-help">Podés agrupar compras del mismo proveedor y moneda. La historia original no se modifica.</p>
+              <button type="button" disabled={isSaving || selectedPurchases.length >= 100} onClick={() => setNewRolls((rows) => [...rows, {
+                line_id: crypto.randomUUID(), brand: brandOptions[0] || "Genérico", material: "PLA", product_line: lineOptionsByMaterial.PLA?.[0] || "Genérico",
+                color_name: "", color_hex: "#999999", quantity_g: 1000, total_price: "", package_type: "refill", spool_cost: 0, location: ""
+              }])}><Plus size={17} />Filamento nuevo</button>
+              {newRolls.length > 0 && <>
+                <p className="form-help">Una línea por rollo físico. Todo se guarda junto al confirmar la orden; cerrar sin guardar no agrega inventario. Con spool indica la presentación: podés asignar su spool físico después.</p>
+                <div className="form-grid">
+                  <label>Proveedor de la orden<input required maxLength={200} list="order-suppliers" value={orderSupplier} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setSupplierName(event.target.value)} /></label>
+                  <datalist id="order-suppliers">{supplierNames.map((name) => <option key={name} value={name} />)}</datalist>
+                  <label>Moneda de la orden<select value={orderCurrency} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setCurrency(event.target.value)}>{Array.from(new Set([orderCurrency, baseCurrency, "CRC", "USD", "EUR"])).map((code) => <option key={code}>{code}</option>)}</select></label>
+                </div>
+                {newRolls.map((line, index) => <fieldset key={line.line_id} disabled={isSaving} className="order-new-roll">
+                  <legend>Filamento nuevo {index + 1}</legend>
+                  <div className="form-grid">
+                    <label>Marca<select value={line.brand} onChange={(event) => updateLine(line.line_id, { brand: event.target.value })}>{brandOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
+                    <label>Material<select value={line.material} onChange={(event) => updateLine(line.line_id, { material: event.target.value, product_line: lineOptionsByMaterial[event.target.value]?.[0] || "Genérico" })}>{materialOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
+                    <label>Línea<select value={line.product_line} onChange={(event) => updateLine(line.line_id, { product_line: event.target.value })}>{(lineOptionsByMaterial[line.material] || ["Genérico"]).map((name) => <option key={name}>{name}</option>)}</select></label>
+                    <label>Nombre del color<input required maxLength={120} value={line.color_name} onChange={(event) => updateLine(line.line_id, { color_name: event.target.value })} /></label>
+                    <label>Color aproximado<input type="color" value={/^#[0-9a-f]{6}$/i.test(line.color_hex) ? line.color_hex : "#999999"} onChange={(event) => updateLine(line.line_id, { color_hex: event.target.value })} /></label>
+                    <label>HEX<input required pattern="#[0-9A-Fa-f]{6}" maxLength={7} value={line.color_hex} onChange={(event) => updateLine(line.line_id, { color_hex: event.target.value })} /></label>
+                    <label>Peso del filamento (g)<input required type="number" min="0.01" max="999999" step="0.01" value={line.quantity_g} onChange={(event) => updateLine(line.line_id, { quantity_g: Number(event.target.value) })} /></label>
+                    <label>Precio del producto ({orderCurrency})<input required type="number" min="0" step="0.01" value={line.total_price} onChange={(event) => updateLine(line.line_id, { total_price: event.target.value === "" ? "" : Number(event.target.value) })} /><small>Incluye spool si lo compraste; no incluye envío.</small></label>
+                    <label>Presentación<select value={line.package_type} onChange={(event) => updateLine(line.line_id, { package_type: event.target.value as PackageType, spool_cost: 0 })}><option value="refill">Sin spool / refill</option><option value="spooled">Con spool</option></select></label>
+                    {line.package_type === "spooled" && <label>Costo del spool incluido ({orderCurrency})<input required type="number" min="0" max={Number(line.total_price)} step="0.01" value={line.spool_cost} onChange={(event) => updateLine(line.line_id, { spool_cost: Number(event.target.value) })} /></label>}
+                    <label>Ubicación (opcional)<input maxLength={160} value={line.location} onChange={(event) => updateLine(line.line_id, { location: event.target.value })} /></label>
+                  </div>
+                  <button type="button" onClick={() => setNewRolls((rows) => rows.filter((row) => row.line_id !== line.line_id))}><Trash2 size={16} />Quitar filamento {index + 1}</button>
+                </fieldset>)}
+              </>}
               <div className="purchase-candidate-list">
                 {availablePurchases.map((purchase) => {
                   const compatible = !anchor || (
-                    anchor.currency === purchase.currency
-                    && anchor.supplier_name.trim().toLowerCase() === purchase.supplier_name.trim().toLowerCase()
+                    orderCurrency === purchase.currency
+                    && (!orderSupplier.trim() || orderSupplier.trim().toLowerCase() === purchase.supplier_name.trim().toLowerCase())
                   );
                   const selected = selectedIds.includes(purchase.id);
                   return (
@@ -330,6 +412,7 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
               <div className="purchase-order-total"><span>Subtotal {money(anchor?.currency ?? "CRC", subtotal)} + cargos {money(anchor?.currency ?? "CRC", shipping + otherCharges)}</span><strong>{money(anchor?.currency ?? "CRC", subtotal + shipping + otherCharges)}</strong></div>
               <button className="primary-action" type="submit" disabled={isSaving || !selectedPurchases.length || !manualMatches || !paymentValid}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando orden completa…" : "Guardar orden"}</button>
             </div>
+            </fieldset>
           </form>
         )}
 
