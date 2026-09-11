@@ -2,11 +2,11 @@
 
 Actualizado: 2026-09-09. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
 
-## Bloque local en curso · no publicado
+## Bloque publicado · 9 de septiembre
 
-Main local confirmado: `558a636`, PR #22 (menú Agregar y tarjetas de compras). Rama `feat/printer-profiles-safe`: impresoras en Perfil, cuestionario único de primer ingreso de probadores y correcciones de costos. Las migraciones nuevas aún no están aplicadas. Compilación, navegador simulado y pruebas SQL en PostgreSQL 17 local aprobadas. No equivalen a una activación real ni al despliegue.
+Último cambio funcional: PR #23, merge `a431c42449ddd24edbef594c2236655b43f12223`, publicado en Vercel Production. Incluye impresoras en Perfil, cuestionario único de primer ingreso y correcciones de costos. Supabase confirmó `printer_cost_safety` (20260909203554) y `tester_first_visit` (20260909203604). Compilación, navegador simulado y pruebas SQL locales aprobadas. Humo de producción sin sesión: proyectos e impresoras disponibles, sin errores de consola; esto no equivale a una activación real.
 
-Prioridad previa al piloto: publicar la corrección del doble descuento y el primer ingreso (ambos validados localmente), verificar el despliegue y probar el alta real/correo. Hay un primer candidato según el fundador; no se comprobó su activación. Quiere reclutar otros 8–10. Ver ROADMAP y ATOMICITY_AUDIT antes de publicar.
+Prioridad: el fundador puede enviar la primera invitación controlada y comprobar correo, enlace, cuestionario y activación. Todavía no se confirmó ese recorrido real; esperar su resultado antes de invitar al resto del grupo de 8–10. No se enviaron correos durante la publicación. Siguiente bloque de desarrollo: crear filamentos desde órdenes, con confirmación atómica e idempotente.
 
 ## Qué estamos construyendo
 
@@ -31,7 +31,7 @@ No reiniciar el MVP. No prometer NFC universal, lectura automática de etiquetas
 | Marca | Se solicita trabajar la identidad ahora | Recibir contexto de Stone Collective CR y sus artes en borrador |
 | Organización | Paquete de nueve documentos y arranques para seis chats preparado | Crear el proyecto privado de ChatGPT, cargar fuentes y trasladar contexto |
 
-Último cambio funcional comprobado en este corte: PR #20, commit de aplicación `96ed8dc`. Build y pruebas de navegador en 320/390/1280 px aprobados; producción comprobada. Los commits de documentación posteriores no representan nuevas funciones.
+El registro anterior de PR #20 queda como antecedente; el corte funcional vigente es PR #23. Los commits posteriores que solo actualicen documentación no representan nuevas funciones.
 
 ## Alcance de la licencia
 

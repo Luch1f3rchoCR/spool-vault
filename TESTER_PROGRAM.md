@@ -4,11 +4,11 @@ El panel vive en Perfil / Tu espacio / Grupo de pruebas y solo aparece a las cue
 
 Tu espacio abre un panel lateral en computadora y ocupa la pantalla en celular. El menú se reemplaza por la vista elegida, sin desplegar formularios debajo. La flecha vuelve al menú y conserva los borradores mientras el panel siga abierto. Escape vuelve al menú desde una sección y cierra desde el inicio; la X cierra el panel. El encabezado permanece visible al desplazar el contenido y la navegación se bloquea durante un guardado o envío.
 
-## Estado para retomar · 7 de septiembre de 2026
+## Estado para retomar · 9 de septiembre de 2026
 
-### Actualización local · 9 de septiembre (NO publicada)
+### Primer ingreso publicado · PR #23
 
-En `feat/printer-profiles-safe` se prepara el primer ingreso solicitado por el fundador:
+El primer ingreso está publicado en Vercel Production (`a431c42`), con las dos migraciones nuevas aplicadas:
 
 1. Administración registra nombre, correo, motivo de invitación y pruebas previstas. Las notas son solo administrativas.
 2. La bienvenida dirige a la app; no contiene un token de autenticación.
@@ -20,11 +20,11 @@ En `feat/printer-profiles-safe` se prepara el primer ingreso solicitado por el f
 
 No se solicita contraseña LAN, API key ni conexión automática a impresoras. La futura integración deberá usar estas mismas fichas, con identificación de eventos y prevención de consumo duplicado.
 
-**Pendiente de publicación:** las migraciones de costos y primer ingreso ya pasaron en PostgreSQL 17 aislado. Se verificó la corrección del doble descuento (función + trigger), sin alterar saldos históricos. Falta aplicar las dos migraciones nuevas, revisar asesores, publicar el PR y verificar el despliegue. Después realizar el alta real con el primer invitado antes de convocar al resto; todavía no se confirmó su activación.
+**Listo para la primera invitación controlada:** migraciones aplicadas, asesores revisados, PR fusionado y despliegue exacto confirmado. Se verificó la corrección del doble descuento sin alterar saldos históricos. Realizar el alta real con el primer invitado antes de enviar invitaciones al resto; todavía no se confirmó su activación ni la entrega de ambos correos. No se enviaron mensajes durante esta publicación.
 
-La descripción de producción que sigue corresponde al flujo anterior y no confirma este nuevo formulario.
+La información histórica de correo que sigue no confirma el recorrido real del nuevo formulario.
 
-Verificación local del 9 de septiembre: compilación aprobada; recorridos simulados de primer ingreso y Perfil aprobados en 320/390/1280 px, incluyendo respuesta perdida, varias impresoras, borrador conservado, inactivación y recarga sin repetir cuestionario. Regresión de administración y aportes aprobada en cuatro escenarios; cinco pruebas de bienvenida/endpoint aprobadas sin enviar correos. También pasaron las pruebas SQL de primer ingreso y costos, junto con la regresión previa de licencias y bienvenida. Pendiente: publicación e invitación real.
+Verificación del 9 de septiembre: compilación aprobada; recorridos simulados de primer ingreso y Perfil aprobados en 320/390/1280 px, incluyendo respuesta perdida, varias impresoras, borrador conservado, inactivación y recarga sin repetir cuestionario. Regresión de administración y aportes aprobada en cuatro escenarios; cinco pruebas de bienvenida/endpoint aprobadas sin enviar correos. También pasaron las pruebas SQL de primer ingreso y costos, junto con la regresión previa de licencias y bienvenida. Humo sin sesión en producción: proyectos e impresoras disponibles, consola sin errores. Pendiente: invitación real de punta a punta.
 
 Laboratorio local: contenedor descartable PostgreSQL 17, sin red ni puertos y sin datos reales. tests/local-database.cjs verifica que sea el contenedor etiquetado y esté vacío; instala contratos mínimos de Auth/Storage para pruebas SQL, aplica todo el esquema y ejecuta las regresiones. Quedaron cero usuarios de prueba al finalizar. Esto NO prueba SMTP, verificación por correo, Storage HTTP ni PostgREST. No se repitió la prueba SQL bloqueada en producción.
 

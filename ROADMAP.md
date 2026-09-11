@@ -184,16 +184,16 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
 - [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.
-- [ ] Agregar impresoras y costo por hora. Implementación local; pendiente de validación de base y publicación.
+- [x] Agregar impresoras y costo por hora. Publicado en PR #23, con moneda explícita y costos históricos preservados.
 
-Continuidad Mac · 9 de septiembre: trabajo recuperado en `feat/printer-profiles-safe`, sobre main `558a636` (PR #22). El respaldo anterior sigue en stash. Las migraciones `printer_cost_safety` y `tester_first_visit` son locales, NO aplicadas. No publicar esta rama hasta validar la base: se detectó un descuento duplicado entre la función de producción y el trigger de consumos; la corrección no modifica saldos históricos.
+Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Production confirmado y copia local sincronizada. El respaldo anterior sigue en stash. Las migraciones `printer_cost_safety` y `tester_first_visit` están aplicadas. Se corrigió el descuento duplicado entre producción y el trigger de consumos, sin modificar saldos históricos. Humo sin sesión y consola aprobados; falta el primer ingreso real por correo.
 
-- [ ] Primer ingreso de probadores: cuestionario único tras verificar correo, con experiencia, hobby/profesional, uso y múltiples impresoras. Implementado localmente; falta validación de base y publicación.
-- [ ] Separar motivo y enfoque de invitación (solo administración) de respuestas del invitado.
-- [ ] Administrar las mismas impresoras desde Perfil → Mis impresoras; sin conexión ni consumo automático todavía.
+- [x] Primer ingreso de probadores: cuestionario único tras verificar correo, con experiencia, hobby/profesional, uso y múltiples impresoras. Publicado; validación SQL y navegador simulado aprobadas.
+- [x] Separar motivo y enfoque de invitación (solo administración) de respuestas del invitado.
+- [x] Administrar las mismas impresoras desde Perfil → Mis impresoras; sin conexión ni consumo automático todavía.
 - [ ] Completar un alta real de punta a punta con el primer invitado antes de convocar al resto.
 - [x] Validar localmente desde cero las migraciones, permisos, reintentos y corrección del doble descuento, sin datos personales.
-- [ ] Aplicar las migraciones nuevas y publicar el bloque de primer ingreso antes de enviar la primera invitación.
+- [x] Aplicar las migraciones nuevas y publicar el bloque de primer ingreso antes de enviar la primera invitación.
 - [ ] Siguiente bloque solicitado: crear filamentos nuevos desde las líneas de una orden, además de vincular compras existentes. Confirmar orden, rollos, costos e historial juntos; reintentar sin duplicarlos ni sumar monedas distintas.
 
 ## Market de proveedores
@@ -209,7 +209,7 @@ Continuidad Mac · 9 de septiembre: trabajo recuperado en `feat/printer-profiles
 
 ## Impresoras y AMS
 
-- [ ] Registrar impresoras, modelo, boquilla, ubicación y costo por hora. Pendiente de publicar el bloque local.
+- [x] Registrar impresoras, modelo, boquilla, ubicación y costo por hora. Publicado en PR #23; no implica integración AMS.
 - [ ] Diseñar un conector local seguro para la P1S; nunca guardar la clave LAN ni credenciales Bambu en texto plano en Supabase.
 - [ ] Implementar primero sincronización de solo lectura: estado de impresión, archivo/tarea, tiempo y bandejas AMS.
 - [ ] Mapear cada bandeja AMS a un rollo real de Spool Vault, incluyendo filamentos sin RFID o recargas.

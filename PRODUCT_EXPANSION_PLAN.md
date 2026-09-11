@@ -186,7 +186,7 @@ Cada componente debe mostrar si es real, estimado o incompleto. La app puede rec
 
 ### Entrega D — impresora y AMS
 
-- [ ] Registro configurable de impresoras y selección de máquina por corrida: código local preparado; pendiente de validar base y publicar.
+- [x] Registro configurable de impresoras y selección de máquina por corrida: publicado en PR #23; no incluye conexión automática ni AMS.
 - Registro de P1S real y conector local.
 - Estado de impresión y lectura de slots.
 - Mapeo slot-rollo y conciliación de una corrida.
