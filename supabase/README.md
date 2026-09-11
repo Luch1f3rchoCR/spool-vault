@@ -1,6 +1,8 @@
 # Supabase setup
 
-Pending local migration: `20260910135214_purchase_order_new_filaments.sql` introduces `create_purchase_order_v3` and its owner-scoped immutable request ledger. It composes existing roll creation and purchase-order/payment functions in one transaction; run `tests/local-database.cjs` on a fresh isolated test container. Apply before deploying the new order UI. Do not assume the Preview backend has this migration.
+Applied September 11: local migration `20260910135214_purchase_order_new_filaments.sql` is recorded in production as `20260911173048` (`purchase_order_new_filaments`). Do not reapply it because the timestamps differ. It introduces `create_purchase_order_v3` and its owner-scoped immutable request ledger, composing roll creation and order/payment functions in one transaction. It passed `tests/local-database.cjs` on a fresh isolated test container before application; PR #26 was deployed afterward. Post-DDL checks confirmed RLS, invoker execution, no anonymous function access and no authenticated UPDATE/DELETE on the ledger.
+
+Advisors after this release: no new security warnings; the existing [disabled leaked-password protection warning](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) remains. Performance reports only [informational unused indexes](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index), including the newly created ledger index. No indexes or authentication settings were changed to silence these notices.
 
 ## Local SQL checks (no production connection)
 

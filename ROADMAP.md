@@ -194,7 +194,7 @@ Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Prod
 - [ ] Completar un alta real de punta a punta con el primer invitado antes de convocar al resto.
 - [x] Validar localmente desde cero las migraciones, permisos, reintentos y corrección del doble descuento, sin datos personales.
 - [x] Aplicar las migraciones nuevas y publicar el bloque de primer ingreso antes de enviar la primera invitación.
-- [ ] Publicar filamentos nuevos desde las líneas de una orden, además de vincular compras existentes. Implementado en `feat/order-new-filaments`; SQL aislado y navegador 320/390/1280 px aprobados. Falta aplicar la migración nueva y publicar. La orden, rollos, partidas, historial y pago se confirman juntos; los reintentos no crean otra operación aunque cambie el borrador.
+- [x] Publicar filamentos nuevos desde las líneas de una orden, además de vincular compras existentes. PR #26 fusionado como `741a7d9`, Supabase y Vercel Production confirmados el 11 de septiembre. SQL aislado, navegador 320/390/1280 px y humo de producción sin guardar aprobados. La orden, rollos, partidas, historial y pago se confirman juntos; los reintentos no crean otra operación aunque cambie el borrador.
 
 ## Market de proveedores
 
