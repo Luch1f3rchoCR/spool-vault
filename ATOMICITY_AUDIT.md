@@ -1,6 +1,6 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
-Fecha de revisión: 1 de septiembre de 2026.
+Última actualización: 11 de septiembre de 2026. La matriz recoge revisiones incrementales, no una nueva auditoría integral de todos los flujos.
 
 ## Qué significa “atómica” en Spool Vault
 
@@ -26,7 +26,7 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Corregir proveedor, fecha o costo de una compra | Atómico, trazable e idempotente | Bajo | Mantener `correct_purchase`, la revisión append-only y la sincronización del costo vigente del rollo. |
 | Crear orden, partidas y prorratear cargos | Atómico, inmutable e idempotente | Bajo | Mantener `create_purchase_order`; la orden solo se confirma si sus partidas y cargos asignados cuadran completamente. |
 | Crear orden y registrar pago multimoneda | Atómico, inmutable e idempotente | Bajo | Mantener `create_purchase_order_v2`; monto original, pago real y relación cambiaria se confirman juntos o ninguno se guarda. |
-| Crear orden con filamentos nuevos y compras existentes | Validado localmente; pendiente de publicar | Medio hasta publicación | `create_purchase_order_v3` compone las funciones existentes en una transacción, con registro del payload por usuario/operación. Rechaza reintentos cambiados y devuelve saldos actuales, no pesos iniciales antiguos. |
+| Crear orden con filamentos nuevos y compras existentes | Atómico e idempotente; publicado en PR #26 | Bajo | `create_purchase_order_v3` compone las funciones existentes en una transacción, con registro del payload por usuario/operación. Rechaza reintentos cambiados y devuelve saldos actuales, no pesos iniciales antiguos. SQL aislado y navegador con pérdida de respuesta aprobados; RLS y permisos verificados tras aplicar la migración. |
 | Guardar perfil financiero y tarifas productivas | Atómico e idempotente | Bajo | Mantener `save_user_profile_v2`, RLS por propietario y CRC como valor inicial sin recalcular historia. |
 | Agregar, editar o inactivar impresora | Atómico e idempotente; publicado | Bajo | `save_printer_v2` conserva registro persistente de reintentos y moneda por tarifa. |
 | Guardar pesaje e historial | Atómico e idempotente | Bajo | Mantener `record_roll_weight`; cada evento congela tara, tipo, fuente y confianza. |
