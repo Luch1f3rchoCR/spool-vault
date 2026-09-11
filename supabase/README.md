@@ -1,5 +1,7 @@
 # Supabase setup
 
+Pending local migration: `20260910135214_purchase_order_new_filaments.sql` introduces `create_purchase_order_v3` and its owner-scoped immutable request ledger. It composes existing roll creation and purchase-order/payment functions in one transaction; run `tests/local-database.cjs` on a fresh isolated test container. Apply before deploying the new order UI. Do not assume the Preview backend has this migration.
+
 ## Local SQL checks (no production connection)
 
 The disposable container must be named spool-vault-sql-test-20260909, labelled app=spool-vault-sql-test, have network mode none, and an empty database. Use PostgreSQL 17 with temporary data storage and no published ports. Run `node tests/local-database.cjs`; the harness refuses an unlabelled or nonempty database.

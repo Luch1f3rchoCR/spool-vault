@@ -3570,3 +3570,9 @@ textarea:focus {
 .profile-panel .printer-card-cost { grid-column: 2; text-align: left; }
 .profile-panel .printer-form-grid { grid-template-columns: 1fr; }
 .profile-panel .printer-manager-actions { flex-wrap: wrap; }
+.order-new-roll { min-width: 0; margin: 16px 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.order-new-roll legend { font-weight: 700; padding: 0 6px; }
+.purchase-order-fields { min-width: 0; border: 0; padding: 0; margin: 0; }
+.order-new-roll > button, .purchase-order-step > button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.order-new-roll > button { margin-top: 12px; }
+.order-new-roll .form-grid small { font-size: .75rem; color: var(--muted); }

@@ -1,6 +1,14 @@
 # Spool Vault: contexto para continuar
 
-Actualizado: 2026-09-09. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
+Actualizado: 2026-09-11. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
+
+## Continuidad actual · órdenes con filamentos nuevos
+
+Producción funcional confirmada: PR #25, `7f77080`, confirmación visible de invitaciones y limpieza del formulario solo tras éxito. El PR #24 de documentación está fusionado; main `2a1648f`. La primera bienvenida fue aceptada para envío; esto no confirma entrega ni activación real.
+
+Rama `feat/order-new-filaments`: Nueva orden funciona sin compras previas y admite filamentos nuevos junto con compras existentes compatibles. Se conserva presentación con/sin spool y precio del producto; el spool físico se asigna por el flujo existente. `create_purchase_order_v3` compone rollos, proveedor, historial, partidas y pago en una transacción, con registro persistente de reintentos y rechazo de payload cambiado. La migración `20260910135214_purchase_order_new_filaments.sql` es LOCAL, no aplicada en producción. No publicar el frontend antes de aplicar esa migración validada.
+
+Pruebas aprobadas: esquema completo desde cero en PostgreSQL 17 aislado, reversión, mezcla de compras antiguas/nuevas, aislamiento por usuario, costos de spool y reintentos; navegador simulado en 320/390/1280 px, primera orden, pérdida de respuesta, intento de modificar una operación ya guardada, detalle, inventario y recarga. Regresión de navegación/spools/compras también aprobada. Pendiente: revisión final del PR, autorización/aplicación de migración y publicación. No se enviaron correos ni se modificó inventario real.
 
 ## Bloque publicado · 9 de septiembre
 
