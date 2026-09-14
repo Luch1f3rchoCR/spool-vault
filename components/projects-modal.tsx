@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { createVariantDraft, type ProjectCreateValues } from "@/lib/project-variant";
+export type { ProjectCreateValues } from "@/lib/project-variant";
 import { ModalFrame } from "@/components/modal-frame";
 import { PrinterManager, type PrinterValues } from "@/components/printer-manager";
 import {
@@ -31,25 +33,6 @@ import type {
   ProjectFilamentRequirement,
   UserProfile
 } from "@/lib/types";
-
-export type ProjectCreateValues = {
-  name: string;
-  description: string;
-  version: string;
-  license_name: string;
-  commercial_use_allowed: boolean;
-  estimated_minutes: number | null;
-  requirements: Array<{ roll_id: string; planned_grams: number; label: string }>;
-  components: Array<{
-    name: string;
-    unit: string;
-    quantity: number;
-    unit_cost: number;
-    currency: string;
-    supplier_name: string;
-    notes: string;
-  }>;
-};
 
 export type ProductionRunValues = {
   project_id: string;
@@ -156,12 +139,16 @@ function totalsByCurrency(
 }
 
 function ProjectForm({
+  initialValues,
+  sourceName,
   rolls,
   baseCurrency,
   isSaving,
   onCancel,
   onCreate
 }: {
+  initialValues?: ProjectCreateValues;
+  sourceName?: string;
   rolls: FilamentRoll[];
   baseCurrency: string;
   isSaving: boolean;
@@ -169,21 +156,22 @@ function ProjectForm({
   onCreate: Props["onCreateProject"];
 }) {
   const availableRolls = rolls.filter((roll) => roll.status !== "archived");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [version, setVersion] = useState("1.0");
-  const [licenseName, setLicenseName] = useState("");
-  const [commercialUse, setCommercialUse] = useState(false);
-  const [estimatedHours, setEstimatedHours] = useState("");
-  const [estimatedMinutes, setEstimatedMinutes] = useState("");
+  const [name, setName] = useState(initialValues?.name ?? "");
+  const [description, setDescription] = useState(initialValues?.description ?? "");
+  const [version, setVersion] = useState(initialValues?.version ?? "1.0");
+  const [licenseName, setLicenseName] = useState(initialValues?.license_name ?? "");
+  const [commercialUse, setCommercialUse] = useState(initialValues?.commercial_use_allowed ?? false);
+  const [estimatedHours, setEstimatedHours] = useState(initialValues?.estimated_minutes == null ? "" : String(Math.floor(initialValues.estimated_minutes / 60)));
+  const [estimatedMinutes, setEstimatedMinutes] = useState(initialValues?.estimated_minutes == null ? "" : String(initialValues.estimated_minutes % 60));
   const [file, setFile] = useState<File | null>(null);
-  const [requirements, setRequirements] = useState<RequirementDraft[]>([
+  const submitting = useRef(false);
+  const [requirements, setRequirements] = useState<RequirementDraft[]>(() => initialValues ? initialValues.requirements.map((item, index) => ({ ...item, key: `requirement-${index}`, planned_grams: String(item.planned_grams) })) : [
     { key: "requirement-1", roll_id: availableRolls[0]?.id ?? "", planned_grams: "", label: "" }
   ]);
-  const [components, setComponents] = useState<ComponentDraft[]>([]);
+  const [components, setComponents] = useState<ComponentDraft[]>(() => initialValues?.components.map((item, index) => ({ ...item, key: `component-${index}`, quantity: String(item.quantity), unit_cost: String(item.unit_cost) })) ?? []);
 
   const parsedDuration = Number(estimatedHours || 0) * 60 + Number(estimatedMinutes || 0);
-  const validRequirements = requirements.every((item) => item.roll_id && Number(item.planned_grams) > 0);
+  const validRequirements = requirements.length > 0 && requirements.every((item) => availableRolls.some((roll) => roll.id === item.roll_id) && Number(item.planned_grams) > 0);
   const validComponents = components.every((item) => item.name.trim() && Number(item.quantity) > 0 && Number(item.unit_cost || 0) >= 0);
   const validFile = !file || ["stl", "3mf"].includes(file.name.split(".").pop()?.toLowerCase() ?? "");
 
@@ -212,38 +200,44 @@ function ProjectForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!name.trim() || !validRequirements || !validComponents || !validFile) return;
-    const saved = await onCreate({
-      name: name.trim(),
-      description: description.trim(),
-      version: version.trim(),
-      license_name: licenseName.trim(),
-      commercial_use_allowed: commercialUse,
-      estimated_minutes: parsedDuration > 0 ? parsedDuration : null,
-      requirements: requirements.map((item) => ({
-        roll_id: item.roll_id,
-        planned_grams: Number(item.planned_grams),
-        label: item.label.trim()
-      })),
-      components: components.map((item) => ({
-        name: item.name.trim(),
-        unit: item.unit.trim() || "unidad",
-        quantity: Number(item.quantity),
-        unit_cost: Number(item.unit_cost || 0),
-        currency: item.currency,
-        supplier_name: item.supplier_name.trim(),
-        notes: item.notes.trim()
-      }))
-    }, file);
-    if (saved) onCancel();
+    if (isSaving || submitting.current || !name.trim() || !validRequirements || !validComponents || !validFile) return;
+    submitting.current = true;
+    try {
+      const saved = await onCreate({
+        name: name.trim(),
+        description: description.trim(),
+        version: version.trim(),
+        license_name: licenseName.trim(),
+        commercial_use_allowed: commercialUse,
+        estimated_minutes: parsedDuration > 0 ? parsedDuration : null,
+        requirements: requirements.map((item) => ({
+          roll_id: item.roll_id,
+          planned_grams: Number(item.planned_grams),
+          label: item.label.trim()
+        })),
+        components: components.map((item) => ({
+          name: item.name.trim(),
+          unit: item.unit.trim() || "unidad",
+          quantity: Number(item.quantity),
+          unit_cost: Number(item.unit_cost || 0),
+          currency: item.currency,
+          supplier_name: item.supplier_name.trim(),
+          notes: item.notes.trim()
+        }))
+      }, file);
+      if (saved) onCancel();
+    } finally {
+      submitting.current = false;
+    }
   }
 
   return (
     <form className="project-form" onSubmit={submit} aria-busy={isSaving}>
       <div className="project-form-head">
         <button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />Volver</button>
-        <div><p className="eyebrow">Nueva receta</p><h3>Crear proyecto</h3></div>
+        <div><p className="eyebrow">{sourceName ? "Nueva variante" : "Nueva receta"}</p><h3>{sourceName ? "Guardar variante" : "Crear proyecto"}</h3></div>
       </div>
+      {sourceName && <p className="project-mode-note">Basada en «{sourceName}». Podés cambiar colores, gramos e insumos. Se guarda como un proyecto independiente, sin modificar el original ni descontar inventario. El STL/3MF no se copia: adjuntalo si lo necesitás.</p>}
 
       <div className="form-grid project-main-fields">
         <label className="wide">Nombre del proyecto<input required maxLength={120} value={name} disabled={isSaving} placeholder="Ej. Dragón articulado grande" onChange={(event) => setName(event.target.value)} /></label>
@@ -267,6 +261,7 @@ function ProjectForm({
               <label>Gramos<input required type="number" min="0.01" step="0.01" value={item.planned_grams} disabled={isSaving} placeholder="500" onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, planned_grams: event.target.value } : entry))} /></label>
               <label>Uso / pieza<input value={item.label} disabled={isSaving} placeholder="Cuerpo, ojos…" onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, label: event.target.value } : entry))} /></label>
               <button className="remove-recipe" type="button" aria-label="Quitar filamento" disabled={isSaving || requirements.length === 1} onClick={() => setRequirements((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
+              {!item.roll_id && sourceName && <small className="recipe-warning">El rollo original ya no está disponible. Elegí uno para esta variante.</small>}
               {selected && Number(item.planned_grams || 0) > Number(selected.available_weight_g) && <small className="recipe-warning">La receta supera el saldo actual de este rollo.</small>}
             </div>
           );
@@ -290,7 +285,7 @@ function ProjectForm({
       </section>
 
       <button className="primary-action" type="submit" disabled={isSaving || !availableRolls.length || !name.trim() || !validRequirements || !validComponents || !validFile}>
-        <Save size={18} />{isSaving ? "Guardando receta y archivo…" : "Guardar proyecto"}
+        <Save size={18} />{isSaving ? "Guardando receta y archivo…" : sourceName ? "Guardar variante" : "Guardar proyecto"}
       </button>
     </form>
   );
@@ -426,6 +421,7 @@ function ProductionRunForm({
   return (
     <form className="project-form production-run-form" onSubmit={submit} aria-busy={isSaving}>
       <div className="project-form-head"><button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />Volver</button><div><p className="eyebrow">Producción real</p><h3>{project.name}</h3></div></div>
+      <p className="project-mode-note">Podés usar otro color del mismo material para esta impresión. La receta original no cambia; al confirmar se registra el consumo real. Esta acción no envía trabajos a la impresora.</p>
       <div className="form-grid project-main-fields">
         <label>Fecha<input required type="date" value={producedAt} disabled={isSaving} onChange={(event) => setProducedAt(event.target.value)} /></label>
         <label>Cantidad producida<input required type="number" min="1" value={quantity} disabled={isSaving} onChange={(event) => applyQuantity(Number(event.target.value))} /></label>
@@ -491,6 +487,7 @@ export function ProjectsModal({
   onOpenFile
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+  const [variantSource, setVariantSource] = useState<PrintProject | null>(null);
   const [showPrinters, setShowPrinters] = useState(false);
   const [runProjectId, setRunProjectId] = useState("");
   const runProject = projects.find((project) => project.id === runProjectId);
@@ -507,7 +504,7 @@ export function ProjectsModal({
         {showPrinters ? (
           <PrinterManager printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
         ) : showCreate ? (
-          <ProjectForm rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => setShowCreate(false)} onCreate={onCreateProject} />
+          <ProjectForm key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
         ) : runProject ? (
           <ProductionRunForm project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
         ) : (
@@ -519,7 +516,7 @@ export function ProjectsModal({
                 const projectRequirements = requirements.filter((item) => item.project_id === project.id).sort((a, b) => a.position - b.position);
                 const projectComponents = components.filter((item) => item.project_id === project.id).sort((a, b) => a.position - b.position);
                 const projectRuns = sortedRuns.filter((run) => run.project_id === project.id);
-                return <article className="project-card" key={project.id}><div className="project-card-head"><div><span className="project-icon"><FolderKanban size={20} /></span><div><h3>{project.name}</h3><p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes)} · {projectRuns.length} corrida{projectRuns.length === 1 ? "" : "s"}</p></div></div><div className="project-card-actions">{project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || "Archivo"}</button>}<button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />Registrar impresión</button></div></div>{project.description && <p className="project-description">{project.description}</p>}<div className="project-recipe-preview">{projectRequirements.map((item) => <span key={item.id}><i style={{ backgroundColor: item.color_hex }} /><strong>{item.label || item.color_name}</strong><small>{Number(item.planned_grams).toLocaleString("es-CR")} g</small></span>)}</div>{projectComponents.length > 0 && <p className="project-components-preview">+ {projectComponents.map((item) => `${Number(item.quantity).toLocaleString("es-CR")} ${item.unit} ${item.name}`).join(" · ")}</p>}{projectRuns.slice(0, 2).map((run) => {
+                return <article className="project-card" key={project.id}><div className="project-card-head"><div><span className="project-icon"><FolderKanban size={20} /></span><div><h3>{project.name}</h3><p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes)} · {projectRuns.length} corrida{projectRuns.length === 1 ? "" : "s"}</p></div></div><div className="project-card-actions"><button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />Registrar impresión</button><button type="button" onClick={() => { setVariantSource(project); setShowCreate(true); }}><Save size={16} />Guardar variante</button>{project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || "Archivo"}</button>}</div></div>{project.description && <p className="project-description">{project.description}</p>}<div className="project-recipe-preview">{projectRequirements.map((item) => <span key={item.id}><i style={{ backgroundColor: item.color_hex }} /><strong>{item.label || item.color_name}</strong><small>{Number(item.planned_grams).toLocaleString("es-CR")} g</small></span>)}</div>{projectComponents.length > 0 && <p className="project-components-preview">+ {projectComponents.map((item) => `${Number(item.quantity).toLocaleString("es-CR")} ${item.unit} ${item.name}`).join(" · ")}</p>}{projectRuns.slice(0, 2).map((run) => {
                   const filamentLines = runFilaments.filter((line) => line.run_id === run.id);
                   const componentLines = runComponents.filter((line) => line.run_id === run.id);
                   const operatingCosts = runCosts.find((cost) => cost.run_id === run.id);
