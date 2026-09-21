@@ -2,6 +2,10 @@
 
 Actualizado: 2026-09-11. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
 
+**Naming vigente · actualización del fundador (2026-09-13):** el producto está **sin nombre comercial final aprobado**. Spool Vault queda exclusivamente como referencia técnica/histórica; Proper está en NO-GO comercial preliminar, y Meld/Strata permanecen descartados. Posicionamiento aprobado: **Simple para empezar. Potente para crecer.** Firma secundaria aprobada: **by Stone Collective**. No renombrar infraestructura ni detener desarrollo. Ver [docs/BRAND_STATUS.md](./docs/BRAND_STATUS.md), que prevalece sobre antecedentes incompatibles de este documento y `docs/chatgpt/`.
+
+Continuidad de diseño y desarrollo (2026-09-13): [docs/UI_DELIVERY.md](./docs/UI_DELIVERY.md) registra lo aprobado, lo implementado y lo pendiente por separado. El fundador pide reservar esta tarea para desarrollo y llevar la exploración visual a otro chat cuando resulte útil. Prioridad de proyectos: imprimir/guardar; cotización secundaria. Primer bloque en desarrollo: variantes como recetas independientes precargadas, sin migración ni modificación del proyecto original. No confundir este trabajo con una publicación nueva.
+
 ## Continuidad actual · órdenes con filamentos nuevos
 
 Producción funcional confirmada: PR #26, merge `741a7d917c72eae115a74f060fc8f1fc041a451d`, Vercel Production aprobado el 11 de septiembre. Incluye filamentos nuevos desde órdenes. Conserva la confirmación visible de invitaciones del PR #25. La primera bienvenida fue aceptada para envío; esto no confirma entrega ni activación real.
@@ -56,7 +60,7 @@ No hay precios comerciales aprobados, ingresos validados ni contratos de proveed
 5. **Negocio:** comparar modelos y costos, validar disposición de pago y respetar la licencia fundadora.
 6. **Desarrollo y QA:** mantener el producto existente, cerrar incorporación/correo y registrar hallazgos del piloto.
 
-Estos frentes están solicitados; sus resultados todavía no existen. Spool Vault como producto con firma secundaria Stone Collective sigue siendo una propuesta, no una arquitectura final aprobada. No asumir que Stone Collective, Stone Collective CR y Stone Collective Dev son nombres intercambiables.
+Estos frentes conservan pendientes de validación. La propuesta histórica de Spool Vault como nombre de producto quedó descartada; ahora se aprobó Stone Collective como firma secundaria del futuro nombre aún no elegido (ver `docs/BRAND_STATUS.md`). No asumir que Stone Collective, Stone Collective CR y Stone Collective Dev son nombres intercambiables.
 
 ## Orden de continuación propuesto
 

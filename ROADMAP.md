@@ -219,6 +219,9 @@ Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Prod
 
 ## Proyectos, producción y utilidad
 
+- [ ] Publicar guardado de variantes con receta precargada y conservar Registrar impresión como acción principal. Desarrollo UI-03/UI-04: ver `docs/UI_DELIVERY.md`.
+- [ ] Implementar cotizaciones como flujo secundario; separar aprobación de mockups de publicación real.
+
 - [x] Crear proyectos con nombre, versión, archivo STL/3MF privado, licencia y notas.
 - [ ] Agregar imagen de portada por proyecto.
 - [x] Definir una receta por proyecto con filamentos, colores, gramos previstos y tiempo.
