@@ -1,6 +1,8 @@
 # Spool Vault: contexto para continuar
 
-Actualizado: 2026-09-11. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
+Actualizado: 2026-09-22. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
+
+**Continuidad vigente:** variantes publicadas mediante PR #28, merge `31b4434cae07cae5556af71ba93c0f86038b63e8`, confirmado en Vercel Production. Bloque actual UI-01A: aplicar la gráfica aprobada **sin cambiar formularios ni flujos**, por instrucción expresa del fundador. Implementado y probado localmente; publicación por comprobar. Ver `docs/UI_DELIVERY.md` para alcance y evidencia. Este corte reemplaza los estados antiguos de publicación de variantes mencionados abajo. La copia iCloud quedó sin sincronizar porque su estado Git no responde; se preservó intacta y se trabaja en un clon aislado del mismo repositorio, sin duplicar infraestructura.
 
 **Naming vigente · actualización del fundador (2026-09-13):** el producto está **sin nombre comercial final aprobado**. Spool Vault queda exclusivamente como referencia técnica/histórica; Proper está en NO-GO comercial preliminar, y Meld/Strata permanecen descartados. Posicionamiento aprobado: **Simple para empezar. Potente para crecer.** Firma secundaria aprobada: **by Stone Collective**. No renombrar infraestructura ni detener desarrollo. Ver [docs/BRAND_STATUS.md](./docs/BRAND_STATUS.md), que prevalece sobre antecedentes incompatibles de este documento y `docs/chatgpt/`.
 
