@@ -1,6 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { DM_Sans, Manrope } from "next/font/google";
 import { PwaRegistration } from "@/components/pwa-registration";
 import "./globals.css";
+import "./approved-ui.css";
+
+const bodyFont = DM_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+const headingFont = Manrope({ subsets: ["latin"], variable: "--font-heading", display: "swap" });
 
 export const metadata: Metadata = {
   applicationName: "Spool Vault",
@@ -35,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" className={`${bodyFont.variable} ${headingFont.variable}`}>
       <body>
         {children}
         <PwaRegistration />

@@ -3361,7 +3361,7 @@ export default function Home() {
     return (
       <main className="app-shell">
         <section className="hero">
-          <p className="eyebrow">Spool Vault · Inventario 3D</p>
+          <p className="eyebrow">Inventario 3D</p>
           <h1>Cargando filamentos...</h1>
         </section>
       </main>
@@ -3371,9 +3371,9 @@ export default function Home() {
   return (
     <main className="app-shell" id="inicio">
       <header className="account-strip">
-        <a className="account-brand" href="#inicio" aria-label="Ir al inicio de Spool Vault">
+        <a className="account-brand" href="#inicio" aria-label="Ir al inicio">
           <span className="account-logo"><PackagePlus size={17} aria-hidden="true" /></span>
-          <span><strong>Spool Vault</strong><small>Tu inventario 3D</small></span>
+          <span><strong>La app</strong><small>by Stone Collective</small></span>
         </a>
         <div className="account-menu">
           <button
@@ -3453,9 +3453,9 @@ export default function Home() {
       <section className="hero">
         <div>
           <p className="eyebrow">Inventario 3D</p>
-          <h1>Filamentos listos para imprimir</h1>
+          <h1>Tu inventario</h1>
           <p className="hero-copy">
-            Rollos Bambu Lab, Pritonic y genéricos con peso, consumo, QR y NFC por rollo.
+            Materiales en orden, para crear y producir.
           </p>
         </div>
         <div className="hero-actions">
@@ -4435,6 +4435,7 @@ export default function Home() {
                 key={roll.id}
                 className={isSelected ? "roll-card selected" : "roll-card"}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => setSelectedId(roll.id)}
               >
                 <span className="swatch" style={{ backgroundColor: roll.color_hex }} />
