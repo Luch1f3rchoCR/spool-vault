@@ -220,13 +220,18 @@ Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Prod
 ## Proyectos, producción y utilidad
 
 - [x] Publicar guardado de variantes con receta precargada y conservar Registrar impresión como acción principal. UI-03/UI-04: PR #28, Vercel Production confirmado el 21 de septiembre; evidencia en `docs/UI_DELIVERY.md`.
-- [ ] Publicar UI-01A: primera capa gráfica aprobada, preservando formularios y navegación existentes. Implementación y pruebas locales completas; verificar despliegue.
+- [x] Publicar UI-01A: primera capa gráfica aprobada, preservando formularios y navegación existentes. PR #29, merge `cc036d7`, Vercel Production `6589383039` confirmado el 22 de septiembre.
+- [x] Implementar Proper V1 con tokens/assets suministrados, sin rediseñar formularios ni infraestructura. Ver `docs/brand/proper-v1/IMPLEMENTATION.md`; publicación autorizada el 26 de septiembre y evidencia final en el PR del bloque.
+- [ ] Recibir SVG oficial de Stone Collective para incorporar el endorsement sin recrearlo.
+- [ ] Cerrar prueba real de invitación → correo → acceso → cuestionario único → perfil antes de ampliar beta; revisar coherencia de marca en correos en un bloque separado.
 - [ ] Implementar cotizaciones como flujo secundario; separar aprobación de mockups de publicación real.
 
 - [x] Crear proyectos con nombre, versión, archivo STL/3MF privado, licencia y notas.
 - [ ] Agregar imagen de portada por proyecto.
 - [x] Definir una receta por proyecto con filamentos, colores, gramos previstos y tiempo.
 - [x] Registrar insumos adicionales como imanes, pines, tornillos, luces, pintura y empaque con cantidad y costo.
+- [ ] Crear apartado independiente de Insumos (imanes, pines y otros): inventario, cantidades y costo por unidad confirmados por el fundador 2026-09-26. Los costos por receta ya existen, pero no un catálogo/inventario compartido. Requiere movimientos atómicos e historial propio; no descontar existencias desde la receta sin integración explícita.
+- [x] Incluir Elegoo en las marcas de filamento, sin alterar datos existentes (bloque Proper V1, 2026-09-26).
 - [x] Validar existencias antes de cerrar una impresión.
 - [ ] Sugerir ofertas del market cuando falte material.
 - [x] Crear corridas de producción con fecha, cantidad, resultado y duración.

@@ -1,0 +1,63 @@
+/* Shared visual layer. Supplied tokens are immutable; semantic states remain distinct. */
+:root { color-scheme: light; }
+body { background: var(--proper-warm-canvas); }
+.proper-wordmark { display: block; width: 143px; height: auto; flex-shrink: 0; }
+.proper-signature { display: grid; justify-items: start; gap: 8px; }
+.proper-signature p { margin: 0; color: var(--proper-muted); font-size: .8rem; line-height: 1.5; }
+.account-brand { padding: 5px 0; }
+.account-strip {
+  border-top-color: var(--proper-clay);
+  background: var(--proper-paper);
+  gap: 16px;
+}
+.account-access, .project-icon { background: var(--proper-soft-sage); }
+.hero { border-bottom: 1px solid var(--proper-line); margin-bottom: 22px; }
+.hero .eyebrow { display: flex; align-items: center; gap: 8px; }
+.hero .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--proper-clay); }
+.hero .proper-signature { flex-basis: 100%; padding: 16px 0; }
+.metrics article:first-child { border-left-color: var(--proper-green); }
+.roll-card.selected {
+  background: linear-gradient(145deg, var(--proper-soft-sage), var(--proper-paper) 65%);
+}
+.progress-track, .profile-panel .profile-menu > button:hover { background: var(--proper-soft-sage); }
+.progress-fill { background: var(--proper-green); }
+.modal-panel { background: var(--proper-paper); }
+.modal-head { background: var(--proper-warm-canvas); border-bottom-color: var(--proper-line); }
+.modal-frame-heading .eyebrow { color: var(--proper-muted); }
+.modal-head::after { content: ""; position: absolute; bottom: -1px; left: 18px; width: 32px; height: 3px; background: var(--proper-clay); }
+.auth-popover .proper-signature, .tester-first-visit > .proper-signature { padding: 12px 0 20px; }
+.auth-popover .auth-panel-head { border-bottom: 1px solid var(--proper-line); padding-bottom: 12px; }
+.auth-panel form > button, .demo-banner button, .report-toolbar > button,
+.project-summary > button, .purchase-order-summary > button { background: var(--proper-green); color: var(--proper-paper); }
+input, select, textarea { accent-color: var(--proper-green); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), select, textarea { border-radius: 10px; }
+input::placeholder, textarea::placeholder { color: var(--proper-muted); opacity: 1; }
+.account-section :is(input, select, textarea) { background: var(--proper-paper); border-radius: 10px; }
+.add-action-options > button:hover { background: var(--proper-soft-sage); }
+.spool-view-nav button[aria-current] { background: var(--proper-green); color: var(--proper-paper); }
+.profile-backdrop .profile-panel { background: var(--proper-warm-canvas); }
+.profile-panel .profile-head { background: var(--proper-paper); }
+.empty-state {
+  color: var(--proper-muted);
+  background: var(--proper-warm-canvas);
+  border-color: var(--proper-line);
+  border-radius: 12px;
+  line-height: 1.6;
+}
+.report-table th, .history-list > article, .invoice-lines > article { border-color: var(--proper-line); }
+.purchase-invoice-card > header { background: var(--proper-green); }
+.invoice-status, .invoice-meta dt, .form-help { color: var(--proper-muted); }
+.proper-footer {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px;
+  padding: 28px 0 8px; margin-top: 28px; border-top: 1px solid var(--proper-line);
+}
+.proper-footer > p { margin: 0; color: var(--proper-muted); font-size: .8rem; }
+.proper-footer .proper-wordmark { width: 120px; }
+@media (max-width: 780px) {
+  .account-brand .proper-wordmark { width: 120px; }
+  .account-access { max-width: min(210px, 50vw); }
+  .account-strip { gap: 10px; }
+  .mobile-nav { background: var(--proper-ink); }
+  .proper-footer { align-items: flex-start; flex-direction: column; gap: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .roll-card { transition: none; } }

@@ -30,6 +30,8 @@ import { InventoryReportModal } from "@/components/inventory-report-modal";
 import { AddActionsModal } from "@/components/add-actions-modal";
 import { ModalFrame } from "@/components/modal-frame";
 import { MobileNavigation } from "@/components/mobile-navigation";
+import { ProperSignature, ProperWordmark } from "@/components/proper-brand";
+import { brand } from "@/lib/brand";
 import {
   MissingPurchaseModal,
   type MissingPurchaseValues
@@ -177,7 +179,7 @@ type WeightInput = {
   source: string;
 };
 
-const brandOptions = ["Bambu Lab", "Pritonic", "Genérico", "Creality", "Polymaker", "eSUN"];
+const brandOptions = ["Bambu Lab", "Pritonic", "Genérico", "Creality", "Polymaker", "eSUN", "Elegoo"];
 const materialOptions = ["PLA", "PETG", "ABS", "ASA", "TPU", "PA", "PC", "Resina"];
 const lineOptionsByMaterial: Record<string, string[]> = {
   PLA: [
@@ -3361,6 +3363,7 @@ export default function Home() {
     return (
       <main className="app-shell">
         <section className="hero">
+          <ProperSignature />
           <p className="eyebrow">Inventario 3D</p>
           <h1>Cargando filamentos...</h1>
         </section>
@@ -3372,8 +3375,7 @@ export default function Home() {
     <main className="app-shell" id="inicio">
       <header className="account-strip">
         <a className="account-brand" href="#inicio" aria-label="Ir al inicio">
-          <span className="account-logo"><PackagePlus size={17} aria-hidden="true" /></span>
-          <span><strong>La app</strong><small>by Stone Collective</small></span>
+          <ProperWordmark />
         </a>
         <div className="account-menu">
           <button
@@ -3395,12 +3397,13 @@ export default function Home() {
               <div className="auth-panel-head">
                 <div>
                   <p className="eyebrow">{supabaseConfig.isConfigured ? "Cuenta segura" : "Configuración"}</p>
-                  <h2>{supabaseConfig.isConfigured ? "Entrá a Spool Vault" : "Conectá Supabase"}</h2>
+                  <h2>{supabaseConfig.isConfigured ? "Entrá a Proper" : "Conectá Supabase"}</h2>
                 </div>
                 <button className="modal-close" type="button" onClick={() => setShowLogin(false)} aria-label="Cerrar inicio de sesión">
                   <X size={17} aria-hidden="true" />
                 </button>
               </div>
+              <ProperSignature />
               {supabaseConfig.isConfigured ? (
                 <form onSubmit={sendMagicLink} noValidate>
                   <label htmlFor="auth-email">Correo electrónico</label>
@@ -4883,6 +4886,11 @@ export default function Home() {
           <p className="empty-state">Las próximas compras aparecerán acá sin reemplazar precios anteriores.</p>
         )}
       </section>
+
+      <footer className="proper-footer">
+        <ProperSignature />
+        <p>{brand.promise}</p>
+      </footer>
 
       <MobileNavigation
         isSignedIn={Boolean(signedInEmail)}

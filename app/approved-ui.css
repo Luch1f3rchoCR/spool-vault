@@ -13,7 +13,7 @@ h1, h2, h3, .account-brand, .metrics strong, .roll-side strong {
 }
 .account-logo { background: var(--accent); box-shadow: 0 3px 8px #193b2314; }
 .account-brand strong { font-size: .96rem; letter-spacing: -.3px; }
-.account-access { background: #e8efe5; border-color: transparent; border-radius: 14px; }
+.account-access { background: var(--proper-soft-sage); border-color: transparent; border-radius: 14px; }
 .hero { align-items: center; padding: 0 0 24px; flex-wrap: wrap; }
 .hero h1 { font-size: clamp(1.8rem, 3vw, 2.25rem); line-height: 1.2; letter-spacing: -1px; }
 .hero .eyebrow { font-size: .66rem; letter-spacing: .08em; margin-bottom: 7px; }
@@ -75,7 +75,7 @@ h1, h2, h3, .account-brand, .metrics strong, .roll-side strong {
 .roll-side { grid-column: 2; grid-row: 1; grid-template-columns: minmax(0, 1fr); justify-items: end; min-width: 0; gap: 6px; }
 .roll-side strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .roll-side .inventory-level { font-size: .68rem; font-weight: 600; text-align: right; }
-.progress-track { height: 5px; background: #e8efe5; }
+.progress-track { height: 5px; background: var(--proper-soft-sage); }
 .progress-fill { background: var(--accent); }
 .detail-panel { padding: 20px; border-top: 3px solid var(--accent); top: 94px; }
 .detail-head > div { min-width: 0; }
@@ -84,7 +84,7 @@ h1, h2, h3, .account-brand, .metrics strong, .roll-side strong {
 .detail-facts span { background: var(--surface); }
 .purchase-invoice-card, .project-card { background: var(--paper); border-radius: 14px; box-shadow: var(--shadow); }
 .purchase-invoice-card > header { background: var(--accent); }
-.project-icon { background: #e8efe5; color: var(--accent); }
+.project-icon { background: var(--proper-soft-sage); color: var(--accent); }
 .auth-panel.auth-popover { background: var(--paper); }
 :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 @media (max-width: 1000px) and (min-width: 781px) {

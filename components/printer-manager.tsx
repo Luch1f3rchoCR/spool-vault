@@ -85,7 +85,7 @@ export function PrinterManager({ printers, profile, isSaving, onBack, onSave, ba
           <button type="button" onClick={() => setValues(null)} disabled={isSaving}><ChevronLeft size={17} />Volver</button>
           <div><p className="eyebrow">Equipo</p><h3>{values.printer_id ? "Editar impresora" : "Nueva impresora"}</h3></div>
         </div>
-        <p className="form-help">La moneda corresponde a la tarifa propia; debe coincidir con la moneda de costos de Perfil para usarla en una impresión. No hacemos conversiones automáticas. La potencia y el costo por hora son opcionales. Si los dejás vacíos, Spool Vault usa los valores generales de Perfil.</p>
+        <p className="form-help">La moneda corresponde a la tarifa propia; debe coincidir con la moneda de costos de Perfil para usarla en una impresión. No hacemos conversiones automáticas. La potencia y el costo por hora son opcionales. Si los dejás vacíos, Proper usa los valores generales de Perfil.</p>
         <div className="form-grid printer-form-grid">
           <label>Nombre<input required maxLength={120} value={values.name} disabled={isSaving} placeholder="Ej. P1S principal" onChange={(event) => setValues({ ...values, name: event.target.value })} /></label>
           <label>Marca<input maxLength={120} value={values.manufacturer} disabled={isSaving} placeholder="Ej. Bambu Lab" onChange={(event) => setValues({ ...values, manufacturer: event.target.value })} /></label>

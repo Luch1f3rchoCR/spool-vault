@@ -1,0 +1,12 @@
+/* Proper V1 — approved palette; no infrastructure changes. */
+:root {
+  --proper-green: #23634B;
+  --proper-ink: #192C24;
+  --proper-surface: #F5F5F2;
+  --proper-paper: #FFFFFF;
+  --proper-muted: #58695E;
+  --proper-soft-sage: #E8EFE5;
+  --proper-line: #E1E5DA;
+  --proper-warm-canvas: #F8F4EB;
+  --proper-clay: #C76F56;
+}
