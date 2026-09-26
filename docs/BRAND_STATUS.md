@@ -1,16 +1,16 @@
 # Estado vigente de naming y posicionamiento
 
-Decisión explícita del fundador recibida el 13 de septiembre de 2026. Reemplaza cualquier propuesta anterior de nombre o arquitectura de marca incompatible con este documento.
+Actualizado: 2026-09-26. El fundador entregó y autorizó aplicar **Proper V1** el 25 de septiembre; el 26 autorizó subir y publicar el bloque estable. Esta decisión operativa reemplaza la restricción de implementación del 13 de septiembre, no constituye una autorización jurídica de la marca.
 
 ## Nombre comercial
 
-**El producto no tiene nombre comercial final aprobado.** En trabajo de marca, usar «la app», «la plataforma» o «el producto».
+**Proper es la marca de trabajo aprobada para esta implementación.** El clearance comercial/jurídico continúa pendiente: no afirmar exclusividad, registro ni ausencia de colisiones.
 
 - **Spool Vault**: descartado como marca vigente o futura porque ya existía. Conservarlo solo en referencias históricas y técnicas existentes: repositorio, URLs, infraestructura, documentación antigua e identificadores pendientes de migración.
-- **Proper**: gustó como dirección temporal, pero no fue aprobado como nombre final. Queda en **NO-GO comercial preliminar** por el screening aportado por el fundador: colisión cercana con PROPER en manufactura, diseño/ingeniería e impresión 3D, y otros productos de software. Esto no es un dictamen jurídico; solo una futura revisión jurídica especializada podría reabrir la decisión.
+- **Proper**: el screening reportado el 13 de septiembre produjo un NO-GO comercial preliminar. La instrucción posterior del fundador aprueba usar el paquete Proper V1 en la app; no aporta un dictamen que resuelva aquel riesgo. Conservar este antecedente para la revisión especializada.
 - **Meld** y **Strata**: descartados. No volver a proponerlos como candidatos activos.
 
-No crear logos definitivos, dominios, correos, copy público ni implementaciones técnicas usando Proper como nombre aprobado. Ninguna nueva propuesta se vuelve definitiva sin screening suficiente y aprobación explícita.
+Usar únicamente los assets y tokens entregados, sin redibujar ni inventar variantes. Alcance y evidencia: [implementación Proper V1](./brand/proper-v1/IMPLEMENTATION.md). No registrar dominios, cambiar remitentes ni migrar infraestructura en este bloque.
 
 ## Posicionamiento aprobado
 
@@ -24,9 +24,13 @@ Este núcleo se conserva independientemente del nombre final.
 
 Stone Collective es firma secundaria / endorsement, no el nombre principal del producto:
 
-> [Nombre futuro del producto]  
-> [tagline / descriptor]  
+> Proper
+>
+> Everything behind your prints.
+>
 > by **Stone Collective**
+
+Falta el logo oficial de Stone Collective en SVG. El endorsement visual se omite hasta recibirlo: no recrearlo con tipografía ni usar un placeholder como logo definitivo.
 
 Esta decisión no convierte Stone Collective, Stone Collective CR y Stone Collective Dev en nombres intercambiables.
 

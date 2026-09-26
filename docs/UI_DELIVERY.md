@@ -1,20 +1,24 @@
 # Diseño aprobado → desarrollo → publicación
 
-Actualizado: 2026-09-22. Fuente compartida para no reconstruir el contexto entre chats.
+Actualizado: 2026-09-26. Fuente compartida para no reconstruir el contexto entre chats.
 
-## Continuidad vigente · UI-01A
+## Continuidad vigente · Proper V1
+
+Tokens exactos y assets suministrados aplicados al producto existente: fondo Warm Canvas, superficies Paper, verde funcional y Clay decorativo; wordmark, favicon, metadatos visibles y firma en acceso/primer ingreso/footer. Se conservan DM Sans/Manrope, formularios, navegación, lógica, URLs e identificadores. Sin nuevo dark mode. Stone Collective pendiente de SVG oficial. [Alcance, QA y pendientes](./brand/proper-v1/IMPLEMENTATION.md). Publicación autorizada el 26 de septiembre; el PR registra el commit y despliegue final. La marca de trabajo aprobada es Proper; el clearance jurídico no está confirmado.
+
+## Bloque anterior publicado · UI-01A
 
 **Gráfico primero, sin cambiar formularios.** Instrucción expresa del fundador (21 de septiembre): conservar campos, validaciones, navegación y formularios abiertos del panel derecho. La propuesta de reemplazarlos por botones queda fuera de este bloque.
 
 - Implementado: fondo cálido suave `#F5F5F2`, blanco, verde `#23634B`, tipografías DM Sans / Manrope autoalojadas por Next, encabezado compacto y tarjetas con círculos/textura de spool, estados y foco visible. Superficies de compras y proyectos coherentes con la paleta.
-- Marca visible provisional: «La app · by Stone Collective». Sin Proper ni migración de infraestructura, metadatos técnicos, URLs, correos o identificadores.
+- Marca visible provisional de aquel bloque: «La app · by Stone Collective», superada ahora por Proper V1. Sin migración de infraestructura, URLs, correos o identificadores.
 - No incluye navegación lateral nueva, formularios nuevos, rediseño integral de costos/cotizaciones ni cambios de esquema.
 - Pruebas: compilación/TypeScript y 4 pruebas de variantes aprobadas; revisión en 1280/390 px y modales en 320 px sin desbordamiento; apertura/cierre de nuevo filamento, proyectos y compras; selección de filamento; consola sin errores. Sin guardar datos de producción.
-- Publicación UI-01A: pendiente de verificar el commit desplegado. La evidencia final se registra en el PR; no confundir implementación con publicación.
+- Publicación UI-01A: [PR #29](https://github.com/Luch1f3rchoCR/spool-vault/pull/29), merge `cc036d7ce675546762246e653c9f3973c682c33c`, Vercel Production `6589383039`, éxito el 22 de septiembre de 2026.
 
 **UI-03/UI-04 sí están publicados:** [PR #28](https://github.com/Luch1f3rchoCR/spool-vault/pull/28), merge `31b4434cae07cae5556af71ba93c0f86038b63e8`, Vercel Production `6568371306`, confirmado el 21 de septiembre. [Evidencia](https://github.com/Luch1f3rchoCR/spool-vault/pull/28#issuecomment-5760511303). Esto reemplaza las menciones de publicación pendiente del corte anterior, conservado abajo.
 
-Naming y arquitectura de marca vigentes: [BRAND_STATUS.md](./BRAND_STATUS.md). Sin nombre comercial final; Proper, Meld, Strata y Spool Vault no son candidatos activos. Mantener posicionamiento y firma secundaria aprobados sin renombrar infraestructura.
+Naming y arquitectura vigentes: [BRAND_STATUS.md](./BRAND_STATUS.md). El corte de septiembre 25/26 prevalece sobre el naming provisional de UI-01A.
 
 ## Cómo trabajar sin perder continuidad
 

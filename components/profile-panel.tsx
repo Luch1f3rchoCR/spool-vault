@@ -195,7 +195,7 @@ export function ProfilePanel({ email, userId, mode, localData, profile, isSaving
 
         <div className="profile-security" hidden={view !== "preferences"}>
             <ShieldCheck size={18} aria-hidden="true" />
-            <span>Spool Vault nunca guardará números de tarjeta.</span>
+            <span>Proper nunca guardará números de tarjeta.</span>
         </div>
 
         {email && view === "home" && (

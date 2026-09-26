@@ -1,7 +1,7 @@
 # Registro de decisiones
 Corte: 2026-09-07. Registrar cambios nuevos sin borrar el historial.
 
-Actualización vigente de naming: [../BRAND_STATUS.md](../BRAND_STATUS.md). D13–D15 reemplazan las propuestas incompatibles anteriores.
+Actualización vigente de naming: [../BRAND_STATUS.md](../BRAND_STATUS.md). D16–D17 reemplazan la restricción de implementación de D13 sin borrar su antecedente comercial.
 
 | ID | Estado | Decisión o evidencia | Fuente |
 | --- | --- | --- | --- |
@@ -22,6 +22,12 @@ Actualización vigente de naming: [../BRAND_STATUS.md](../BRAND_STATUS.md). D13�
 | D15 | Confirmado | Continuar desarrollo sin renombrar repositorio, URLs, Supabase, Vercel, correos ni identificadores. Nombre nuevo requiere screening suficiente y aprobación explícita. | Fundador, 2026-09-13 |
 
 ## Regla de actualización
+
+| ID | Estado | Decisión o evidencia | Fuente |
+| --- | --- | --- | --- |
+| D16 | Aprobado para implementación | Proper V1 como marca de trabajo; usar assets y tokens entregados, tagline «Everything behind your prints.» y promesa vigente. Clearance comercial/jurídico pendiente; sin migración técnica ni recreación del logo de Stone Collective. | Fundador, 2026-09-25, paquete Proper V1; `docs/brand/proper-v1/IMPLEMENTATION.md` |
+| D17 | Publicación autorizada | Subir y publicar el bloque gráfico estable, conservando formularios y funciones. Confirmar despliegue antes de declararlo publicado; la beta requiere prueba real de activación. | Fundador, 2026-09-26 |
+
 Cada entrada nueva debe incluir fecha, responsable de aprobación, motivo y enlaces de evidencia cuando existan.
 Los hallazgos de investigación no se convierten en decisiones automáticamente.
 Una recepción en spam no permite cerrar el pendiente de entregabilidad ni el de inicio de sesión.

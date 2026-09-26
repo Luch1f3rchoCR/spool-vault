@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { ModalFrame } from "@/components/modal-frame";
+import { ProperSignature } from "@/components/proper-brand";
 import { getSupabaseClient } from "@/lib/supabase";
 import { FOUNDER_SCOPE } from "@/lib/tester-welcome";
 import type { PrinterProfile } from "@/lib/types";
@@ -83,6 +84,7 @@ export function TesterFirstVisit({ userId, onComplete, onSignOut }: {
   return <ModalFrame title={visit?.status === "pending" ? "Conozcamos tu taller" : "Tu invitación"} titleId="tester-first-visit-title"
     eyebrow="Probador fundador · primer ingreso" className="tester-first-visit"
     busy={busy || checking} onClose={onSignOut} closeLabel="Salir y completar después">
+    <ProperSignature />
     <p className="form-help">Completás esto una sola vez, después de verificar tu correo. Tus impresoras quedarán en Perfil → Mis impresoras y podrás editarlas allí.</p>
     {checking && <p role="status">Comprobando invitación…</p>}
     {error && <p className="account-error" role="alert">{error}</p>}

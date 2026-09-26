@@ -1,0 +1,30 @@
+{
+  "name": "Proper",
+  "version": "1.0.0",
+  "status": "working brand — pending legal/commercial clearance",
+  "colors": {
+    "proper-green": "#23634B",
+    "ink": "#192C24",
+    "surface": "#F5F5F2",
+    "paper": "#FFFFFF",
+    "muted": "#58695E",
+    "soft-sage": "#E8EFE5",
+    "line": "#E1E5DA",
+    "warm-canvas": "#F8F4EB",
+    "proper-clay": "#C76F56"
+  },
+  "copy": {
+    "tagline": "Everything behind your prints.",
+    "promise": "Simple para empezar. Potente para crecer.",
+    "endorsement": "by Stone Collective"
+  },
+  "appIcon": {
+    "background": "ink",
+    "letter": "paper",
+    "dot": "proper-clay"
+  },
+  "typography": {
+    "wordmark": "outlined paths traced from approved reference; do not retype",
+    "ui": "not specified by approved sources"
+  }
+}
