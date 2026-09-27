@@ -38,6 +38,7 @@ export type ProfileValues = {
 };
 
 type ProfilePanelProps = {
+  initialView?: ProfileView;
   email: string;
   userId: string;
   mode: "demo" | "local" | "authenticated" | "error";
@@ -53,9 +54,9 @@ type ProfilePanelProps = {
   onSignOut: () => void;
 };
 
-export function ProfilePanel({ email, userId, mode, localData, profile, isSaving, printers, isSavingPrinter, printerStatusMessage, onSavePrinter, onClose, onSave, onSignOut }: ProfilePanelProps) {
+export function ProfilePanel({ initialView = "home", email, userId, mode, localData, profile, isSaving, printers, isSavingPrinter, printerStatusMessage, onSavePrinter, onClose, onSave, onSignOut }: ProfilePanelProps) {
   const [communityBusy, setCommunityBusy] = useState(false);
-  const [view, setView] = useState<ProfileView>("home");
+  const [view, setView] = useState<ProfileView>(initialView);
   const [saved, setSaved] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);

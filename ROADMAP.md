@@ -127,6 +127,8 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 
 ## Multimoneda y perfil
 
+- [ ] Agregar selección persistente de idioma; traducir interfaz, validaciones, fechas y números sin cambiar datos históricos (solicitud 2026-09-26).
+- [ ] Hacer más visible la selección de moneda en Configuración. El selector CRC/USD/EUR y su persistencia ya existen en Perfil → Moneda y facturación; revisar presentación, no duplicar la preferencia.
 - [x] Agregar moneda base al perfil; usar CRC como preferencia inicial.
 - [x] Conservar monto y moneda originales, monto y moneda realmente pagados y su relación cambiaria.
 - [x] Guardar tipo de cambio, fecha, fuente y clase: Real, Histórico, Actual, Manual o Estimado.

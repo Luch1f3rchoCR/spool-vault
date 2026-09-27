@@ -2,6 +2,14 @@
 
 Actualizado: 2026-09-26. Fuente compartida para no reconstruir el contexto entre chats.
 
+## Corrección prioritaria · Inicio y menú lateral (2026-09-27)
+
+El fundador confirmó que la entrega esperada incluye el dashboard «Hola…», búsqueda superior y navegación lateral del mockup **03 · Dashboard (escritorio)**, no solamente los colores de UI-01A. Se implementa sobre los módulos reales: Inicio, Inventario, Compras, Proyectos, Producción, Spools, Costos, Reportes y Configuración; móvil conserva accesos principales y un menú Más. Los formularios existentes no se rediseñan. Pedidos e Insumos siguen pendientes y no se simulan como funciones disponibles; la tarjeta de compras cuenta órdenes de compra, no pedidos de clientes.
+
+Estado: compilación y 12 pruebas de regresión aprobadas. Navegador: Inicio en escritorio y 390 px, búsqueda superior hacia inventario, apertura/cierre de Compras, Proyectos, Spools, Costos y Reportes, menú Más → Inicio sin dejar un modal abierto; sin desbordamiento móvil observado. No se guardaron datos reales. El fundador revisará el ajuste visual fino; el PR registra el despliegue final. No confundir con Proper V1, que **sí fue publicado en PR #30**, merge `7290fa7ad421aea383a022dc9f398fc5369f9b75`, Vercel Production `6682076124`. [Evidencia de publicación](https://github.com/Luch1f3rchoCR/spool-vault/pull/30#issuecomment-5851085225).
+
+Siguiente bloque tras publicar navegación: Insumos con existencias/costo unitario e historial. Idioma queda en roadmap. La moneda base CRC/USD/EUR ya se selecciona en Perfil → Moneda y facturación; falta mejorar su descubrimiento, no crear otra preferencia.
+
 ## Continuidad vigente · Proper V1
 
 Tokens exactos y assets suministrados aplicados al producto existente: fondo Warm Canvas, superficies Paper, verde funcional y Clay decorativo; wordmark, favicon, metadatos visibles y firma en acceso/primer ingreso/footer. Se conservan DM Sans/Manrope, formularios, navegación, lógica, URLs e identificadores. Sin nuevo dark mode. Stone Collective pendiente de SVG oficial. [Alcance, QA y pendientes](./brand/proper-v1/IMPLEMENTATION.md). Publicación autorizada el 26 de septiembre; el PR registra el commit y despliegue final. La marca de trabajo aprobada es Proper; el clearance jurídico no está confirmado.

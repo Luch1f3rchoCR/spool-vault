@@ -1,5 +1,7 @@
 # Spool Vault: contexto para continuar
 
+**Punto de continuación · 2026-09-27:** Proper V1 y Elegoo publicados en PR #30 (`7290fa7`, Vercel Production `6682076124`). Prioridad exigida por el fundador: terminar y publicar **Inicio + menú lateral del dashboard aprobado**; implementación en `feat/approved-sidebar`, sin cambios de base de datos. No abrir más frentes antes de su verificación visual y publicación. Después: inventario de Insumos (existencias, cantidades, costo unitario e historial); idioma en roadmap y moneda base ya existente. Detalle vigente: `docs/UI_DELIVERY.md`.
+
 Actualizado: 2026-09-26. Este es el punto de entrada del repositorio; los documentos enlazados contienen el detalle de cada área.
 
 **Continuidad vigente:** variantes publicadas mediante PR #28 y capa gráfica UI-01A publicada mediante PR #29, merge `cc036d7ce675546762246e653c9f3973c682c33c`, Vercel Production `6589383039` (22 de septiembre). Bloque actual: **Proper V1**, tokens/assets suministrados, marca visible y superficies, **sin cambiar formularios ni flujos**. Publicación autorizada por el fundador el 26 de septiembre; registrar el despliegue exacto y humo final en el PR antes de declararlo publicado. Ver `docs/brand/proper-v1/IMPLEMENTATION.md`. La copia iCloud quedó sin sincronizar porque su estado Git no responde; se preservó intacta y se trabaja en un clon aislado del mismo repositorio, sin duplicar infraestructura.

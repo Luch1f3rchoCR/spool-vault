@@ -6,6 +6,7 @@ import "./brand/proper-brand-tokens.css";
 import "./globals.css";
 import "./approved-ui.css";
 import "./brand/proper-theme.css";
+import "./workspace-navigation.css";
 
 const bodyFont = DM_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
 const headingFont = Manrope({ subsets: ["latin"], variable: "--font-heading", display: "swap" });
