@@ -5,11 +5,9 @@ import jsQR from "jsqr";
 import QRCode from "qrcode";
 import {
   AlertTriangle,
-  BarChart3,
   Camera,
   Check,
   Filter,
-  FolderKanban,
   LinkIcon,
   LogIn,
   Nfc,
@@ -30,13 +28,15 @@ import { InventoryReportModal } from "@/components/inventory-report-modal";
 import { AddActionsModal } from "@/components/add-actions-modal";
 import { ModalFrame } from "@/components/modal-frame";
 import { MobileNavigation } from "@/components/mobile-navigation";
+import { AppNavigation, type WorkspaceSection } from "@/components/app-navigation";
+import { WorkspaceDashboard, ProductionOverview } from "@/components/workspace-dashboard";
 import { ProperSignature, ProperWordmark } from "@/components/proper-brand";
 import { brand } from "@/lib/brand";
 import {
   MissingPurchaseModal,
   type MissingPurchaseValues
 } from "@/components/missing-purchase-modal";
-import { ProfilePanel, type ProfileValues } from "@/components/profile-panel";
+import { ProfilePanel, type ProfileValues, type ProfileView } from "@/components/profile-panel";
 import type { PrinterValues } from "@/components/printer-manager";
 import { TesterFirstVisit } from "@/components/tester-first-visit";
 import {
@@ -714,6 +714,9 @@ export default function Home() {
   const [lowOnly, setLowOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddActions, setShowAddActions] = useState(false);
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
+  const [workspaceView, setWorkspaceView] = useState<"home" | "inventory" | "production">("home");
+  const [profileInitialView, setProfileInitialView] = useState<ProfileView>("home");
   const [spoolView, setSpoolView] = useState<"create" | "assign" | "inventory">("inventory");
   const [showQuickWeigh, setShowQuickWeigh] = useState(false);
   const [showQrScanner, setShowQrScanner] = useState(false);
@@ -1160,7 +1163,7 @@ export default function Home() {
 
   useEffect(() => {
     document.body.style.overflow = showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
-      || showSpools || showReport || showPurchaseOrders || showProjects || showProfile
+      || showSpools || showReport || showPurchaseOrders || showProjects || showProfile || showWorkspaceMenu
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
@@ -1171,6 +1174,7 @@ export default function Home() {
     missingPurchaseRollId,
     showAdd,
     showAddActions,
+    showWorkspaceMenu,
     showPurchaseOrders,
     showProfile,
     showProjects,
@@ -3113,6 +3117,7 @@ export default function Home() {
 
   function showScannedRollDetail() {
     closeScanActions();
+    setWorkspaceView("inventory");
     window.setTimeout(() => {
       document.getElementById("inventario")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
@@ -3127,6 +3132,7 @@ export default function Home() {
 
   function consumeScannedRoll() {
     closeScanActions();
+    setWorkspaceView("inventory");
     window.setTimeout(() => {
       document.getElementById("consume-selected-roll")?.scrollIntoView({ behavior: "smooth", block: "center" });
       document.getElementById("consumption-project-name")?.focus();
@@ -3312,6 +3318,7 @@ export default function Home() {
   }
 
   function openAccount() {
+    setProfileInitialView("home");
     if (signedInEmail) {
       setShowProfile(true);
       return;
@@ -3331,7 +3338,7 @@ export default function Home() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rollId = params.get("roll");
-    if (rollId) setSelectedId(rollId);
+    if (rollId) { setSelectedId(rollId); setWorkspaceView("inventory"); }
   }, []);
 
   const brands = ["Todos", ...Array.from(new Set([...brandOptions, ...rolls.map((roll) => roll.brand)]))];
@@ -3356,6 +3363,24 @@ export default function Home() {
     ? Math.max(0, Number(selectedRoll.filament_cost_amount) - selectedRemainingValue)
     : null;
   const isDemoMode = dataMode === "demo";
+  const workspaceSection: WorkspaceSection = showProjects ? "projects" : showPurchaseOrders ? "purchases"
+    : showSpools ? "spools" : showReport ? "reports" : showProfile ? profileInitialView === "production" ? "costs" : "account" : showLogin ? "account"
+    : showQrScanner ? "scan" : showQuickWeigh ? "weigh" : workspaceView;
+  function navigateWorkspace(section: WorkspaceSection) {
+    setShowWorkspaceMenu(false);
+    if (section === "projects") setShowProjects(true);
+    else if (section === "purchases") setShowPurchaseOrders(true);
+    else if (section === "spools") { setSpoolView("inventory"); setShowSpools(true); }
+    else if (section === "reports") void openReport();
+    else if (section === "account") openAccount();
+    else if (section === "costs") { setProfileInitialView("production"); setShowProfile(true); }
+    else if (section === "scan") openQrScanner();
+    else if (section === "weigh") goToWeighing();
+    else {
+      setWorkspaceView(section === "home" ? "home" : section === "production" ? "production" : "inventory");
+      document.getElementById("inicio")?.scrollIntoView({ block: "start" });
+    }
+  }
   const isAuthRedirectLocal =
     authRedirectUrl.includes("localhost") || authRedirectUrl.includes("127.0.0.1");
 
@@ -3372,11 +3397,21 @@ export default function Home() {
   }
 
   return (
-    <main className="app-shell" id="inicio">
+    <div className="app-shell workspace-shell" id="inicio">
       <header className="account-strip">
-        <a className="account-brand" href="#inicio" aria-label="Ir al inicio">
+        <a className="account-brand" href="#inicio" aria-label="Ir al inicio" onClick={() => navigateWorkspace("home")}>
           <ProperWordmark />
         </a>
+        <form className="workspace-search" role="search" onSubmit={event => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          setQuery(String(data.get("search") || "")); setBrandFilter("Todos"); setMaterialFilter("Todos"); setLowOnly(false);
+          setWorkspaceView("inventory");
+        }}>
+          <Search size={18} aria-hidden="true" />
+          <input name="search" aria-label="Buscar en inventario" placeholder="Buscar filamento…" />
+          <button type="submit" aria-label="Buscar"><Search size={17} aria-hidden="true" /></button>
+        </form>
         <div className="account-menu">
           <button
             className="account-access"
@@ -3453,27 +3488,22 @@ export default function Home() {
         </div>
       </header>
 
+      <div className="workspace-layout">
+      <aside className="workspace-sidebar" aria-label="Navegación lateral">
+        <AppNavigation active={workspaceSection} onSelect={navigateWorkspace} />
+      </aside>
+      <main className="workspace-content" data-view={workspaceView}>
+      {workspaceView === "home" && <WorkspaceDashboard displayName={userProfile.display_name || ""} rolls={rolls} projects={projects} runs={productionRuns} orders={purchaseOrders} onNavigate={navigateWorkspace} />}
+      {workspaceView === "production" && <ProductionOverview runs={productionRuns} onProjects={() => setShowProjects(true)} />}
       <section className="hero">
         <div>
           <p className="eyebrow">Inventario 3D</p>
-          <h1>Tu inventario</h1>
+          <h1 id="workspace-title" tabIndex={-1}>Tu inventario</h1>
           <p className="hero-copy">
             Materiales en orden, para crear y producir.
           </p>
         </div>
         <div className="hero-actions">
-          <button className="icon-action secondary" type="button" onClick={() => setShowProjects(true)}>
-            <FolderKanban size={20} aria-hidden="true" />
-            <span>Proyectos</span>
-          </button>
-          <button className="icon-action secondary" type="button" onClick={() => setShowPurchaseOrders(true)}>
-            <ReceiptText size={20} aria-hidden="true" />
-            <span>Compras</span>
-          </button>
-          <button className="icon-action secondary" type="button" onClick={openReport}>
-            <BarChart3 size={20} aria-hidden="true" />
-            <span>Reportes</span>
-          </button>
           <button className="icon-action" type="button" aria-haspopup="dialog" onClick={() => setShowAddActions(true)}>
             <Plus size={22} aria-hidden="true" />
             <span>Agregar</span>
@@ -4305,6 +4335,7 @@ export default function Home() {
       {showProfile && (
         <ProfilePanel
           key={`profile:${signedInUserId || dataMode}`}
+          initialView={profileInitialView}
           email={signedInEmail}
           userId={signedInUserId}
           mode={dataMode}
@@ -4891,13 +4922,19 @@ export default function Home() {
         <ProperSignature />
         <p>{brand.promise}</p>
       </footer>
+      </main>
+      </div>
+
+      {showWorkspaceMenu && <ModalFrame title="Tu taller" titleId="workspace-menu-title" eyebrow="Navegación"
+        className="workspace-menu-modal" onClose={() => setShowWorkspaceMenu(false)}>
+        <AppNavigation active={workspaceSection} onSelect={navigateWorkspace} />
+      </ModalFrame>}
 
       <MobileNavigation
-        isSignedIn={Boolean(signedInEmail)}
-        onAccount={openAccount}
-        onScan={openQrScanner}
-        onWeigh={goToWeighing}
+        active={workspaceSection}
+        onSelect={navigateWorkspace}
+        onMore={() => setShowWorkspaceMenu(true)}
       />
-    </main>
+    </div>
   );
 }

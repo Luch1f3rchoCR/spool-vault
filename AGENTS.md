@@ -51,6 +51,9 @@ Esta carpeta contiene la aplicación real de Spool Vault. Es un proyecto Next.js
 
 ## Uso eficiente del contexto
 
+- Cerrar un bloque visible antes de empezar otro: implementar, verificar y publicar. No volver a generar mockups ya aprobados.
+- Para continuidad, leer primero el punto de continuación de `PROJECT_CONTEXT.md` y el diff actual; consultar solo referencias del bloque. Reportar por separado implementado, probado y publicado.
+- Mantener actualizaciones de documentación breves y ligadas al cambio; no reconstruir el historial ni repetir comprobaciones aprobadas si su código no cambió.
 - Continuar desde el último commit y el checklist; no reconstruir decisiones ya documentadas.
 - Agrupar comprobaciones de solo lectura independientes.
 - Preferir cambios pequeños y terminados a ramas grandes con varios objetivos.
