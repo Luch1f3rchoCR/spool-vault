@@ -245,6 +245,7 @@ export type ProjectFilamentRequirement = {
 };
 
 export type ProjectComponent = {
+  supply_id?: string | null;
   id: string;
   project_id: string;
   position: number;
@@ -311,6 +312,7 @@ export type ProductionRunFilament = {
 };
 
 export type ProductionRunComponent = {
+  supply_id?: string | null;
   id: string;
   run_id: string;
   project_component_id: string | null;

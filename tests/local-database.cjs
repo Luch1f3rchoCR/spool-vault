@@ -33,4 +33,6 @@ sql(file("supabase/tests/tester_first_visit.sql"));
 console.log("PASS first-visit activation, isolation and retry checks");
 sql(file("supabase/tests/purchase_order_new_filaments.sql"));
 console.log("PASS order/new-filament rollback, isolation, mixed lines and retry checks");
+sql(file("supabase/tests/supply_stock_projects.sql"));
+console.log("PASS supply stock, weighted costs, production rollback, isolation and retry checks");
 console.log(sql("select count(*) as remaining_test_users from auth.users;"));

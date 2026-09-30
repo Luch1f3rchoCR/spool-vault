@@ -1,5 +1,11 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
+## Insumos + proyectos · 2026-09-29
+
+Implementado en la migración aditiva `20260928030951_supply_stock_projects.sql` (publicación por confirmar en PR). Existencias derivadas de movimientos inmutables; entradas/ajustes reintentables con comparación de payload, saldo no negativo y RLS por usuario. Los costos de salida usan promedio ponderado por insumo/moneda. La producción bloquea los insumos en orden estable y sus triggers descuentan dentro de la misma transacción que filamentos/costos, incluso para versiones anteriores del RPC. Crear receta no consume. Componentes antiguos/manuales no cambian; históricos no se recalculan. Exportación incluye catálogo y movimientos.
+
+Pruebas PostgreSQL 17 aislado: éxito, promedio, reintento, payload cambiado, entradas inválidas, aislamiento, inmutabilidad, faltante agregado y rollback de filamento, histórico tras reposición y concurrencia (dos retiros compiten; uno se rechaza sin saldo negativo). Diez pruebas unitarias/regresión de recetas y marca aprobadas; compilación aprobada. Interfaz sin sesión: acceso Insumos y aviso de autenticación; validación visual fina por el fundador. No se han creado insumos de prueba en producción ni enviado correos. Pendiente cerrar evidencia de migración/publicación en el PR.
+
 Última actualización: 11 de septiembre de 2026. La matriz recoge revisiones incrementales, no una nueva auditoría integral de todos los flujos.
 
 ## Qué significa “atómica” en Spool Vault

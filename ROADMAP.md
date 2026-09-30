@@ -227,12 +227,17 @@ Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Prod
 - [ ] Recibir SVG oficial de Stone Collective para incorporar el endorsement sin recrearlo.
 - [ ] Cerrar prueba real de invitación → correo → acceso → cuestionario único → perfil antes de ampliar beta; revisar coherencia de marca en correos en un bloque separado.
 - [ ] Implementar cotizaciones como flujo secundario; separar aprobación de mockups de publicación real.
+- [ ] Cotizaciones PDF para compartir por WhatsApp (canal confirmado 2026-09-29): partir de proyecto/variante, congelar cantidades y precio, incluir todos los rubros, vigencia y datos del cliente. No enviar mensajes automáticamente ni descontar inventario al cotizar.
+- [ ] Perfiles de impresión por filamento (solicitado 2026-09-29): guardar configuraciones por impresora/boquilla y laminador, temperaturas, flujo y notas; permitir varias configuraciones sin sobrescribir históricos. No asumir que existe un perfil universal ni inventar parámetros del fabricante.
+- [x] Alcance de «otras piezas» confirmado 2026-09-29: piezas compradas e insumos, dentro del mismo módulo; no inventario de productos impresos terminados en este bloque.
+- [ ] Enlace público con Proper en Vercel, autorizado 2026-09-27: comprobar disponibilidad, conservar enlace técnico anterior y actualizar redirecciones de acceso/correos antes de promover la nueva dirección; sin compra de dominio todavía.
 
 - [x] Crear proyectos con nombre, versión, archivo STL/3MF privado, licencia y notas.
 - [ ] Agregar imagen de portada por proyecto.
 - [x] Definir una receta por proyecto con filamentos, colores, gramos previstos y tiempo.
 - [x] Registrar insumos adicionales como imanes, pines, tornillos, luces, pintura y empaque con cantidad y costo.
-- [ ] Crear apartado independiente de Insumos (imanes, pines y otros): inventario, cantidades y costo por unidad confirmados por el fundador 2026-09-26. Los costos por receta ya existen, pero no un catálogo/inventario compartido. Requiere movimientos atómicos e historial propio; no descontar existencias desde la receta sin integración explícita.
+- [ ] Publicar Insumos + proyectos: implementado en `feat/supply-stock-projects`, con categorías, entradas/ajustes, existencias, costo promedio ponderado, historial y selector de receta. Descuento de insumos/filamento en una transacción; historial congelado y reintentos seguros. Uso autenticado; los extras manuales siguen en modo local. Pruebas SQL (incluida concurrencia) y compilación aprobadas; falta cierre de publicación.
+- [x] Agregar línea PLA Pro al catálogo compartido de alta, edición y compras (implementado 2026-09-29; publicación junto con Insumos).
 - [x] Incluir Elegoo en las marcas de filamento, sin alterar datos existentes (bloque Proper V1, 2026-09-26).
 - [x] Validar existencias antes de cerrar una impresión.
 - [ ] Sugerir ofertas del market cuando falte material.

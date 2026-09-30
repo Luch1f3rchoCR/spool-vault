@@ -1,4 +1,8 @@
 /* Approved inventory/proyectos V3 navigation, keeping existing module forms. */
+.supplies-modal fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.supplies-modal .section-head { flex-wrap: wrap; gap: 12px; }
+.supplies-modal .section-head input { max-width: 100%; }
+.component-recipe-row > .supply-picker { grid-column: 1 / -1; order: -1; }
 .workspace-shell { width: min(1500px, 100%); }
 .workspace-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 28px; align-items: start; }
 .workspace-content { min-width: 0; }

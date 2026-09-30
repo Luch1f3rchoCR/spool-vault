@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { createVariantDraft, type ProjectCreateValues } from "@/lib/project-variant";
 export type { ProjectCreateValues } from "@/lib/project-variant";
+import { supplyShortages, type Supply } from "@/lib/supplies";
 import { ModalFrame } from "@/components/modal-frame";
 import { PrinterManager, type PrinterValues } from "@/components/printer-manager";
 import {
@@ -51,6 +52,7 @@ export type ProductionRunValues = {
 };
 
 type Props = {
+  supplies: Supply[];
   projects: PrintProject[];
   requirements: ProjectFilamentRequirement[];
   components: ProjectComponent[];
@@ -76,6 +78,7 @@ type Props = {
 
 type RequirementDraft = { key: string; roll_id: string; planned_grams: string; label: string };
 type ComponentDraft = {
+  supply_id?: string | null;
   key: string;
   name: string;
   unit: string;
@@ -139,6 +142,7 @@ function totalsByCurrency(
 }
 
 function ProjectForm({
+  supplies,
   initialValues,
   sourceName,
   rolls,
@@ -147,6 +151,7 @@ function ProjectForm({
   onCancel,
   onCreate
 }: {
+  supplies: Supply[];
   initialValues?: ProjectCreateValues;
   sourceName?: string;
   rolls: FilamentRoll[];
@@ -216,6 +221,7 @@ function ProjectForm({
           label: item.label.trim()
         })),
         components: components.map((item) => ({
+          supply_id: item.supply_id || null,
           name: item.name.trim(),
           unit: item.unit.trim() || "unidad",
           quantity: Number(item.quantity),
@@ -273,12 +279,16 @@ function ProjectForm({
         {components.length ? components.map((item, index) => (
           <div className="recipe-row component-recipe-row" key={item.key}>
             <span className="recipe-position">{index + 1}</span>
-            <label>Insumo<input required value={item.name} disabled={isSaving} placeholder="Imán 6×2 mm" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, name: event.target.value } : entry))} /></label>
+            <label className="supply-picker">Desde inventario<select value={item.supply_id ?? ""} disabled={isSaving} onChange={event => {
+              const supply=supplies.find(s=>s.id===event.target.value);
+              setComponents(current=>current.map(entry=>entry.key===item.key ? supply ? {...entry,supply_id:supply.id,name:supply.name,unit:supply.unit,unit_cost:String(supply.unit_cost),currency:supply.currency,supplier_name:""} : {...entry,supply_id:null} : entry));
+            }}><option value="">Extra manual · sin stock</option>{supplies.map(s=><option key={s.id} value={s.id}>{s.name} · {s.quantity} {s.unit}</option>)}</select></label>
+            <label>Insumo<input required value={item.name} disabled={isSaving || !!item.supply_id} placeholder="Imán 6×2 mm" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, name: event.target.value } : entry))} /></label>
             <label>Cantidad<input required type="number" min="0.001" step="0.001" value={item.quantity} disabled={isSaving} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, quantity: event.target.value } : entry))} /></label>
-            <label>Unidad<input required value={item.unit} disabled={isSaving} placeholder="unidad" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit: event.target.value } : entry))} /></label>
-            <label>Costo por unidad<input required type="number" min="0" step="0.01" value={item.unit_cost} disabled={isSaving} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit_cost: event.target.value } : entry))} /></label>
-            <label>Moneda<select value={item.currency} disabled={isSaving} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, currency: event.target.value } : entry))}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
-            <label>Proveedor<input value={item.supplier_name} disabled={isSaving} placeholder="Opcional" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, supplier_name: event.target.value } : entry))} /></label>
+            <label>Unidad<input required value={item.unit} disabled={isSaving || !!item.supply_id} placeholder="unidad" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit: event.target.value } : entry))} /></label>
+            <label>Costo por unidad<input required type="number" min="0" step="0.01" value={item.unit_cost} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit_cost: event.target.value } : entry))} /></label>
+            <label>Moneda<select value={item.currency} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, currency: event.target.value } : entry))}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
+            <label>Proveedor<input value={item.supplier_name} disabled={isSaving || !!item.supply_id} placeholder="Opcional" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, supplier_name: event.target.value } : entry))} /></label>
             <button className="remove-recipe" type="button" aria-label="Quitar insumo" disabled={isSaving} onClick={() => setComponents((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
           </div>
         )) : <p className="empty-state">Podés agregar imanes, pines, pintura, luces, empaque o cualquier otro costo.</p>}
@@ -292,6 +302,7 @@ function ProjectForm({
 }
 
 function ProductionRunForm({
+  supplies,
   project,
   requirements,
   components,
@@ -303,6 +314,7 @@ function ProductionRunForm({
   onCancel,
   onSave
 }: {
+  supplies: Supply[];
   project: PrintProject;
   requirements: ProjectFilamentRequirement[];
   components: ProjectComponent[];
@@ -340,7 +352,7 @@ function ProductionRunForm({
     setComponentUsage(Object.fromEntries(components.map((item) => [item.id, String(Number(item.quantity) * safeQuantity)])));
   }
 
-  const shortageMessages: string[] = [];
+  const shortageMessages: string[] = supplyShortages(components, componentUsage, supplies);
   const previewTotals = new Map<string, number>();
   let incompleteFilamentCosts = 0;
 
@@ -359,8 +371,12 @@ function ProductionRunForm({
 
   components.forEach((component) => {
     const used = Number(componentUsage[component.id] || 0);
-    if (used <= 0) shortageMessages.push(`${component.name}: indicá la cantidad consumida.`);
-    else previewTotals.set(component.currency, (previewTotals.get(component.currency) ?? 0) + used * Number(component.unit_cost));
+    if (!Number.isFinite(used) || used < 0) shortageMessages.push(`${component.name}: indicá una cantidad válida (cero si no se utilizó).`);
+    else {
+      const supply=component.supply_id ? supplies.find(s=>s.id===component.supply_id) : null;
+      const currency=supply?.currency ?? component.currency;
+      previewTotals.set(currency,(previewTotals.get(currency) ?? 0)+used*Number(supply?.unit_cost ?? component.unit_cost));
+    }
   });
 
   const selectedPrinter = printers.find((printer) => printer.id === printerId);
@@ -410,7 +426,7 @@ function ProductionRunForm({
         roll_id: usages[item.id].roll_id,
         grams_used: Number(usages[item.id].grams_used)
       })),
-      components: components.map((item) => ({
+      components: components.filter(item => Number(componentUsage[item.id]) > 0).map((item) => ({
         component_id: item.id,
         quantity: Number(componentUsage[item.id])
       }))
@@ -436,7 +452,7 @@ function ProductionRunForm({
         return <div className="run-usage-row" key={requirement.id}><span className="mini-swatch" style={{ backgroundColor: requirement.color_hex }} /><div><strong>{requirement.label || requirement.color_name}</strong><small>Receta: {Number(requirement.planned_grams).toLocaleString("es-CR")} g por unidad</small></div><label>Rollo<select value={usage?.roll_id ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], roll_id: event.target.value } }))}><option value="">Elegí un rollo</option>{candidates.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {Math.round(Number(roll.available_weight_g))} g</option>)}</select></label><label>Gramos reales<input required type="number" min="0.01" step="0.01" value={usage?.grams_used ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], grams_used: event.target.value } }))} /></label></div>;
       })}</section>
 
-      {components.length > 0 && <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">Extras reales</p><h3>Insumos consumidos</h3></div></div>{components.map((component) => <div className="run-component-row" key={component.id}><div><strong>{component.name}</strong><small>{money(component.currency, component.unit_cost)} / {component.unit}</small></div><label>Cantidad<input required type="number" min="0.001" step="0.001" value={componentUsage[component.id] ?? ""} disabled={isSaving} onChange={(event) => setComponentUsage((current) => ({ ...current, [component.id]: event.target.value }))} /></label></div>)}</section>}
+      {components.length > 0 && <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">Extras reales</p><h3>Insumos consumidos</h3></div></div>{components.map((component) => <div className="run-component-row" key={component.id}><div><strong>{component.name}</strong><small>{money(component.currency, component.supply_id ? supplies.find(s=>s.id===component.supply_id)?.unit_cost ?? 0 : component.unit_cost)} / {component.unit}{component.supply_id ? " · descuenta existencias" : " · extra manual, sin stock"}</small></div><label>Cantidad<input required type="number" min="0" step="0.001" value={componentUsage[component.id] ?? ""} disabled={isSaving} onChange={(event) => setComponentUsage((current) => ({ ...current, [component.id]: event.target.value }))} /></label></div>)}</section>}
 
       <section className="project-recipe-section run-operating-costs">
         <div className="section-head"><div><p className="eyebrow">Operación</p><h3>Tiempo, máquina y fallos</h3></div></div>
@@ -464,6 +480,7 @@ function ProductionRunForm({
 }
 
 export function ProjectsModal({
+  supplies,
   projects,
   requirements,
   components,
@@ -504,9 +521,9 @@ export function ProjectsModal({
         {showPrinters ? (
           <PrinterManager printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
         ) : showCreate ? (
-          <ProjectForm key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
+          <ProjectForm supplies={supplies} key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
         ) : runProject ? (
-          <ProductionRunForm project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
+          <ProductionRunForm supplies={supplies} project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
         ) : (
           <>
             <div className="project-summary"><article><FolderKanban size={18} /><strong>{projects.length}</strong><span>proyectos</span></article><article><Printer size={18} /><strong>{runs.length}</strong><span>corridas</span></article><article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString("es-CR")} g</strong><span>por recetas</span></article><button type="button" onClick={() => setShowPrinters(true)}><Printer size={18} />Impresoras</button><button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Nuevo proyecto</button></div>
