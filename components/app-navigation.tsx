@@ -1,8 +1,8 @@
 "use client";
 
-import { BarChart3, Disc3, FolderKanban, House, Layers3, Printer, QrCode, ReceiptText, Settings, WalletCards, Weight } from "lucide-react";
+import { BarChart3, Boxes, Disc3, FolderKanban, House, Layers3, Printer, QrCode, ReceiptText, Settings, WalletCards, Weight } from "lucide-react";
 
-export type WorkspaceSection = "home" | "inventory" | "purchases" | "projects" | "production" | "costs" | "spools" | "reports" | "account" | "scan" | "weigh";
+export type WorkspaceSection = "home" | "inventory" | "supplies" | "purchases" | "projects" | "production" | "costs" | "spools" | "reports" | "account" | "scan" | "weigh";
 
 export function AppNavigation({ active, onSelect }: {
   active: WorkspaceSection; onSelect: (section: WorkspaceSection) => void;
@@ -11,6 +11,7 @@ export function AppNavigation({ active, onSelect }: {
     { label: "Tu taller", items: [
       { key: "home", label: "Inicio", icon: House },
       { key: "inventory", label: "Inventario", icon: Layers3 },
+      { key: "supplies", label: "Insumos", icon: Boxes },
       { key: "purchases", label: "Compras", icon: ReceiptText },
       { key: "projects", label: "Proyectos", icon: FolderKanban },
       { key: "production", label: "Producción", icon: Printer }
@@ -35,6 +36,6 @@ export function AppNavigation({ active, onSelect }: {
         <item.icon size={19} aria-hidden="true" /><span>{item.label}</span>
       </button>)}
     </div>)}
-    <p className="workspace-pending">Pedidos e insumos: próximos módulos.</p>
+    <p className="workspace-pending">Pedidos: próximo módulo.</p>
   </nav>;
 }

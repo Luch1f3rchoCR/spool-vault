@@ -9,6 +9,7 @@ export type ProjectCreateValues = {
   estimated_minutes: number | null;
   requirements: Array<{ roll_id: string; planned_grams: number; label: string }>;
   components: Array<{
+    supply_id?: string | null;
     name: string;
     unit: string;
     quantity: number;
@@ -44,6 +45,7 @@ export function createVariantDraft(
     components: components.filter((item) => item.project_id === project.id)
       .sort((a, b) => a.position - b.position).map((item) => ({
         name: item.name, unit: item.unit, quantity: Number(item.quantity),
+        ...(item.supply_id ? { supply_id: item.supply_id } : {}),
         unit_cost: Number(item.unit_cost), currency: item.currency,
         supplier_name: item.supplier_name ?? "", notes: item.notes ?? ""
       }))

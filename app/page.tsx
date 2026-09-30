@@ -29,6 +29,8 @@ import { AddActionsModal } from "@/components/add-actions-modal";
 import { ModalFrame } from "@/components/modal-frame";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { AppNavigation, type WorkspaceSection } from "@/components/app-navigation";
+import { SuppliesModal } from "@/components/supplies-modal";
+import { normalizeSupply, type Supply, type SupplyMovement, type SupplyValues } from "@/lib/supplies";
 import { WorkspaceDashboard, ProductionOverview } from "@/components/workspace-dashboard";
 import { ProperSignature, ProperWordmark } from "@/components/proper-brand";
 import { brand } from "@/lib/brand";
@@ -155,6 +157,8 @@ type ProjectMutationResult = {
   replayed: boolean;
 };
 type ProductionRunMutationResult = {
+  supplies: Supply[];
+  supply_movements: SupplyMovement[];
   run: ProductionRun;
   filaments: ProductionRunFilament[];
   components: ProductionRunComponent[];
@@ -184,6 +188,7 @@ const materialOptions = ["PLA", "PETG", "ABS", "ASA", "TPU", "PA", "PC", "Resina
 const lineOptionsByMaterial: Record<string, string[]> = {
   PLA: [
     "PLA Basic",
+    "PLA Pro",
     "PLA Matte",
     "PLA Silk+",
     "PLA Silk Multicolor",
@@ -700,6 +705,9 @@ export default function Home() {
   const [purchaseOrderPayments, setPurchaseOrderPayments] = useState<PurchaseOrderPayment[]>([]);
   const [printers, setPrinters] = useState<PrinterProfile[]>([]);
   const [projects, setProjects] = useState<PrintProject[]>([]);
+  const [supplies, setSupplies] = useState<Supply[]>([]);
+  const [supplyMovements, setSupplyMovements] = useState<SupplyMovement[]>([]);
+  const [showSupplies, setShowSupplies] = useState(false);
   const [projectRequirements, setProjectRequirements] = useState<ProjectFilamentRequirement[]>([]);
   const [projectComponents, setProjectComponents] = useState<ProjectComponent[]>([]);
   const [productionRuns, setProductionRuns] = useState<ProductionRun[]>([]);
@@ -816,6 +824,8 @@ export default function Home() {
 
   useEffect(() => {
     async function loadData() {
+      setSupplies([]);
+      setSupplyMovements([]);
       if (supabase) {
         const {
           data: { user },
@@ -929,7 +939,9 @@ export default function Home() {
           { data: productionRunData, error: productionRunError },
           { data: productionRunFilamentData, error: productionRunFilamentError },
           { data: productionRunComponentData, error: productionRunComponentError },
-          { data: productionRunCostData, error: productionRunCostError }
+          { data: productionRunCostData, error: productionRunCostError },
+          { data: supplyData, error: supplyError },
+          { data: supplyMovementData, error: supplyMovementError }
         ] =
           await Promise.all([
             supabase.from("filament_rolls").select("*").order("updated_at", { ascending: false }),
@@ -951,7 +963,9 @@ export default function Home() {
             supabase.from("production_runs").select("*").order("produced_at", { ascending: false }),
             supabase.from("production_run_filaments").select("*").order("created_at", { ascending: false }),
             supabase.from("production_run_components").select("*").order("created_at", { ascending: false }),
-            supabase.from("production_run_costs").select("*").order("created_at", { ascending: false })
+            supabase.from("production_run_costs").select("*").order("created_at", { ascending: false }),
+            supabase.from("supply_stock").select("*").eq("user_id", user.id).order("name"),
+            supabase.from("supply_movements").select("*").eq("user_id", user.id).order("created_at", { ascending: false })
           ]);
 
         if (
@@ -960,6 +974,7 @@ export default function Home() {
           && !purchaseOrderError && !purchaseOrderItemError && !purchaseOrderPaymentError && !printerError
           && !profileError && !projectError && !projectRequirementError && !projectComponentError
           && !productionRunError && !productionRunFilamentError && !productionRunComponentError && !productionRunCostError
+          && !supplyError && !supplyMovementError
           && rollData
         ) {
           const loadedSuppliers = (supplierData ?? []) as Supplier[];
@@ -980,6 +995,8 @@ export default function Home() {
           setPurchaseOrderPayments((purchaseOrderPaymentData ?? []) as PurchaseOrderPayment[]);
           setPrinters(((printerData ?? []) as PrinterProfile[]).map(normalizePrinter));
           setProjects((projectData ?? []) as PrintProject[]);
+          setSupplies(((supplyData ?? []) as Supply[]).map(normalizeSupply));
+          setSupplyMovements((supplyMovementData ?? []) as SupplyMovement[]);
           setProjectRequirements((projectRequirementData ?? []) as ProjectFilamentRequirement[]);
           setProjectComponents((projectComponentData ?? []) as ProjectComponent[]);
           setProductionRuns((productionRunData ?? []) as ProductionRun[]);
@@ -1163,7 +1180,7 @@ export default function Home() {
 
   useEffect(() => {
     document.body.style.overflow = showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
-      || showSpools || showReport || showPurchaseOrders || showProjects || showProfile || showWorkspaceMenu
+      || showSpools || showReport || showPurchaseOrders || showProjects || showSupplies || showProfile || showWorkspaceMenu
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
@@ -1178,6 +1195,7 @@ export default function Home() {
     showPurchaseOrders,
     showProfile,
     showProjects,
+    showSupplies,
     showQrScanner,
     showQuickWeigh,
     showReport,
@@ -2074,6 +2092,19 @@ export default function Home() {
     }
   }
 
+  async function saveSupply(values: SupplyValues, requestId: string): Promise<{error: string; uncertain: boolean}> {
+    if (!usingSupabase || !supabase || dataMode !== "authenticated") return {error:"Iniciá sesión para guardar insumos.",uncertain:false};
+    try {
+      const {data,error}=await supabase.rpc("record_supply_movement",{p_request_id:requestId,p_values:values});
+      if(error || !data) return {error:`No se confirmó el movimiento: ${error?.message ?? "respuesta vacía"}`,uncertain:!error?.code || !/^(22|23|P0001)/.test(error.code)};
+      const result=data as {supply:Supply;movements:SupplyMovement[]};
+      const saved=normalizeSupply(result.supply);
+      setSupplies(current=>[saved,...current.filter(s=>s.id!==saved.id)]);
+      setSupplyMovements(current=>[...result.movements,...current.filter(m=>m.supply_id!==saved.id)]);
+      return {error:"",uncertain:false};
+    } catch { return {error:"No pudimos confirmar la respuesta. Reintentá la misma operación sin duplicarla.",uncertain:true}; }
+  }
+
   async function createProject(values: ProjectCreateValues, file: File | null) {
     if (isSavingProject) return false;
     activateLocalMode();
@@ -2099,6 +2130,7 @@ export default function Home() {
     setIsSavingProject(true);
 
     try {
+      if (!usingSupabase && values.components.some(item => item.supply_id)) throw new Error("Iniciá sesión para vincular existencias de insumos.");
       if (usingSupabase && supabase) {
         const pending = projectRequest.current;
         const request = pending?.fingerprint === fingerprint
@@ -2347,21 +2379,8 @@ export default function Home() {
           : { id: crypto.randomUUID(), projectId: values.project_id, fingerprint };
         productionRunRequest.current = request;
 
-        const { data, error } = await supabase.rpc("complete_production_run_v3", {
-          p_request_id: request.id,
-          p_project_id: values.project_id,
-          p_produced_at: values.produced_at,
-          p_quantity: values.quantity,
-          p_status: values.status,
-          p_actual_minutes: values.actual_minutes,
-          p_sale_amount: values.sale_amount,
-          p_sale_currency: values.sale_currency,
-          p_notes: values.notes || null,
-          p_filaments: values.filaments,
-          p_components: values.components,
-          p_actual_labor_minutes: values.actual_labor_minutes,
-          p_failure_cost_amount: values.failure_cost_amount,
-          p_printer_id: values.printer_id
+        const { data, error } = await supabase.rpc("complete_production_run_v4", {
+          p_request_id: request.id, p_values: values
         });
 
         if (error || !data) {
@@ -2370,6 +2389,8 @@ export default function Home() {
         }
 
         const result = data as ProductionRunMutationResult;
+        setSupplies(result.supplies.map(normalizeSupply));
+        setSupplyMovements(result.supply_movements);
         const savedRun = {
           ...result.run,
           quantity: Number(result.run.quantity),
@@ -2423,6 +2444,7 @@ export default function Home() {
 
       const project = projects.find((item) => item.id === values.project_id);
       if (!project) throw new Error("Proyecto no encontrado.");
+      if (projectComponents.some(item => item.project_id === project.id && item.supply_id)) throw new Error("Iniciá sesión para consumir insumos del inventario.");
       const usageByRoll = new Map<string, number>();
       values.filaments.forEach((item) => usageByRoll.set(item.roll_id, (usageByRoll.get(item.roll_id) ?? 0) + item.grams_used));
       usageByRoll.forEach((grams, rollId) => {
@@ -3363,12 +3385,13 @@ export default function Home() {
     ? Math.max(0, Number(selectedRoll.filament_cost_amount) - selectedRemainingValue)
     : null;
   const isDemoMode = dataMode === "demo";
-  const workspaceSection: WorkspaceSection = showProjects ? "projects" : showPurchaseOrders ? "purchases"
+  const workspaceSection: WorkspaceSection = showSupplies ? "supplies" : showProjects ? "projects" : showPurchaseOrders ? "purchases"
     : showSpools ? "spools" : showReport ? "reports" : showProfile ? profileInitialView === "production" ? "costs" : "account" : showLogin ? "account"
     : showQrScanner ? "scan" : showQuickWeigh ? "weigh" : workspaceView;
   function navigateWorkspace(section: WorkspaceSection) {
     setShowWorkspaceMenu(false);
-    if (section === "projects") setShowProjects(true);
+    if (section === "supplies") setShowSupplies(true);
+    else if (section === "projects") setShowProjects(true);
     else if (section === "purchases") setShowPurchaseOrders(true);
     else if (section === "spools") { setSpoolView("inventory"); setShowSpools(true); }
     else if (section === "reports") void openReport();
@@ -4390,8 +4413,14 @@ export default function Home() {
         />
       )}
 
+      {showSupplies && <SuppliesModal supplies={dataMode === "authenticated" ? supplies : []}
+        key={signedInUserId || "local"} pendingKey={`proper-supply-pending:${signedInUserId || "local"}`}
+        movements={dataMode === "authenticated" ? supplyMovements : []} authenticated={dataMode === "authenticated"}
+        baseCurrency={userProfile.base_currency} onSave={saveSupply} onClose={()=>setShowSupplies(false)} />}
+
       {showProjects && (
         <ProjectsModal
+          supplies={dataMode === "authenticated" ? supplies : []}
           projects={projects}
           requirements={projectRequirements}
           components={projectComponents}
