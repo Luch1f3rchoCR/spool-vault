@@ -136,6 +136,7 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [x] Evitar cualquier suma directa entre CRC y USD.
 - [x] Mostrar totales separados por moneda o un total convertido claramente identificado.
 - [x] Mantener fijo el costo histórico aunque cambie el tipo de cambio actual.
+- [x] FIN-01A: congelar tipos BCCR históricos por fecha para valorar filamento restante en CRC y USD desde una vista con RLS; interfaz pendiente.
 
 ## Color y procedencia
 

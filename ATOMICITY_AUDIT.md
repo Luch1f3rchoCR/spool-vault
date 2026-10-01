@@ -41,7 +41,7 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Cerrar corrida, congelar costos y descontar varios rollos | Corrección aplicada y probada | Bajo | Se eliminó la segunda resta en `complete_production_run`; el trigger conserva el descuento único. Reintentos y rollback probados en PostgreSQL 17 local. No se recalculan saldos históricos. |
 | Derivar estado del rollo | Regla central en base de datos | Bajo | `Nuevo`, `Abierto`, `Bajo` y `Agotado` se recalculan desde pesos y umbral; `Archivado` continúa siendo explícito. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Mantener estas lecturas solo para la interfaz operativa. |
-| Reporte de saldo financiero | Vista consistente con RLS | Bajo | Mantener `filament_balance_report` como fuente única; no sumar CRC y USD entre sí. |
+| Reporte de saldo financiero | Vistas consistentes con RLS | Bajo | `filament_balance_report` conserva originales; `filament_inventory_valuation` usa snapshots BCCR inmutables para CRC/USD sin sumar monedas directamente. |
 
 La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
 
@@ -50,6 +50,10 @@ Las órdenes de compra se agregaron de forma aditiva sobre `purchase_history`: l
 Bloque local del 11 de septiembre: una línea nueva equivale a un rollo físico con peso inicial completo. No se escribe inventario al agregar/quitar líneas del borrador. Precio de producto y costo del spool se conservan en su compra; envío y otros cargos se congelan en las partidas de la orden según el modelo existente, sin reescribir costos históricos. No se crea ni asigna automáticamente un spool físico. Validación SQL: falla en segundo filamento/pago/reparto revierte todo, compras ya agrupadas y de otra cuenta se rechazan, reintento no duplica y conserva consumo posterior. El formulario bloquea todos los campos durante el guardado y conserva el identificador de operación hasta confirmar; errores y éxito quedan dentro del modal. Producción aún no modificada.
 
 El pago real vive en una tabla inmutable separada del monto original. Cada registro congela moneda pagada, tipo de cambio, fecha, clase y fuente; cambiar la moneda base del perfil solo altera la presentación futura y nunca reescribe una compra. La conversión calculada se muestra como referencia, mientras el monto realmente pagado conserva prioridad.
+
+FIN-01A separa el tipo de cambio de pago de la valoración estándar del inventario. El servidor consulta BCCR solo cuando falta el snapshot exacto de fecha/moneda y guarda indicadores 318/333, valores crudos, fechas efectivas y tasas derivadas en `historical_fx_snapshots`. La tabla es append-only, su RPC solo es ejecutable por `service_role` y los usuarios leen únicamente sus snapshots mediante RLS. `filament_inventory_valuation` usa costo landed para partidas de orden, costo histórico del rollo para legado, excluye archivados e insumos y nunca consulta una tasa actual como reemplazo.
+
+Si una corrección append-only cambia fecha, moneda o costo consumible respecto de una partida de orden ya congelada, la valoración reporta `corrected_order_mismatch`: no combina el costo corregido con cargos históricos ni reutiliza la fecha o moneda obsoletas de la orden.
 
 Desde el 29 de agosto, la base también valida la relación rollo-spool al confirmar cada transacción. Las funciones pueden cambiar ambas tablas juntas, pero una escritura parcial se rechaza. Un índice único impide reutilizar el mismo spool físico en otra ficha, incluso si una de las fichas está archivada; además, el cliente autenticado ya no puede borrar directamente rollos o spools.
 
@@ -146,7 +150,7 @@ Mensajes recomendados:
 1. Agregar procedencia del HEX.
 2. [Completado] Configurar CRC como moneda base inicial del perfil.
 3. Derivar estados por gramos y porcentaje.
-4. [Parcial] El reporte de saldo ya usa una vista consistente, conserva monedas originales y exporta CSV; falta agregar conversiones históricas cuando exista moneda base.
+4. [Parcial] FIN-01A ya expone valoración histórica de filamento en CRC/USD con snapshots BCCR; falta integrar esta fuente en reporte y dashboard.
 
 ## Licencias y bienvenida de probadores
 
