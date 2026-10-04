@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Copy, CreditCard, Download, Lightbulb, Mail, RefreshCw, Send, UserPlus, Users, X } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { FOUNDER_SCOPE, welcomeText } from "@/lib/tester-welcome";
+import { FOUNDER_SCOPE, WELCOME_SUBJECT, welcomeText } from "@/lib/tester-welcome";
 import type { ProfileView } from "@/components/profile-panel";
 
 type Membership = {
@@ -302,7 +302,7 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
         </details>)}
         <small>{deliveryLabels[deliveries.find((delivery) => delivery.membership_id === member.id)?.status || "pending"]}</small>
         {!member.cancelled_at && <>
-          <a className="account-mail-link" href={`mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent("Bienvenido a Spool Vault · Probador fundador")}&body=${encodeURIComponent(welcomeText(member.display_name, member.email))}`}><Mail size={16} />Abrir bienvenida en mi correo</a>
+          <a className="account-mail-link" href={`mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent(WELCOME_SUBJECT)}&body=${encodeURIComponent(welcomeText(member.display_name, member.email))}`}><Mail size={16} />Abrir bienvenida en mi correo</a>
           {mailConfigured && <button type="button" disabled={busy || ["accepted", "review_required"].includes(deliveries.find((delivery) => delivery.membership_id === member.id)?.status || "")} onClick={() => void perform(async () => {
             const message = await sendWelcome(member.id);
             setNotice(""); setInviteResult({ id: member.id, message });
