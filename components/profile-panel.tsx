@@ -148,11 +148,22 @@ export function ProfilePanel({ initialView = "home", email, userId, mode, localD
           </div>
         </div>
 
+        <nav className="profile-menu" aria-label="Moneda de tu espacio" hidden={view !== "home"}>
+          <button type="button" disabled={blocked} onClick={() => navigate("preferences")}>
+            <WalletCards size={19} aria-hidden="true" />
+            <span>
+              <strong>Moneda y facturación</strong>
+              <small>Moneda base guardada: {profile.base_currency || "CRC"} · Cambiar preferencias</small>
+              {values.base_currency !== (profile.base_currency || "CRC") && <small>Cambio de moneda sin guardar</small>}
+            </span>
+            <ChevronRight size={18} aria-hidden="true" />
+          </button>
+        </nav>
+
         <AccountCommunity key={userId || mode} userId={userId} mode={mode} localData={localData} onBusyChange={setCommunityBusy} view={view} onNavigate={navigate} />
 
         <nav className="profile-menu profile-settings-menu" aria-label="Preferencias de tu espacio" hidden={view !== "home"}>
           <button type="button" disabled={blocked} onClick={() => navigate("printers")}><Printer size={19} /><span><strong>Mis impresoras</strong><small>Equipo, ubicación y tarifas por máquina</small></span><ChevronRight size={18} /></button>
-          <button type="button" disabled={blocked} onClick={() => navigate("preferences")}><WalletCards size={19} /><span><strong>Moneda y facturación</strong><small>Perfil y preferencias financieras</small></span><ChevronRight size={18} /></button>
           <button type="button" disabled={blocked} onClick={() => navigate("production")}><CreditCard size={19} /><span><strong>Tarifas de impresión</strong><small>Electricidad, máquina y mano de obra</small></span><ChevronRight size={18} /></button>
         </nav>
         {saved && <p className="account-notice" role="status">Cambios guardados.</p>}
@@ -166,10 +177,10 @@ export function ProfilePanel({ initialView = "home", email, userId, mode, localD
             <span><WalletCards size={19} aria-hidden="true" /></span>
             <div><p className="eyebrow">Preferencias financieras</p><h3>Moneda y facturación</h3></div>
           </div>
-          <p className="form-help">La moneda base solo cambia cómo ves tus resúmenes. Nunca reescribe precios ni tipos de cambio históricos.</p>
+          <p className="form-help" id="profile-currency-help">La moneda base es la preferencia para tus resúmenes. No convierte compras ni reescribe precios o tipos de cambio históricos. La moneda de costos se configura por separado en Tarifas de impresión.</p>
           <div className="form-grid profile-form-grid">
+            <label>Moneda base<select aria-describedby="profile-currency-help" value={values.base_currency} disabled={isSaving} onChange={(event) => setValues({ ...values, base_currency: event.target.value })}><option value="CRC">CRC · Colón costarricense</option><option value="USD">USD · Dólar estadounidense</option><option value="EUR">EUR · Euro</option></select></label>
             <label>Nombre para mostrar<input maxLength={120} value={values.display_name} disabled={isSaving} onChange={(event) => setValues({ ...values, display_name: event.target.value })} /></label>
-            <label>Moneda base<select value={values.base_currency} disabled={isSaving} onChange={(event) => setValues({ ...values, base_currency: event.target.value })}><option value="CRC">CRC · Colón costarricense</option><option value="USD">USD · Dólar estadounidense</option><option value="EUR">EUR · Euro</option></select></label>
             <label>Nombre de facturación<input maxLength={160} value={values.billing_name} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_name: event.target.value })} /></label>
             <label>Identificación fiscal<input maxLength={80} value={values.billing_tax_id} disabled={isSaving} placeholder="Cédula física o jurídica" onChange={(event) => setValues({ ...values, billing_tax_id: event.target.value })} /></label>
             <label className="wide">Correo de facturación<input type="email" maxLength={254} value={values.billing_email} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_email: event.target.value })} /></label>
