@@ -1,7 +1,7 @@
 # <ID> — <Nombre corto>
 
-**Estado:** DRAFT  
-**Tipo:** Feature | Bug | Refactor | Infra  
+**Estado:** DRAFT
+**Tipo:** Feature | Bug | Refactor | Infra
 **Ejecutor:** Sin asignar
 
 ## Problema
