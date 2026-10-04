@@ -1,6 +1,7 @@
-# Spool Vault — guía de trabajo
+# Proper — guía de trabajo
 
-Esta carpeta contiene la aplicación real de Spool Vault. Es un proyecto Next.js con Supabase y despliegue automático en Vercel.
+Esta carpeta contiene la aplicación real de Proper, la plataforma de gestión de impresión 3D.
+El repositorio, URLs, infraestructura o identificadores técnicos aún pueden conservar el nombre histórico `spool-vault`; eso no cambia la marca comercial vigente del producto.
 
 ## Antes de cambiar algo
 
@@ -59,6 +60,44 @@ Esta carpeta contiene la aplicación real de Spool Vault. Es un proyecto Next.js
 - Preferir cambios pequeños y terminados a ramas grandes con varios objetivos.
 - Usar subagentes solo para trabajos realmente independientes, como auditorías separadas de seguridad, UX móvil o costos. Paralelizar puede acelerar, pero normalmente aumenta los tokens totales.
 - Actualizar `ROADMAP.md` y `ATOMICITY_AUDIT.md` cuando una decisión material quede implementada.
+
+## Context routing
+
+Leer únicamente el contexto relevante para la tarea.
+
+- Continuidad del producto y estado actual:
+  `PROJECT_CONTEXT.md`
+
+- Alcance, trabajo planificado y estado de bloques:
+  sección relevante de `ROADMAP.md`
+
+- Transacciones, inventario, costos, historial financiero, idempotencia o concurrencia:
+  sección relevante de `ATOMICITY_AUDIT.md`
+
+- UI, UX, diseño visual o implementación de marca:
+  `docs/BRAND_STATUS.md`
+  `docs/UI_DELIVERY.md`
+
+- Supabase, esquema, migraciones o base de datos local:
+  `supabase/README.md`
+
+- Feature con una especificación aprobada:
+  leer únicamente la spec correspondiente dentro de `docs/specs/`, si existe.
+
+- Contexto histórico o estratégico profundo:
+  empezar por `docs/chatgpt/00_EMPEZAR_AQUI.md` y consultar únicamente los archivos necesarios.
+  No cargar `docs/chatgpt/` completo por defecto.
+
+
+
+## Agent skills
+
+- Las skills instaladas complementan las reglas del repositorio; `AGENTS.md`, las specs aprobadas y los contratos del producto tienen prioridad.
+- Una skill puede descubrir o recomendar otras skills, pero no debe instalar, actualizar ni eliminar skills sin aprobación explícita.
+- Preferir instalaciones a nivel de proyecto. No instalar skills globales salvo indicación explícita.
+- Las skills de diseño pueden cuestionar y mejorar la ejecución de UI/UX, pero no deben cambiar silenciosamente identidad de marca, contratos de producto ni decisiones cerradas.
+- Las skills técnicas son guías especializadas, no autoridad sobre contratos propios de Proper. Si una recomendación entra en conflicto con `AGENTS.md`, una spec aprobada, `ATOMICITY_AUDIT.md` u otro contrato explícito del repo, prevalece el contrato de Proper.
+- Cargar únicamente las skills relevantes para la tarea; más skills no implica mejor resultado y puede aumentar el contexto.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
