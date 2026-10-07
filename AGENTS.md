@@ -99,6 +99,14 @@ Leer únicamente el contexto relevante para la tarea.
 - Las skills técnicas son guías especializadas, no autoridad sobre contratos propios de Proper. Si una recomendación entra en conflicto con `AGENTS.md`, una spec aprobada, `ATOMICITY_AUDIT.md` u otro contrato explícito del repo, prevalece el contrato de Proper.
 - Cargar únicamente las skills relevantes para la tarea; más skills no implica mejor resultado y puede aumentar el contexto.
 
+- Para `ui-ux-pro-max` en OpenCode, ejecutar su buscador desde
+  `.agents/skills/ui-ux-pro-max/scripts/search.py`.
+  No depender de `${CLAUDE_PLUGIN_ROOT}`, que corresponde a instalaciones tipo Claude Plugin.
+
+- Los resultados de búsqueda de `ui-ux-pro-max`, incluidos los específicos de stack,
+  son recomendaciones. No deben provocar migraciones arquitectónicas, cambios de contratos
+  o refactors transversales fuera del alcance de la tarea sin una decisión/spec explícita.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
