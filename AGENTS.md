@@ -61,6 +61,16 @@ El repositorio, URLs, infraestructura o identificadores técnicos aún pueden co
 - Usar subagentes solo para trabajos realmente independientes, como auditorías separadas de seguridad, UX móvil o costos. Paralelizar puede acelerar, pero normalmente aumenta los tokens totales.
 - Actualizar `ROADMAP.md` y `ATOMICITY_AUDIT.md` cuando una decisión material quede implementada.
 
+### Protocolo de ejecución acotada
+
+- Al revisar Git, confirmar rama, `git status` y HEAD; aplicar el contexto enrutado en `Context routing`. No hacer una auditoría general del repositorio salvo que la tarea lo pida.
+- Localizar primero los símbolos, rutas y componentes implicados; empezar la implementación cuando haya contexto suficiente.
+- Si tras la inspección inicial no se puede explicar qué archivos cambiar y cuál es la solución probable, detener la exploración y reportar la incertidumbre y la información que falta.
+- Pedir permiso antes de ampliar el alcance a módulos, contratos o migraciones no incluidos en la tarea.
+- Ejecutar primero las verificaciones dirigidas al cambio; ejecutar el build completo una sola vez al final cuando corresponda, conforme a `Verificación y publicación`.
+- Para cerrar los bloques pequeños indicados arriba, priorizar un cambio verificable; si no puede cerrarse, dejar un handoff breve con lo comprobado, lo modificado, lo pendiente, el bloqueo exacto y la siguiente acción. No continuar con investigación general que no acerque el cierre.
+- No narrar cada búsqueda o comando; comunicar solo descubrimientos que cambien la implementación, el alcance, el riesgo o una decisión.
+
 ## Context routing
 
 Leer únicamente el contexto relevante para la tarea.
