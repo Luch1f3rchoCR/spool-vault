@@ -1,6 +1,7 @@
 # INV-03 · Insumos + Inventario + Compras
 
 Estado: discovery documental cerrado con límites de validación explícitos; no spec READY ni autorización de implementación.
+Actualización de decisiones: 19 de octubre de 2026, a partir de las respuestas del fundador. La evidencia AS-IS se conserva; las decisiones siguientes describen el producto deseado, no funciones ya publicadas.
 Base inicial y capturas: `147f82f4c3d337d94d1febf2f56b709ff321448a`, 7 de octubre de 2026.
 Cierre: 18 de octubre de 2026, sobre `main` actualizado `1cdd73d631837f85c5bedaac574751f177723b5f`. Entre ambas bases solo cambió `AGENTS.md`; no cambió el código de los flujos analizados.
 Rama de cierre: `docs/inv03-discovery-close`. Se conserva el informe y la baseline que estaban sin seguimiento; no se modifican otros bloques.
@@ -108,8 +109,8 @@ La tabla de catálogo permite representar una ficha sin movimientos, pero **el f
 
 1. Acceso coherente a alta de filamento e insumo desde Inventario, conservando las funciones de spools y navegación aprobada.
 2. Orden de una sola línea de insumo, de varios insumos, solo filamentos o mixta; sin exigir un filamento para comprar insumos.
-3. Crear o vincular el insumo correspondiente dentro de un flujo de compra que no deje fichas/movimientos parciales. No aumentar stock al agrupar una compra que ya lo ingresó.
-4. Mantener nombre/categoría/unidad de control y cantidades genéricas; diferenciar cantidad comprada, unidad y precio unitario para no confundir paquete con pieza.
+3. Separar la creación de la ficha mediante un botón, como los spools, de la alimentación de existencias individual o por compra. Resolver en la spec si esa creación también puede abrirse dentro de Compras. No aumentar stock al agrupar una compra que ya lo ingresó.
+4. La ficha incluye nombre, categoría, etiquetas, unidad de medida seleccionable y descripción. Diferenciar cantidad comprada, unidad y precio unitario para no confundir paquete con pieza.
 5. Enlazar cada partida con su destino y movimiento/historial, conservando proveedor, fecha, moneda, cargos y costo recibido. Definir el contrato antes de crear tipos o tablas.
 6. Confirmación atómica, reintentos seguros, aislamiento por usuario, concurrencia y rechazo íntegro si cualquier partida falla.
 7. Política aprobada de prorrateo y corrección; historial inmutable y costos de producción anteriores congelados.
@@ -119,13 +120,28 @@ La tabla de catálogo permite representar una ficha sin movimientos, pero **el f
 
 Market/API de proveedores, checkout externo, impuestos automáticos, múltiples almacenes, serialización/lotes complejos, conversión automática de unidades, integración AMS, inventario de productos impresos terminados, reposición automática, BOM nueva, migración a workspaces y rediseño global. La receta actual solo necesita conservar su vínculo con insumos; no se rediseña producción.
 
-### Decisiones que sí necesita tomar el fundador
+### Decisiones confirmadas por el fundador · 19 de octubre de 2026
 
-1. **Alta directa:** ¿ofrecer stock inicial, compra y solo ficha con stock 0? Solo la entrada positiva está disponible hoy; las tres opciones siguen siendo propuesta.
-2. **Unidades:** ¿mantener texto libre o lista guiada con “otra”? ¿Las piezas admiten fracciones o solo cantidades enteras? No introducir conversiones implícitas.
-3. **Cargos de orden mixta:** ¿reparto inicial por valor, por línea o manual? Recomendación para evaluar: por valor con vista previa y alternativa manual; no equiparar 50 imanes a 50 rollos.
-4. **Moneda distinta:** ¿restringir inicialmente la compra a la moneda del insumo o permitir conversión explícita congelada? Coordinar con FIN-01A antes de fijar un contrato.
-5. **Corrección posterior:** ¿qué debe poder corregirse en esta primera versión cuando ya hubo consumo? Hace falta definir devolución/cantidad/costo y el efecto sobre saldo restante sin reescribir producción histórica.
+1. **Ficha y existencias son acciones distintas.** Crear el insumo con un botón, siguiendo el patrón de creación de spools. Campos solicitados: nombre, categoría, etiquetas, unidad de medida y un área de descripción. Las existencias pueden alimentarse de forma individual/directa o mediante Compras, siguiendo la experiencia de filamentos. No interpretar “individual” como una única pieza. No se aprobó todavía una obligación de registrar compra al crear la ficha.
+2. **Unidad elegida al crear.** Usar un select de tipos de unidad, no solamente texto libre. El fundador no confirmó aún reglas de fracciones: la diferencia propuesta es contar piezas (p. ej., 20 imanes) o medir material (p. ej., 1,5 metros de cable).
+3. **Envío repartido porcentualmente e incluido en el costo.** Debe distribuirse entre los productos de la compra. Se aprobó el criterio porcentual, pero no la base exacta ni la edición manual de porcentajes. No convertir la recomendación “por valor” en decisión cerrada.
+4. **Compras multimoneda, sin restringirlas a la moneda de la ficha.** Los insumos deben participar coherentemente en valoración/presupuesto del inventario, cotizaciones y total de inversión del taller, con el mismo criterio de producto solicitado para filamentos y resinas. Esto expresa dirección funcional: no confirma que todos esos módulos, ni el soporte de resinas, estén implementados. Conservar moneda/monto original y una conversión explícita trazable; no sumar monedas distintas ni recalcular silenciosamente históricos. La integración depende del contrato financiero, incluido FIN-01A.
+5. **Compras, variación de precios y correcciones visibles.** Se necesita consultar el historial de compras, cómo varían los precios y corregir compras anteriores con trazabilidad. El mismo requisito debe comprobarse para filamentos; no se da por terminada toda la experiencia solo porque existan registros históricos. No borrar originales ni modificar silenciosamente costos de producción ya confirmados.
+
+### Reglas propuestas que aún requieren cierre
+
+- **Creación y entrada directa:** propuesta de ficha inicial con stock 0 y acción posterior para ingresar existencias. Confirmar si habrá acceso a “Crear insumo” dentro de Compras y cómo registrar costo conocido/desconocido de existencias previas sin inventar una factura. Etiquetas y descripción son nuevos requisitos; formato y obligatoriedad se definirán en la spec, no con contratos temporales.
+- **Unidades y precisión:** propuesta de unidades, metros, gramos, kilogramos, mililitros y litros, más “otra”. Piezas enteras y materiales medibles con decimales es una recomendación, no aprobación recibida. No cambiar unidad de una ficha con historial ni introducir conversiones automáticas sin una regla explícita.
+- **Porcentajes de envío:** propuesta de calcular `importe de la línea / subtotal de productos × 100`. Ejemplo ilustrativo en una misma moneda: filamento de ₡20.000 e imanes de ₡5.000 representan 80% y 20%; con envío de ₡3.000 se asignan ₡2.400 y ₡600. El porcentaje usa el importe total de la línea, no la cantidad de objetos. Definir si el usuario podrá ajustar porcentajes; si se permite, deben sumar 100% y el redondeo monetario debe conservar exactamente el envío original. Una orden con subtotal cero necesita alternativa explícita, no división por cero ni porcentajes inventados.
+- **Valoración e inversión:** distinguir valor de existencias actuales, compras/inversión acumulada y costos consumidos. No sumarlos entre sí como si fueran montos independientes. Cotizar no consume stock ni debe volver a cargar un envío ya incluido en el costo. La moneda de presentación y los snapshots aplicables se cierran con el bloque financiero; no se amplían reportes/cotizaciones en este discovery.
+- **Correcciones con consumo previo:** falta concretar qué correcciones de precio/cantidad estarán disponibles y cómo afectan el valor restante cuando ya se consumió una parte. Recomendación: revisión trazable con motivo y registro original conservado, sin stock negativo ni reescritura de corridas. Devoluciones comerciales completas no se consideran aprobadas por esta respuesta.
+
+### Secuencia propuesta, no autorización de implementación
+
+1. Definir la ficha y las acciones de entrada directa/compra, conservando la UI aprobada.
+2. Cerrar contratos de órdenes solo de insumos y mixtas, porcentajes, moneda e idempotencia; coordinar archivos compartidos antes de editar.
+3. Resolver la experiencia de historial/precios/correcciones y sus efectos contables; verificar paridad con filamentos.
+4. Integrar los resultados con valoración del taller y cotizaciones en bloques explícitos, sin presentar esos módulos como ya completados.
 
 Ya está confirmado y no requiere volver a preguntarse: “otras piezas” son compradas, no impresas terminadas; los insumos pueden comprarse sin filamentos; pueden aumentar una misma ficha, no crear una por imán.
 
@@ -164,4 +180,4 @@ Capturas existentes del 7 de octubre, sin sesión y con datos demo; no represent
 
 ## Siguiente paso acotado
 
-Revisar las cinco decisiones abiertas y el solapamiento FIN-01A; después convertir el alcance aprobado en una spec de implementación. El discovery queda respaldado sin PR, merge ni deploy, conforme al encargo original. No empezar la integración mixta con contratos temporales.
+Validar las reglas aún propuestas (especialmente base de porcentajes y correcciones con consumo), resolver el solapamiento FIN-01A y convertir la dirección confirmada en una spec de implementación. El discovery queda respaldado sin PR, merge ni deploy manual, conforme al encargo original. No empezar la integración mixta con contratos temporales.
