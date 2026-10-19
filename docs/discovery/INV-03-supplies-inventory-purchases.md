@@ -1,0 +1,167 @@
+# INV-03 · Insumos + Inventario + Compras
+
+Estado: discovery documental cerrado con límites de validación explícitos; no spec READY ni autorización de implementación.
+Base inicial y capturas: `147f82f4c3d337d94d1febf2f56b709ff321448a`, 7 de octubre de 2026.
+Cierre: 18 de octubre de 2026, sobre `main` actualizado `1cdd73d631837f85c5bedaac574751f177723b5f`. Entre ambas bases solo cambió `AGENTS.md`; no cambió el código de los flujos analizados.
+Rama de cierre: `docs/inv03-discovery-close`. Se conserva el informe y la baseline que estaban sin seguimiento; no se modifican otros bloques.
+
+## Aclaración del fundador
+
+Los insumos también deben poder ingresar individualmente en Compras, igual que los filamentos. La futura propuesta debe cubrir una orden de una sola línea de insumo, solo insumos y mezcla con filamentos; no obligar a acompañarlos con un filamento. “Individual” no limita la cantidad a una unidad ni implica una ficha por cada imán.
+
+No se implementa producto, UI, schema, marca ni arquitectura en este bloque. No PR, merge ni deploy. Solo informe y baseline si es accesible. Archivos reservados y ramas activas no se modifican.
+
+## Confirmado hasta ahora (código de la base indicada)
+
+- `components/supplies-modal.tsx`: lista, búsqueda, Nuevo insumo, Entrada / ajuste e Historial. Usa ModalFrame. No ofrece edición de nombre/categoría/unidad de una ficha existente.
+- `lib/supplies.ts` y migración `20260928030951_supply_stock_projects.sql`: catálogo genérico `supplies`, movimientos `supply_movements` y vista `supply_stock`; no una tabla distinta por tipo de objeto.
+- Las entradas de Insumos requieren sesión, cantidad positiva y motivo. “Entrada / compra” no equivale a crear una orden en Compras.
+- `PurchaseOrderItem` exige `purchase_history_id` y campos específicos de filamentos. No tiene `supply_id` ni discriminador genérico de tipo.
+- `create_purchase_order_v3` admite `purchase_ids` y `new_rolls`, llama a operaciones de rollo y orden dentro de una transacción. Una línea nueva representa un rollo físico. No existe destino de insumos en este contrato.
+- Crear/vincular un insumo desde una orden y alimentar su stock requiere una futura decisión/contrato; no basta agregar otra opción visual.
+
+## Conclusión ejecutiva
+
+El catálogo de insumos genéricos y su stock ya existen. El hueco principal es la conexión con Compras, no la falta de una entidad por cada objeto. Hoy una orden solo contiene compras de filamentos; una entrada de insumo es un movimiento independiente, sin vínculo estructurado a una orden, partida o pago.
+
+La futura INV-03 necesita un contrato de compra que soporte destinos distintos, conservando las mecánicas especializadas: rollos físicos para filamento y cantidades acumuladas para insumos. No se propone aquí una tabla, discriminador o RPC definitivo.
+
+## AS-IS: recorrido y evidencia
+
+| Acción | Comportamiento actual confirmado | Fuente |
+| --- | --- | --- |
+| Abrir Insumos | Acceso independiente en navegación; abre `SuppliesModal`. Sin sesión, lista vacía, aviso y alta deshabilitada. | `app/page.tsx`, baseline |
+| Inventario → Agregar | Nuevo filamento, crear spool, asignar spool y administrar spools; no incluye Nuevo insumo. | `components/add-actions-modal.tsx` |
+| Crear insumo | Nombre, categoría, unidad libre, moneda, cantidad positiva, costo unitario y motivo. Crea ficha y entrada conjuntamente. | `components/supplies-modal.tsx`, `record_supply_movement` |
+| Editar ficha | No hay edición de nombre, categoría o unidad en el modal. “Entrada / ajuste” modifica existencias, no la ficha. | `components/supplies-modal.tsx` |
+| Entrada / ajuste | Entrada positiva; ajuste con cantidad positiva o negativa y motivo. Un retiro toma el costo promedio vigente; se rechaza saldo negativo. | Modal y trigger `validate_supply_movement` |
+| Historial | Muestra movimientos del insumo, cantidad, tipo, motivo, fecha y costo por unidad. No muestra una orden asociada. | `components/supplies-modal.tsx` |
+| Compra solo filamentos | Nueva orden permite crear rollos o agrupar compras existentes compatibles por proveedor/moneda. Confirmar guarda la operación completa. | `components/purchase-orders-modal.tsx`, `create_purchase_order_v3` |
+| Compra solo insumos / mixta | No disponible en el formulario ni en el contrato de la orden. Tampoco hay compra de una sola línea de insumo. | `PurchaseOrderValues`, `PurchaseOrderItem`, RPC v3 |
+| Proyecto con insumos | Selector de insumo existente o extra manual. Guardar receta no descuenta; registrar producción descuenta los insumos vinculados y congela costos. | `components/projects-modal.tsx`, migración de insumos |
+
+### Trazabilidad de cada ruta actual
+
+- **Filamento nuevo:** borrador de orden → `new_rolls` → `create_purchase_order_v3` → `create_roll_with_purchase` crea rollo e historial → `create_purchase_order_v2` agrupa partidas y pago opcional → resultado confirmado actualiza la UI. Una línea equivale a un rollo físico; no crea/asigna un spool físico.
+- **Compra de filamento existente:** `purchase_ids` → orden/partida → compra histórica ya existente y su rollo. Agruparla no vuelve a ingresar gramos ni crea otro rollo.
+- **Insumo:** `SupplyValues` → `record_supply_movement` → ficha nueva o `supply_id` existente → movimiento → `supply_stock` deriva cantidad/costo. No pasa por `purchase_orders`, `purchase_order_items` ni `purchase_history`.
+- **Producción:** componente con `supply_id` → trigger de consumo → movimiento negativo y costo congelado en corrida; participa en la misma transacción del cierre de producción. Extras manuales sin `supply_id` no descuentan stock.
+
+## Modelo y contratos actuales
+
+| Área | Existe | Límite relevante para INV-03 |
+| --- | --- | --- |
+| Catálogo | `supplies`: nombre, categoría, unidad, moneda y propietario | Sin stock mínimo, archivo ni edición expuestos en este flujo. Sin proveedor estructurado en la ficha. |
+| Clasificación | Imanes, Pines, Tornillos, Electrónica, Pintura, Empaque, Otros | Correas, rodamientos, cables, adhesivos, etc. pueden ser nombres de insumos; no exigen tablas distintas. |
+| Unidad | Texto libre de 1–30 caracteres; valor inicial “unidad” | Acepta metro, gramo, kilogramo, ml o litro como texto, pero no normaliza equivalencias ni convierte unidades. |
+| Cantidad | `numeric(16,3)`, movimiento distinto de cero; UI con paso 0.001 | Admite fracciones incluso para “unidad”. No hay regla por tipo de unidad. |
+| Saldo | `supply_stock`, suma de movimientos; costo medio = valor restante / cantidad | No es un campo de saldo editable. El costo mostrado es 0 cuando no hay existencias. |
+| Movimientos | `receipt`, `adjustment`, `production`; costo, motivo, solicitud y corrida opcional | Sin `order_id`, partida o historial de compra de insumos. Motivo/proveedor/referencia es texto libre. |
+| Orden y partida | `purchase_orders` y `purchase_order_items` | Partida exige `purchase_history_id` único y atributos de filamento; no tiene destino de insumo. |
+| Pago | Pago separado y congelado con moneda/tipo de cambio | No convertir silenciosamente el costo de un insumo cuya ficha tiene otra moneda. |
+| Idempotencia | Solicitudes por usuario, payload comparado y locks transaccionales | La futura orden mixta debe abarcar todos los destinos con una única confirmación. |
+
+La tabla de catálogo permite representar una ficha sin movimientos, pero **el formulario y RPC actuales no ofrecen crear solo ficha con saldo 0**: requieren una entrada positiva. No confundir posibilidad estructural con función disponible.
+
+### Costos, cargos e historial
+
+- Orden actual: subtotal de productos + envío + otros cargos. No hay un cálculo fiscal separado de impuestos en el formulario inspeccionado; no presentar “otros cargos” como motor tributario.
+- Repartos actuales: `per_unit` divide entre partidas/rollos; `by_value` según valor; `manual` por partida. El redondeo residual se ajusta en la última partida y la suma asignada debe coincidir con los cargos de cabecera.
+- `landed_total` incluye producto y cargos; `filament_landed_cost` excluye el costo del spool del consumible. El spool no se suma dos veces.
+- Insumos: entradas recalculan promedio ponderado; salidas usan el promedio vigente. Producción congela su costo y no lo recalcula al reponer stock.
+- No existe vínculo que añada automáticamente el envío de una orden al costo de un insumo. Introducir un costo manual en “Entrada / compra” no prueba que ese movimiento tenga factura u orden.
+- Las correcciones de compras de filamentos existentes son trazables según el contrato del repositorio. Eso **no** resuelve por sí solo una futura corrección de compra de insumos ya consumidos. No reutilizarla a ciegas.
+
+## Riesgos y garantías: evidencia vs inferencia
+
+**Confirmado por código, no por una ejecución nueva contra producción:**
+
+- Ficha nueva + entrada de insumo se ejecutan en un RPC; un rechazo revierte ambas. Orden de filamentos nuevos + historial + partidas + pago se compone dentro de una transacción.
+- Una orden mixta no existe hoy. No se encontró un flujo actual que guarde primero esa orden y luego sus insumos: falta el flujo completo, no es un fallo parcial observado.
+- Insumos y movimientos tienen RLS por propietario, relación compuesta de dueño, permisos de lectura/inserción para autenticados y vista `security_invoker`. No hay permiso de edición/borrado para esos clientes en la migración inspeccionada.
+- El trigger serializa movimientos por insumo y comprueba saldo incluso en inserciones directas. Producción bloquea insumos en orden estable. Las solicitudes repetidas recuperan el resultado; payload diferente se rechaza.
+- El modal guarda la solicitud pendiente en `sessionStorage`, bloquea edición/cierre durante incertidumbre y ofrece reintentar. `saveSupply` solo actualiza el estado tras confirmación.
+
+**Inferencias para la futura spec, no decisiones aprobadas:**
+
+- Encadenar desde el navegador “crear orden” y “registrar insumo” en llamadas independientes introduciría riesgo de éxito parcial. La operación mixta debe definirse y verificarse del lado transaccional.
+- “Por unidad” es ambiguo con dos rollos y 50 imanes: hoy significa por partida de rollo, no por cada objeto. No extender esa regla sin nombrarla y aprobarla.
+- Mezclar moneda de compra y moneda fija del insumo requiere una política explícita; no sumar ni promediar monedas distintas.
+- Una corrección de costo tras consumir stock necesita definir el efecto sobre saldo remanente y ajustes, manteniendo inmutables las corridas anteriores.
+
+**Límite local/demo:** Compras tiene una rama local que crea rollos/orden en el estado del dispositivo. No ofrece garantías transaccionales de Postgres. Insumos exige sesión; los extras manuales de proyectos siguen disponibles sin control de stock. INV-03 no debe simular sincronización ni borrar esta distinción.
+
+## UX: problemas de flujo confirmados, sin rediseño
+
+- “Tu inventario” muestra filamentos, mientras Insumos está separado; Agregar no permite dar de alta un insumo. La integración propuesta debe resolver acceso y orientación, no rehacer la sidebar.
+- “Entrada / compra” puede parecer una compra formal aunque solo registre stock. La futura UX debe distinguir entrada inicial, compra y ajuste.
+- Alta obliga a entrada positiva: no cubre ficha vacía para preparar una receta o futura compra.
+- Compras usa textos y campos exclusivos de rollos (“Filamento nuevo”, color, gramos, costo de spool); no basta cambiarles el título para soportar insumos.
+- La búsqueda de insumos filtra nombre/categoría, pero el vacío depende del total del catálogo: con existencias y cero coincidencias no se muestra un mensaje específico de búsqueda sin resultados.
+- Conservar `ModalFrame`: título enfocado al cambiar de vista, Tab contenido, devolución de foco y cierre bloqueado durante operaciones. No sustituirlo por formularios sueltos.
+- En 320 px, la captura de Nueva orden muestra una secuencia vertical larga con scroll interior. En 390 px, Insumos sin sesión combina explicación, bloqueo y vacío de alta. Son baseline observable, no prueba de un bug de overflow ni de la usabilidad del alta autenticada.
+- Reutilizar el patrón de acciones de Agregar y el detalle de líneas en Compras sin mezclar filamento, insumo y spool como si fueran lo mismo.
+
+## Propuesta de alcance para la futura spec (no implementación aprobada)
+
+### MUST
+
+1. Acceso coherente a alta de filamento e insumo desde Inventario, conservando las funciones de spools y navegación aprobada.
+2. Orden de una sola línea de insumo, de varios insumos, solo filamentos o mixta; sin exigir un filamento para comprar insumos.
+3. Crear o vincular el insumo correspondiente dentro de un flujo de compra que no deje fichas/movimientos parciales. No aumentar stock al agrupar una compra que ya lo ingresó.
+4. Mantener nombre/categoría/unidad de control y cantidades genéricas; diferenciar cantidad comprada, unidad y precio unitario para no confundir paquete con pieza.
+5. Enlazar cada partida con su destino y movimiento/historial, conservando proveedor, fecha, moneda, cargos y costo recibido. Definir el contrato antes de crear tipos o tablas.
+6. Confirmación atómica, reintentos seguros, aislamiento por usuario, concurrencia y rechazo íntegro si cualquier partida falla.
+7. Política aprobada de prorrateo y corrección; historial inmutable y costos de producción anteriores congelados.
+8. Mensajes y estados claros en móvil, sesión real y demo; cantidades/costos visibles antes de confirmar.
+
+### OUT OF SCOPE propuesto
+
+Market/API de proveedores, checkout externo, impuestos automáticos, múltiples almacenes, serialización/lotes complejos, conversión automática de unidades, integración AMS, inventario de productos impresos terminados, reposición automática, BOM nueva, migración a workspaces y rediseño global. La receta actual solo necesita conservar su vínculo con insumos; no se rediseña producción.
+
+### Decisiones que sí necesita tomar el fundador
+
+1. **Alta directa:** ¿ofrecer stock inicial, compra y solo ficha con stock 0? Solo la entrada positiva está disponible hoy; las tres opciones siguen siendo propuesta.
+2. **Unidades:** ¿mantener texto libre o lista guiada con “otra”? ¿Las piezas admiten fracciones o solo cantidades enteras? No introducir conversiones implícitas.
+3. **Cargos de orden mixta:** ¿reparto inicial por valor, por línea o manual? Recomendación para evaluar: por valor con vista previa y alternativa manual; no equiparar 50 imanes a 50 rollos.
+4. **Moneda distinta:** ¿restringir inicialmente la compra a la moneda del insumo o permitir conversión explícita congelada? Coordinar con FIN-01A antes de fijar un contrato.
+5. **Corrección posterior:** ¿qué debe poder corregirse en esta primera versión cuando ya hubo consumo? Hace falta definir devolución/cantidad/costo y el efecto sobre saldo restante sin reescribir producción histórica.
+
+Ya está confirmado y no requiere volver a preguntarse: “otras piezas” son compradas, no impresas terminadas; los insumos pueden comprarse sin filamentos; pueden aumentar una misma ficha, no crear una por imán.
+
+## Archivos probables de implementación futura y solapamientos
+
+- UI: `components/add-actions-modal.tsx`, `components/supplies-modal.tsx`, `components/purchase-orders-modal.tsx` y coordinación en `app/page.tsx`. `components/projects-modal.tsx` solo si el contrato aprobado afecta su selector; no asumir refactor.
+- Contratos/helpers: `lib/supplies.ts`, `lib/types.ts` y construcción local de orden en `app/page.tsx`.
+- Datos: migración **nueva y aditiva**, sin modificar `20260829183000_purchase_orders.sql`, `20260910135214_purchase_order_new_filaments.sql` ni `20260928030951_supply_stock_projects.sql`. Su nombre y diseño no se deciden en discovery.
+- Pruebas existentes para ampliar según riesgo: `tests/supplies.test.cjs`, `tests/supply-concurrency.cjs`, `tests/order-new-filaments.browser.cjs`, `tests/add-purchase-navigation.browser.cjs`; pruebas SQL dirigidas de órdenes mixtas cuando exista contrato.
+- Documentación después de aprobación/implementación: spec correspondiente, secciones relevantes de ROADMAP/ATOMICITY y punto de continuidad. No se modifican aquí.
+
+PR #33 sigue activo y modifica `lib/types.ts`, documentación financiera y ejecutor SQL compartido. La futura integración necesita coordinar esos archivos. PR #38 sigue activo en Perfil; no se modifica. Tampoco se toca la integración estacionada de perfiles de impresión ni la infraestructura de agentes. Este cierre solo escribe este informe y conserva sus imágenes.
+
+## Baseline visual conservada
+
+Capturas existentes del 7 de octubre, sin sesión y con datos demo; no representan una prueba nueva ni el estado autenticado de producción. Resoluciones registradas: 1440, 390 y 320 px. Carpeta: `assets/inv-03-2026-10-07/`.
+
+| Vista | 1440 px | 390 px | 320 px |
+| --- | --- | --- | --- |
+| Inventario | [Ver](assets/inv-03-2026-10-07/inventario-1440.jpg) | [Ver](assets/inv-03-2026-10-07/inventario-390.jpg) | [Ver](assets/inv-03-2026-10-07/inventario-320.jpg) |
+| Agregar | [Ver](assets/inv-03-2026-10-07/inventario-agregar-1440.jpg) | [Ver](assets/inv-03-2026-10-07/inventario-agregar-390.jpg) | [Ver](assets/inv-03-2026-10-07/inventario-agregar-320.jpg) |
+| Insumos sin sesión | [Ver](assets/inv-03-2026-10-07/insumos-sin-sesion-1440.jpg) | [Ver](assets/inv-03-2026-10-07/insumos-sin-sesion-390.jpg) | [Ver](assets/inv-03-2026-10-07/insumos-sin-sesion-320.jpg) |
+| Nuevo filamento | [Ver](assets/inv-03-2026-10-07/nuevo-filamento-1440.jpg) | [Ver](assets/inv-03-2026-10-07/nuevo-filamento-390.jpg) | [Ver](assets/inv-03-2026-10-07/nuevo-filamento-320.jpg) |
+| Compras | [Ver](assets/inv-03-2026-10-07/compras-1440.jpg) | [Ver](assets/inv-03-2026-10-07/compras-390.jpg) | [Ver](assets/inv-03-2026-10-07/compras-320.jpg) |
+| Nueva orden | [Ver](assets/inv-03-2026-10-07/nueva-orden-1440.jpg) | [Ver](assets/inv-03-2026-10-07/nueva-orden-390.jpg) | [Ver](assets/inv-03-2026-10-07/nueva-orden-320.jpg) |
+| Orden: filamento nuevo | [Ver](assets/inv-03-2026-10-07/orden-filamento-nuevo-1440.jpg) | [Ver](assets/inv-03-2026-10-07/orden-filamento-nuevo-390.jpg) | [Ver](assets/inv-03-2026-10-07/orden-filamento-nuevo-320.jpg) |
+
+## Verificación y límites del cierre
+
+- Lectura dirigida de componentes, tipos, handlers y migraciones citados; contraste con la sección de insumos y órdenes de `ATOMICITY_AUDIT.md`. Sin auditoría global.
+- Revisión visual de muestras conservadas: Inventario 1440, Nueva orden 320 e Insumos sin sesión 390. Sin recapturar ni repetir el recorrido anterior.
+- Se comprueba existencia de las 21 imágenes enlazadas y whitespace del diff antes del commit.
+- No se ejecuta build, nueva suite browser ni SQL: solo se documenta. Las pruebas SQL históricas descritas en ATOMICITY no se presentan como ejecutadas nuevamente.
+- **Sin validación autenticada nueva:** alta, ajuste, historial y producción se describen por código. No se accedió a datos privados, enviaron correos ni hicieron escrituras en Supabase.
+- Estado de migraciones y publicación de insumos en producción: no confirmado en este bloque; el punto de continuidad conserva esa deuda. No declarar listo para beta por existencia del código.
+
+## Siguiente paso acotado
+
+Revisar las cinco decisiones abiertas y el solapamiento FIN-01A; después convertir el alcance aprobado en una spec de implementación. El discovery queda respaldado sin PR, merge ni deploy, conforme al encargo original. No empezar la integración mixta con contratos temporales.
