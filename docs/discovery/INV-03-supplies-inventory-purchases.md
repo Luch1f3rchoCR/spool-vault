@@ -114,7 +114,7 @@ La tabla de catálogo permite representar una ficha sin movimientos, pero **el f
 5. Enlazar cada partida con su destino y movimiento/historial, conservando proveedor, fecha, moneda, cargos y costo recibido. Definir el contrato antes de crear tipos o tablas.
 6. Confirmación atómica, reintentos seguros, aislamiento por usuario, concurrencia y rechazo íntegro si cualquier partida falla.
 7. Política aprobada de prorrateo y corrección; historial inmutable y costos de producción anteriores congelados.
-8. Mensajes y estados claros en móvil, sesión real y demo; cantidades/costos visibles antes de confirmar.
+8. Mensajes y estados claros en móvil, sesión real y demo; cantidades/costos visibles antes de confirmar. Alinear las vistas de Insumos con los patrones visuales existentes de Compras, conforme al alcance visual aprobado abajo.
 
 ### OUT OF SCOPE propuesto
 
@@ -124,7 +124,7 @@ Market/API de proveedores, checkout externo, impuestos automáticos, múltiples 
 
 1. **Ficha y existencias son acciones distintas.** Crear el insumo con un botón, siguiendo el patrón de creación de spools. Campos solicitados: nombre, categoría, etiquetas, unidad de medida y un área de descripción. Las existencias pueden alimentarse de forma individual/directa o mediante Compras, siguiendo la experiencia de filamentos. No interpretar “individual” como una única pieza. No se aprobó todavía una obligación de registrar compra al crear la ficha.
 2. **Unidad elegida al crear.** Usar un select de tipos de unidad, no solamente texto libre. El fundador no confirmó aún reglas de fracciones: la diferencia propuesta es contar piezas (p. ej., 20 imanes) o medir material (p. ej., 1,5 metros de cable).
-3. **Envío repartido porcentualmente e incluido en el costo.** Debe distribuirse entre los productos de la compra. Se aprobó el criterio porcentual, pero no la base exacta ni la edición manual de porcentajes. No convertir la recomendación “por valor” en decisión cerrada.
+3. **Tres métodos de distribución del envío aprobados.** Por valor preseleccionado; partes iguales por línea; porcentaje personalizado que sume 100%. Una línea con 50 imanes cuenta como una línea en el reparto igualitario. Mostrar importe asignado y costo final antes de confirmar; conservar método e importes con la compra. No incluir reparto por peso en este bloque. El contrato actual de reparto manual por importes no se debe confundir con el nuevo ingreso por porcentajes ni cambiar retrospectivamente.
 4. **Compras multimoneda, sin restringirlas a la moneda de la ficha.** Los insumos deben participar coherentemente en valoración/presupuesto del inventario, cotizaciones y total de inversión del taller, con el mismo criterio de producto solicitado para filamentos y resinas. Esto expresa dirección funcional: no confirma que todos esos módulos, ni el soporte de resinas, estén implementados. Conservar moneda/monto original y una conversión explícita trazable; no sumar monedas distintas ni recalcular silenciosamente históricos. La integración depende del contrato financiero, incluido FIN-01A.
 5. **Compras, variación de precios y correcciones visibles.** Se necesita consultar el historial de compras, cómo varían los precios y corregir compras anteriores con trazabilidad. El mismo requisito debe comprobarse para filamentos; no se da por terminada toda la experiencia solo porque existan registros históricos. No borrar originales ni modificar silenciosamente costos de producción ya confirmados.
 
@@ -132,9 +132,21 @@ Market/API de proveedores, checkout externo, impuestos automáticos, múltiples 
 
 - **Creación y entrada directa:** propuesta de ficha inicial con stock 0 y acción posterior para ingresar existencias. Confirmar si habrá acceso a “Crear insumo” dentro de Compras y cómo registrar costo conocido/desconocido de existencias previas sin inventar una factura. Etiquetas y descripción son nuevos requisitos; formato y obligatoriedad se definirán en la spec, no con contratos temporales.
 - **Unidades y precisión:** propuesta de unidades, metros, gramos, kilogramos, mililitros y litros, más “otra”. Piezas enteras y materiales medibles con decimales es una recomendación, no aprobación recibida. No cambiar unidad de una ficha con historial ni introducir conversiones automáticas sin una regla explícita.
-- **Porcentajes de envío:** propuesta de calcular `importe de la línea / subtotal de productos × 100`. Ejemplo ilustrativo en una misma moneda: filamento de ₡20.000 e imanes de ₡5.000 representan 80% y 20%; con envío de ₡3.000 se asignan ₡2.400 y ₡600. El porcentaje usa el importe total de la línea, no la cantidad de objetos. Definir si el usuario podrá ajustar porcentajes; si se permite, deben sumar 100% y el redondeo monetario debe conservar exactamente el envío original. Una orden con subtotal cero necesita alternativa explícita, no división por cero ni porcentajes inventados.
+- **Detalles técnicos del reparto aprobado:** por valor calcula `importe de la línea / subtotal de productos × 100`, sobre el total de la línea, no la cantidad de objetos. Ejemplo: filamento de ₡20.000 e imanes de ₡5.000 representan 80% y 20%; con envío de ₡3.000 se asignan ₡2.400 y ₡600. La spec debe definir precisión de porcentajes y redondeo conservando exactamente el envío original. Si el subtotal es cero y hay envío, propuesta: pedir elegir partes iguales o porcentajes personalizados; nunca dividir por cero ni cambiar el método silenciosamente. También queda por precisar si otros cargos comparten el mismo reparto; no inferirlo de la aprobación específica del envío.
 - **Valoración e inversión:** distinguir valor de existencias actuales, compras/inversión acumulada y costos consumidos. No sumarlos entre sí como si fueran montos independientes. Cotizar no consume stock ni debe volver a cargar un envío ya incluido en el costo. La moneda de presentación y los snapshots aplicables se cierran con el bloque financiero; no se amplían reportes/cotizaciones en este discovery.
 - **Correcciones con consumo previo:** falta concretar qué correcciones de precio/cantidad estarán disponibles y cómo afectan el valor restante cuando ya se consumió una parte. Recomendación: revisión trazable con motivo y registro original conservado, sin stock negativo ni reescritura de corridas. Devoluciones comerciales completas no se consideran aprobadas por esta respuesta.
+
+### Alcance visual aprobado · Insumos
+
+El fundador identifica diferencias visuales entre estos modales y el resto de la app, citando Pedidos/Compras como referencia favorable. Para INV-03 se toma el componente existente de Compras como referencia verificable; la mención de Pedidos no acredita por sí sola que ese módulo esté implementado.
+
+- Armonizar las vistas de lista, creación de ficha, entrada/ajuste e historial de Insumos con la jerarquía, espaciado, agrupación de campos, acciones y estados del producto existente.
+- Reutilizar `ModalFrame`, tokens y componentes vigentes. No cambiar nombre, paleta, tipografía, sidebar ni rediseñar Compras para acomodar Insumos.
+- El selector de distribución del envío y su resumen deben pertenecer visualmente al formulario de Compras, no crear otro estilo de modal.
+- Mantener etiquetas claras, acciones principales/secundarias consistentes y confirmaciones/errores dentro del flujo. Preservar foco, teclado, bloqueos y borradores durante operaciones.
+- Verificar las vistas afectadas en móvil y escritorio, incluyendo 320/390 px, cuando exista implementación. No crear una nueva propuesta de marca ni repetir mockups generales.
+
+Esta aprobación suma consistencia visual al bloque; no elimina la coordinación de archivos compartidos ni aprueba contratos financieros pendientes. No hay cambio visual implementado en esta actualización documental.
 
 ### Secuencia propuesta, no autorización de implementación
 
@@ -180,4 +192,4 @@ Capturas existentes del 7 de octubre, sin sesión y con datos demo; no represent
 
 ## Siguiente paso acotado
 
-Validar las reglas aún propuestas (especialmente base de porcentajes y correcciones con consumo), resolver el solapamiento FIN-01A y convertir la dirección confirmada en una spec de implementación. El discovery queda respaldado sin PR, merge ni deploy manual, conforme al encargo original. No empezar la integración mixta con contratos temporales.
+Cerrar las reglas pendientes (precisión/redondeo, unidades, entrada directa y correcciones con consumo), resolver el solapamiento FIN-01A y convertir la dirección funcional y visual confirmada en una spec de implementación. Los tres métodos de envío y su opción por defecto ya están aprobados; no volver a preguntarlos. El discovery queda respaldado sin PR, merge ni deploy manual, conforme al encargo original. No empezar la integración mixta con contratos temporales.
