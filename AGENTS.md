@@ -5,7 +5,7 @@ El repositorio, URLs, infraestructura o identificadores técnicos aún pueden co
 
 ## Antes de cambiar algo
 
-1. Leer únicamente las secciones relevantes de `ROADMAP.md` y `ATOMICITY_AUDIT.md`.
+1. Aplicar `Lectura mínima por tarea` y `Context routing`; no hay documentos adicionales de lectura obligatoria para todas las tareas.
 2. Revisar el estado de Git y conservar cualquier cambio ajeno a la tarea.
 3. Buscar primero con `rg`; no releer archivos completos cuando una búsqueda dirigida sea suficiente.
 4. Usar una rama corta por bloque estable. No trabajar directamente en `main`.
@@ -42,13 +42,23 @@ El repositorio, URLs, infraestructura o identificadores técnicos aún pueden co
 
 ## Verificación y publicación
 
-1. Ejecutar `npm run build` y `git diff --check`.
+1. Aplicar `Verificación proporcional` y ejecutar `git diff --check`.
 2. Añadir al commit solo las rutas del bloque actual; no usar `git add .` ni variantes globales.
 3. Subir la rama y abrir un PR borrador contra `main`.
 4. Revisar diff, comentarios y controles automáticos; fusionar únicamente cuando estén verdes.
 5. Sincronizar la copia local con `main` y verificar el despliegue exacto de Vercel.
 6. Hacer una prueba de humo en `https://spool-vault.vercel.app/` y comprobar la consola.
 7. Aplicar cambios en Supabase solo cuando el bloque realmente los requiera.
+
+### Verificación proporcional
+
+No toda tarea requiere crear una nueva suite de regresión. El objetivo es proporcionalidad al riesgo, no reducir pruebas necesarias para operaciones críticas.
+
+- Cambios localizados de presentación, copy, orden o jerarquía visual: verificación dirigida del componente o flujo afectado, TypeScript/lint relevante, `git diff --check` y smoke visual cuando aporte valor.
+- No crear un nuevo test E2E/browser dedicado salvo que cambie comportamiento, exista un riesgo real de regresión o el acceptance lo exija. Si una prueba existente puede ampliarse razonablemente, preferir esa ampliación a crear otra suite.
+- Cambios funcionales: pruebas dirigidas al comportamiento afectado.
+- Cambios de datos o transacciones: pruebas de éxito, rechazo, reintento y consistencia según corresponda, conservando los contratos de seguridad y las reglas específicas de Proper.
+- Build completo (`npm run build`): una sola vez al final cuando corresponda; repetir únicamente si un fallo o una modificación posterior lo justifica. Los cambios exclusivamente documentales no requieren build de la aplicación.
 
 ## Uso eficiente del contexto
 
@@ -67,13 +77,23 @@ El repositorio, URLs, infraestructura o identificadores técnicos aún pueden co
 - Localizar primero los símbolos, rutas y componentes implicados; empezar la implementación cuando haya contexto suficiente.
 - Si tras la inspección inicial no se puede explicar qué archivos cambiar y cuál es la solución probable, detener la exploración y reportar la incertidumbre y la información que falta.
 - Pedir permiso antes de ampliar el alcance a módulos, contratos o migraciones no incluidos en la tarea.
-- Ejecutar primero las verificaciones dirigidas al cambio; ejecutar el build completo una sola vez al final cuando corresponda, conforme a `Verificación y publicación`.
+- Ejecutar primero las verificaciones dirigidas al cambio, conforme a `Verificación proporcional`.
 - Para cerrar los bloques pequeños indicados arriba, priorizar un cambio verificable; si no puede cerrarse, dejar un handoff breve con lo comprobado, lo modificado, lo pendiente, el bloqueo exacto y la siguiente acción. No continuar con investigación general que no acerque el cierre.
 - No narrar cada búsqueda o comando; comunicar solo descubrimientos que cambien la implementación, el alcance, el riesgo o una decisión.
 
+### Lectura mínima por tarea
+
+Después de `AGENTS.md`, no existe documentación adicional obligatoria para todas las tareas. Usar `Context routing` para decidir qué otra fuente hace falta.
+
+- Leer `ROADMAP.md` únicamente cuando sea necesario confirmar alcance, estado o continuidad del bloque.
+- Leer `ATOMICITY_AUDIT.md` únicamente para datos, transacciones, inventario, costos, historial financiero, idempotencia o concurrencia.
+- Leer documentación de marca/UI únicamente cuando la tarea requiera decisiones visuales o de diseño.
+- No cargar documentación por completitud.
+- No cargar una skill si el acceptance y el código localizado ya contienen suficiente información para ejecutar correctamente.
+
 ## Context routing
 
-Leer únicamente el contexto relevante para la tarea.
+Leer únicamente el contexto que haga falta según `Lectura mínima por tarea`; este listado no es un checklist de lecturas obligatorias.
 
 - Continuidad del producto y estado actual:
   `PROJECT_CONTEXT.md`
@@ -81,10 +101,10 @@ Leer únicamente el contexto relevante para la tarea.
 - Alcance, trabajo planificado y estado de bloques:
   sección relevante de `ROADMAP.md`
 
-- Transacciones, inventario, costos, historial financiero, idempotencia o concurrencia:
+- Datos, transacciones, inventario, costos, historial financiero, idempotencia o concurrencia:
   sección relevante de `ATOMICITY_AUDIT.md`
 
-- UI, UX, diseño visual o implementación de marca:
+- Decisiones visuales o de diseño de UI/UX o marca:
   `docs/BRAND_STATUS.md`
   `docs/UI_DELIVERY.md`
 
@@ -107,7 +127,6 @@ Leer únicamente el contexto relevante para la tarea.
 - Preferir instalaciones a nivel de proyecto. No instalar skills globales salvo indicación explícita.
 - Las skills de diseño pueden cuestionar y mejorar la ejecución de UI/UX, pero no deben cambiar silenciosamente identidad de marca, contratos de producto ni decisiones cerradas.
 - Las skills técnicas son guías especializadas, no autoridad sobre contratos propios de Proper. Si una recomendación entra en conflicto con `AGENTS.md`, una spec aprobada, `ATOMICITY_AUDIT.md` u otro contrato explícito del repo, prevalece el contrato de Proper.
-- Cargar únicamente las skills relevantes para la tarea; más skills no implica mejor resultado y puede aumentar el contexto.
 
 - Para `ui-ux-pro-max` en OpenCode, ejecutar su buscador desde
   `.agents/skills/ui-ux-pro-max/scripts/search.py`.
