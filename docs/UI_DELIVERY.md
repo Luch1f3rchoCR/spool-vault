@@ -2,6 +2,14 @@
 
 Actualizado: 2026-09-26. Fuente compartida para no reconstruir el contexto entre chats.
 
+## INV-03 · Primera mejora visual de Insumos (2026-10-19)
+
+- Implementado en `feat/supplies-modal-polish`: lista con tarjetas y lectura separada de cantidad/costo, alta y entrada agrupadas, historial legible, búsqueda sin resultados y aviso de sesión coherentes con Compras. Se conserva `ModalFrame`, paleta Proper y los campos/contratos de guardado actuales; estilos aislados al componente.
+- Alcance parcial deliberado: no incluye ficha con etiquetas/descripción, selector nuevo de unidades, creación con saldo cero, compras mixtas, reparto de envío ni cambios de costos. Las decisiones de INV-03 están respaldadas en `docs/inv03-discovery-close`; coordinar la integración compartida con FIN-01A antes de implementarlas.
+- Verificado: TypeScript; 3 pruebas existentes de insumos; smoke local con datos y cuenta simulados en 320/390/1280 px (lista, búsqueda, alta, historial, cancelación sin escritura, payload de entrada, reintento idéntico tras respuesta incierta, bloqueo de cierre, Tab/Escape y sin overflow horizontal). Sin escrituras ni correos reales. Revisión visual de capturas de escritorio y móvil.
+- Build aprobado tras un primer intento bloqueado por descarga de fuentes de Google; se repitió únicamente por ese fallo de red. `git diff --check` correcto. No se agrega una suite browser permanente para este ajuste localizado.
+- Publicación en producción pendiente: el PR borrador y su preview no equivalen a merge ni despliegue de `main`.
+
 ## Corrección prioritaria · Inicio y menú lateral (2026-09-27)
 
 El fundador confirmó que la entrega esperada incluye el dashboard «Hola…», búsqueda superior y navegación lateral del mockup **03 · Dashboard (escritorio)**, no solamente los colores de UI-01A. Se implementa sobre los módulos reales: Inicio, Inventario, Compras, Proyectos, Producción, Spools, Costos, Reportes y Configuración; móvil conserva accesos principales y un menú Más. Los formularios existentes no se rediseñan. Pedidos e Insumos siguen pendientes y no se simulan como funciones disponibles; la tarjeta de compras cuenta órdenes de compra, no pedidos de clientes.
