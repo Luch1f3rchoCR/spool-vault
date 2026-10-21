@@ -182,8 +182,12 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [x] Congelar wordmark `Proper.`, app icon 02, tagline, promesa, posicionamiento, paleta y límites de implementación. Clearance legal/comercial sigue pendiente.
 - [ ] Validar cliente inicial mediante entrevistas y tareas del piloto, sin dar los segmentos propuestos por confirmados.
 - [ ] Comparar modelos de negocio y costos antes de fijar precios o integrar cobros.
-- [ ] Preparar marketing basado en funciones reales y público validado, con aprobación previa a publicaciones o gasto.
-- [ ] Cerrar aprobación e ingesta durable del Proper Social Kit V1 antes de usarlo como fuente oficial de Marketing.
+- [x] Configurar presencia social inicial de Proper: Instagram `@properformakers` y Facebook `Proper · 3D Print Management`, conectados en Meta Business Suite; `properformakers` es namespace digital, no nombre de marca.
+- [ ] Revisar/aprobar e ingerir de forma durable el Proper Social Kit V1 antes de tratarlo como fuente oficial de Marketing.
+- [ ] Producir y aprobar 3–4 publicaciones fundacionales basadas en funciones reales antes de abrir reclutamiento beta.
+- [ ] Definir y aprobar la política de idioma de Marketing. Propuesta pendiente: Spanish-first mientras app y piloto sean Spanish-first, con tagline en inglés y traducción selectiva.
+- [ ] Abrir reclutamiento beta orgánico solo cuando Clientes/Piloto cierre criterios, formulario y onboarding; optimizar por aplicaciones cualificadas, no por volumen ni por Founder Personal.
+- [ ] Mantener Maker Faire San José 2027 como oportunidad a monitorear; no asumir participación, fechas ni gasto sin convocatoria oficial verificada.
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
 - [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.
