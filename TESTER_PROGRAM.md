@@ -37,9 +37,25 @@ Laboratorio local: contenedor descartable PostgreSQL 17, sin red ni puertos y si
 
 Actualizar este estado y el checklist de correo al completar cada paso. No marcar un envío como entregado únicamente porque el proveedor lo aceptó.
 
+## Política vigente del piloto personal · 21 de octubre de 2026
+
+La primera cohorte estructurada de Proper queda definida como un piloto de **usuarios finales individuales**, no como un programa enterprise.
+
+- Cohorte objetivo: **8 testers activos + 2 suplentes**.
+- Duración objetivo: **14 días**.
+- Perfil central: maker emprendedor / profesional independiente; maker serio / hobby avanzado como perfil secundario.
+- La recompensa es **Proper Founder Personal**, gratuita y lifetime para el alcance personal incluido, y se obtiene **después de completar razonablemente el piloto**.
+- No incluye workspaces, miembros, planes enterprise, servicios externos ni todos los futuros productos o funciones de pago.
+- La participación no exige reseña positiva, publicación ni recomendación.
+- Marketing puede atraer candidatos; Clientes/Piloto conserva selección, criterios, seguimiento y cierre.
+
+**Desalineamiento pendiente:** la implementación publicada por PR #23 activa hoy `founder_personal_v1` durante el primer ingreso elegible. Ese comportamiento técnico todavía **no implementa** el momento de otorgamiento aprobado para el nuevo piloto. No escalar invitaciones afirmando que el gating post-piloto existe hasta que Producto/Desarrollo lo alinee mediante una spec o se apruebe un mecanismo transitorio.
+
+El recorrido real del primer invitado sigue sin evidencia end-to-end de cierre en el repositorio; mantenerlo como condición antes de ampliar la cohorte.
+
 ## Licencia
 
-`founder_personal_v1` representa acceso personal gratuito y sin vencimiento al inventario, compras, pesajes, etiquetas y proyectos de esta versión. No tiene renovación ni cobros recurrentes. El beneficio se vincula al usuario cuando abre Tu espacio con su correo verificado. Servicios externos y futuros planes adicionales quedan fuera de esta versión del beneficio. No se modifican los planes de cuentas existentes.
+`founder_personal_v1` representa acceso personal gratuito y sin vencimiento al inventario, compras, pesajes, etiquetas y proyectos de esta versión. No tiene renovación ni cobros recurrentes. Servicios externos y futuros planes adicionales quedan fuera de esta versión del beneficio. **La implementación actual** vincula el beneficio durante el primer ingreso con correo verificado; **la política del nuevo piloto** exige otorgarlo después de completar razonablemente el programa. Esa diferencia está pendiente de alineación técnica y no debe ocultarse.
 
 ## Invitación
 
