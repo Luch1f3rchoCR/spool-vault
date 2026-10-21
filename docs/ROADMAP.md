@@ -14,3 +14,14 @@ El roadmap detallado y operativo del producto sigue siendo [../ROADMAP.md](../RO
 - [ ] Evaluar cualquier rename técnico solo mediante una decisión separada; no forma parte del branding visible.
 
 Cualquier cambio de secuencia funcional, dependencias de producto o alcance técnico debe reflejarse también en [../ROADMAP.md](../ROADMAP.md).
+
+
+## Modelo de negocio / Proveedores
+
+- [ ] Inventariar costos reales de operación y soporte antes de fijar pricing público.
+- [ ] Validar disposición de pago del usuario con evidencia conductual.
+- [ ] Definir scorecard y guion de entrevista para proveedores.
+- [ ] Entrevistar 3–8 proveedores accesibles en Costa Rica con diversidad de categoría/operación.
+- [ ] Definir señales y umbrales de validación antes del piloto.
+- [ ] Decidir con evidencia entre no construir, piloto manual, reposición/referral, leads/directorio, marketplace u otra combinación.
+- [ ] Solo después de validar el modelo, decidir si corresponde una spec de implementación.
