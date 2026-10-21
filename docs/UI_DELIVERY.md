@@ -2,6 +2,14 @@
 
 Actualizado: 2026-09-26. Fuente compartida para no reconstruir el contexto entre chats.
 
+## INV-03 · Selector de unidades (2026-10-20)
+
+- Implementado en `feat/supply-unit-selector`: al crear un insumo se elige unidad/pieza, metro, gramo, kilogramo, mililitro o litro; «Otra unidad» conserva el ingreso de unidades especiales y rechaza texto vacío o solo espacios.
+- Reutiliza el campo `unit` y el guardado existentes. Envía una sola unidad, conserva la unidad de las fichas existentes y recupera la selección de una operación pendiente después de recargar. No convierte cantidades ni modifica costos, esquema o persistencia.
+- Verificado: TypeScript, 3 pruebas existentes de insumos, un build completo y `git diff --check`. Smoke temporal reutilizado con datos simulados en 320/390/1280 px: seis opciones, unidad especial, validación, cancelación, reinicio del formulario, unidad existente, reintento idéntico tras recarga, teclado y ausencia de overflow; revisión visual móvil. Sin escrituras reales ni suite browser nueva en el repo.
+- Selector pendiente de revisión/merge/publicación. La mejora visual anterior sí fue publicada mediante PR #40, commit de `main` `76996fa324040e7e94cfcc418ca0554159584522`; evidencia de despliegue en el PR.
+- Siguen pendientes etiquetas/descripción, ficha sin existencias iniciales y compras mixtas con reparto de envío; no están incluidas en este bloque ni deben darse por implementadas.
+
 ## INV-03 · Primera mejora visual de Insumos (2026-10-19)
 
 - Implementado en `feat/supplies-modal-polish`: lista con tarjetas y lectura separada de cantidad/costo, alta y entrada agrupadas, historial legible, búsqueda sin resultados y aviso de sesión coherentes con Compras. Se conserva `ModalFrame`, paleta Proper y los campos/contratos de guardado actuales; estilos aislados al componente.
