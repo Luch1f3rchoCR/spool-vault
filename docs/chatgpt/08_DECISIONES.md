@@ -27,6 +27,8 @@ Actualización vigente de naming: [../BRAND_STATUS.md](../BRAND_STATUS.md). D16�
 | --- | --- | --- | --- |
 | D16 | Aprobado para implementación | Proper V1 como marca de trabajo; usar assets y tokens entregados, tagline «Everything behind your prints.» y promesa vigente. Clearance comercial/jurídico pendiente; sin migración técnica ni recreación del logo de Stone Collective. | Fundador, 2026-09-25, paquete Proper V1; `docs/brand/proper-v1/IMPLEMENTATION.md` |
 | D17 | Publicación autorizada | Subir y publicar el bloque gráfico estable, conservando formularios y funciones. Confirmar despliegue antes de declararlo publicado; la beta requiere prueba real de activación. | Fundador, 2026-09-26 |
+| D18 | ACCEPTED | Presencia social inicial de Proper: namespace digital `properformakers`; Instagram `@properformakers`; Facebook `Proper · 3D Print Management`; descriptor `3D Print Management for Makers`. La marca sigue siendo Proper y Stone Collective permanece como endorsement secundario. | Fundador, 2026-09-26; [DEC-018](../decisions/DEC-018-marketing-social-presence.md) |
+| D19 | ACCEPTED | Dirección visual social de Marketing: editorial minimalista, cálida/pastel, con Proper green/ink + Clay, luz suave tipo estudio y objetos maker/impresos; usarla como lenguaje de comunicación, no como autorización automática para rediseñar la UI operativa. | Fundador, 2026-09-28; [DEC-019](../decisions/DEC-019-marketing-visual-direction.md) |
 
 Cada entrada nueva debe incluir fecha, responsable de aprobación, motivo y enlaces de evidencia cuando existan.
 Los hallazgos de investigación no se convierten en decisiones automáticamente.
