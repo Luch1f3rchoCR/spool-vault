@@ -198,16 +198,27 @@ Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Prod
 - [x] Aplicar las migraciones nuevas y publicar el bloque de primer ingreso antes de enviar la primera invitación.
 - [x] Publicar filamentos nuevos desde las líneas de una orden, además de vincular compras existentes. PR #26 fusionado como `741a7d9`, Supabase y Vercel Production confirmados el 11 de septiembre. SQL aislado, navegador 320/390/1280 px y humo de producción sin guardar aprobados. La orden, rollos, partidas, historial y pago se confirman juntos; los reintentos no crean otra operación aunque cambie el borrador.
 
-## Market de proveedores
+## Ecosistema de proveedores / market
 
-- [ ] Separar los proveedores personales del usuario de los comercios publicados en el market.
-- [ ] Crear un catálogo canónico para comparar la misma variante por marca, material, línea, color, peso y presentación con/sin spool.
-- [ ] Mostrar “Dónde comprar” con precio, moneda, disponibilidad, entrega, retiro y fecha de actualización.
-- [ ] Iniciar con enlaces referidos hacia el checkout del proveedor y seguimiento de clics respetuoso de la privacidad.
-- [ ] Diseñar un portal o carga CSV/API para que cada proveedor mantenga precios y existencias sin depender de scraping.
-- [ ] Definir ingresos iniciales por comisión referida, oportunidad enviada, plan de proveedor o posición patrocinada claramente identificada.
-- [ ] Validar el piloto comercial con Pritonic, Maker Store y al menos otro proveedor costarricense.
-- [ ] Evaluar checkout dentro de Spool Vault solamente después de resolver pagos, facturación, devoluciones, contracargos, reserva de inventario y soporte.
+**Gate vigente:** validar antes de construir. La decisión del 2026-09-26 reabrió “comparador + referral” como modelo fijo. Ver `docs/decisions/DEC-2026-09-26-provider-validation-before-market.md`.
+
+### Descubrimiento y validación — primero
+
+- [ ] Definir scorecard y guion de entrevista para proveedores.
+- [ ] Identificar y entrevistar 3–8 proveedores accesibles en Costa Rica con diversidad de categoría y operación.
+- [ ] Documentar cómo venden, adquieren clientes, mantienen catálogo/stock/precios y manejan recurrencia, logística, pagos y devoluciones.
+- [ ] Validar qué valor real puede aportar Proper al proveedor y al maker sin asumir que “más exposición” sea suficiente.
+- [ ] Definir señales de interés comercial real y umbrales antes de ejecutar un piloto.
+- [ ] Decidir con evidencia entre no construir, piloto manual, reposición/referral, leads/directorio, marketplace u otra combinación.
+
+### Candidatos de producto — no comprometidos
+
+- [ ] Separar proveedores personales de cualquier comercio publicado si se construye una capa comercial.
+- [ ] Evaluar catálogo canónico y comparación de variantes solo si la validación lo justifica.
+- [ ] Evaluar “Dónde comprar”, enlaces referidos y atribución respetuosa de la privacidad como hipótesis.
+- [ ] Evaluar portal, CSV/API o actualización manual según la capacidad real de los proveedores.
+- [ ] Definir monetización solo después de validar incentivos y economía.
+- [ ] Evaluar checkout dentro de Proper únicamente después de validar volumen y resolver pagos, facturación, impuestos, garantías, devoluciones, contracargos, stock, fulfillment, privacidad y soporte.
 
 ## Impresoras y AMS
 
