@@ -44,7 +44,7 @@ No reiniciar el MVP. No prometer NFC universal, lectura automática de etiquetas
 | Bienvenida | Primera recepción real confirmada en Gmail/spam; diseño y remitente aprobados | Probar enlace y activación; investigar filtrado a spam |
 | Remitente | Spool Vault <hello@stonecollective.dev>, mediante Resend | Buzón, reenvío o Reply-To no confirmados |
 | Inicio de sesión | Flujo distinto de la bienvenida | Configurar/probar SMTP de Supabase Auth y resolver sus límites |
-| Marca | Se solicita trabajar la identidad ahora | Recibir contexto de Stone Collective CR y sus artes en borrador |
+| Marca | Proper V1 aprobado e integrado como working brand | Clearance legal/comercial; SVG oficial de Stone; cierre durable del Social Kit V1 |
 | Organización | Paquete de nueve documentos y arranques para seis chats preparado | Crear el proyecto privado de ChatGPT, cargar fuentes y trasladar contexto |
 
 El registro anterior de PR #20 queda como antecedente; el corte funcional vigente es PR #23. Los commits posteriores que solo actualicen documentación no representan nuevas funciones.
@@ -58,17 +58,17 @@ No hay precios comerciales aprobados, ingresos validados ni contratos de proveed
 ## Nuevas líneas de trabajo
 
 1. **Dirección:** prioridades, evidencia, decisiones y seguimiento del piloto.
-2. **Marca:** revisar Stone Collective CR, propósito y artes existentes antes de definir relación con Spool Vault, logo, voz y sistema visual.
+2. **Marca:** Proper V1 está aprobado y documentado; mantener consistencia de assets/tokens, cerrar clearance legal/comercial y recibir el SVG oficial de Stone Collective para el endorsement visual.
 3. **Clientes:** investigar problemas reales y contrastar segmentos; no confundir al fundador con todo el mercado.
 4. **Marketing:** mensajes y demostraciones de funciones reales; no publicar campañas ni gastar sin aprobación.
 5. **Negocio:** comparar modelos y costos, validar disposición de pago y respetar la licencia fundadora.
 6. **Desarrollo y QA:** mantener el producto existente, cerrar incorporación/correo y registrar hallazgos del piloto.
 
-Estos frentes conservan pendientes de validación. La propuesta histórica de Spool Vault como nombre de producto quedó descartada; ahora se aprobó Stone Collective como firma secundaria del futuro nombre aún no elegido (ver `docs/BRAND_STATUS.md`). No asumir que Stone Collective, Stone Collective CR y Stone Collective Dev son nombres intercambiables.
+Estos frentes conservan pendientes de validación. Proper es la working brand aprobada y Stone Collective su endorsement secundario; el clearance legal/comercial de Proper sigue pendiente (ver `docs/BRAND_STATUS.md`). No asumir que Stone Collective, Stone Collective CR y Stone Collective Dev son nombres intercambiables.
 
 ## Orden de continuación propuesto
 
-Primero incorporar contexto y artes de la marca y completar el traslado de fuentes. En paralelo, cerrar la prueba de enlace/activación y revisar correo. Luego ejecutar un piloto pequeño que alimente marca, cliente ideal y negocio. Market de proveedores y conector local AMS continúan en la agenda futura, sin desplazar los pendientes de confiabilidad del piloto.
+La identidad Proper V1 ya no es un bloqueo de definición. Mantenerla estable mientras se cierra el clearance legal/comercial y el asset oficial de Stone. En paralelo, cerrar la prueba de enlace/activación y revisar correo; luego ejecutar un piloto pequeño que alimente cliente ideal y negocio. Market de proveedores y conector local AMS continúan en la agenda futura, sin desplazar los pendientes de confiabilidad del piloto.
 
 ## Dónde leer
 
@@ -80,7 +80,7 @@ Primero incorporar contexto y artes de la marca y completar el traslado de fuent
 | Correo, evidencia y pendientes | [RESEND_SETUP.md](./RESEND_SETUP.md) |
 | Market, AMS y expansión | [PRODUCT_EXPANSION_PLAN.md](./PRODUCT_EXPANSION_PLAN.md) |
 | Preparar el proyecto y los chats | [docs/chatgpt/00_EMPEZAR_AQUI.md](./docs/chatgpt/00_EMPEZAR_AQUI.md) |
-| Brief de marca pendiente de materiales | [docs/chatgpt/04_MARCA.md](./docs/chatgpt/04_MARCA.md) |
+| Estado y sistema de marca vigente | [docs/BRAND_STATUS.md](./docs/BRAND_STATUS.md), [docs/brand/proper-v1/09_PROPER_BRAND_V1.md](./docs/brand/proper-v1/09_PROPER_BRAND_V1.md) |
 | Decisiones y propuestas | [docs/chatgpt/08_DECISIONES.md](./docs/chatgpt/08_DECISIONES.md) |
 
 ## Cómo mantener el contexto
