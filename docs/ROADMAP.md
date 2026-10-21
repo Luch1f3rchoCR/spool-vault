@@ -25,3 +25,34 @@ Cualquier cambio de secuencia funcional, dependencias de producto o alcance téc
 - [ ] Definir señales y umbrales de validación antes del piloto.
 - [ ] Decidir con evidencia entre no construir, piloto manual, reposición/referral, leads/directorio, marketplace u otra combinación.
 - [ ] Solo después de validar el modelo, decidir si corresponde una spec de implementación.
+
+
+## Clientes y Piloto
+
+### C0 · Condiciones antes de escalar beta
+
+- [ ] Confirmar primer recorrido real end-to-end: bienvenida, login/enlace seguro, cuestionario y estado final.
+- [ ] Alinear la política Founder con la implementación: la decisión vigente entrega Proper Founder Personal tras completar razonablemente el piloto; PR #23 activa hoy `founder_personal_v1` en el primer ingreso elegible.
+- [ ] Cerrar criterios observables de “piloto completado”.
+
+**Dependencia:** no ampliar invitaciones hasta cerrar el recorrido real y definir el mecanismo de otorgamiento.
+
+### C1 · Reclutamiento controlado
+
+- [ ] Preparar cohorte de **8 activos + 2 suplentes**.
+- [ ] Reclutar usuarios finales individuales; no licencias enterprise.
+- [ ] Mezclar maker serio, maker emprendedor/side business y profesional independiente.
+- [ ] Priorizar contacto directo; complementar con comunidades autorizadas y redes propias de Proper.
+
+### C2 · Piloto de 14 días
+
+- [ ] Ejecutar onboarding con datos reales y funciones existentes.
+- [ ] Recoger workarounds, fricciones, abandonos, recurrencia y feedback cualitativo.
+- [ ] No exigir reseñas ni publicación.
+
+### C3 · Cierre y decisión
+
+- [ ] Determinar cumplimiento y otorgar Proper Founder Personal según la política aprobada.
+- [ ] Comparar evidencia por segmento y actualizar la hipótesis de cliente meta.
+- [ ] Entregar hallazgos a Dirección, Producto/Desarrollo, Marketing y Modelo de negocio.
+- [ ] Estudiar disposición a pagar en una prueba posterior; mantener discovery enterprise separado.
