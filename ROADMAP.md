@@ -79,7 +79,9 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [x] Confirmar recepción real de una bienvenida: el fundador la recibió en Gmail/spam el 7 de septiembre.
 - [ ] Probar enlace/activación de esa bienvenida e investigar llegada a spam antes de ampliar invitaciones.
 - [ ] Configurar correo de autenticación de Supabase para resolver los límites del remitente predeterminado.
-- [ ] Confirmar alcance comercial definitivo del beneficio founder-v1 antes de ampliarlo.
+- [x] Confirmar alcance comercial del beneficio founder-v1 para el piloto personal: Proper Founder Personal, gratuita y lifetime para el alcance personal incluido; no enterprise ni futuros servicios/planes adicionales. Ver `docs/decisions/DEC-2026-09-26-founder-personal-beta.md`.
+- [ ] Alinear el momento de otorgamiento de Founder Personal con la política del piloto: hoy PR #23 activa `founder_personal_v1` en el primer ingreso; la decisión vigente exige otorgarlo después de completar razonablemente los 14 días.
+- [ ] Preparar y ejecutar la primera cohorte estructurada de 8 testers activos + 2 suplentes solo después de cerrar el recorrido real end-to-end y definir el gating/revisión de cumplimiento.
 
 ## Peso y tara
 
