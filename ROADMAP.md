@@ -182,7 +182,11 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [ ] Aprobar brief de marca después de revisar Stone Collective CR y los artes aportados.
 - [ ] Validar cliente inicial mediante entrevistas y tareas del piloto, sin dar los segmentos propuestos por confirmados.
 - [ ] Comparar modelos de negocio y costos antes de fijar precios o integrar cobros.
-- [ ] Preparar marketing basado en funciones reales y público validado, con aprobación previa a publicaciones o gasto.
+- [x] Abrir presencia social inicial de Proper: Instagram `@properformakers` y Facebook `Proper · 3D Print Management`, conectados en Meta Business Suite; `properformakers` es namespace digital, no nombre de marca.
+- [ ] Cerrar con Marca el kit social reusable (avatar/covers de destacados/portadas de post y Reel) y producir 3–4 publicaciones fundacionales basadas solo en funciones reales antes de abrir reclutamiento beta.
+- [ ] Definir y aprobar la política de idioma para marketing. Propuesta pendiente: Spanish-first mientras la app y el piloto sean Spanish-first, conservando `Everything behind your prints.` como tagline y usando inglés de forma selectiva.
+- [ ] Abrir reclutamiento beta orgánico solo cuando Clientes/Piloto cierre criterios, formulario y onboarding; optimizar por aplicaciones cualificadas, no por volumen ni por el beneficio Founder Personal.
+- [ ] Mantener Maker Faire San José 2027 como oportunidad a monitorear; no asumir participación, fechas ni gasto sin convocatoria oficial verificada.
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
 - [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.
