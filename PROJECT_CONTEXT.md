@@ -55,6 +55,8 @@ El registro anterior de PR #20 queda como antecedente; el corte funcional vigent
 
 No hay precios comerciales aprobados, ingresos validados ni contratos de proveedores documentados.
 
+**Modelo de negocio / proveedores · sincronizado 2026-10-21:** la dirección vigente es validar el ecosistema de proveedores antes de construirlo. La elección histórica “comparador + referral” deja de ser un compromiso cerrado y queda como candidato junto con leads, directorio, reposición contextual y marketplace. Primera fase: descubrimiento con 3–8 proveedores accesibles en Costa Rica, sin integrar catálogos ni procesar pagos. Ver `docs/STATUS.md` y `docs/decisions/DEC-2026-09-26-provider-ecosystem-validation.md`.
+
 ## Nuevas líneas de trabajo
 
 1. **Dirección:** prioridades, evidencia, decisiones y seguimiento del piloto.
