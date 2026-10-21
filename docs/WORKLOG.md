@@ -10,3 +10,7 @@ Solo registra hitos durables; no sustituye el historial de commits ni las conver
 | 2026-10-21 | Marca | Sincronización inicial del frente con Project Ledger: DEC formal, estado, roadmap administrativo y handoffs normalizados. |
 
 | 2026-10-21 | Modelo de negocio | Sincronización inicial: se formalizó validar proveedores antes de construir market y “comparador + referral” volvió a estado de hipótesis/candidato. |
+| 2026-09-26 | Marketing | Presencia social inicial configurada: Gmail administrativo `properformakers@gmail.com`, Instagram `@properformakers`, Facebook `Proper · 3D Print Management` y conexión en Meta Business Suite. |
+| 2026-09-26 | Marketing / Clientes | Reclutamiento beta definido como orgánico y cualificado; Founder Personal no se usa como giveaway y la selección final permanece en Clientes/Piloto. |
+| 2026-09-28 | Marketing | Dirección visual social aprobada: editorial cálida/pastel, Proper green/ink + Clay, luz suave tipo estudio y objetos maker/3D; sin autorización automática para rediseñar la UI operativa. |
+| 2026-10-21 | Marketing | Sincronización inicial del frente con Project Ledger; política bilingüe conservada como propuesta pendiente y handoff visual a Desarrollo registrado como referencia. |
