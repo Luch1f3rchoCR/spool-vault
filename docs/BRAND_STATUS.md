@@ -40,3 +40,36 @@ Esta decisión no convierte Stone Collective, Stone Collective CR y Stone Collec
 - No renombrar masivamente repositorio, dominio, URLs, Supabase, Vercel, correos ni identificadores técnicos.
 - La infraestructura existente conserva su identidad técnica hasta que se autorice una migración concreta.
 - Los documentos antiguos son antecedentes; este archivo tiene prioridad sobre sus propuestas de naming.
+
+
+## Ledger sync · 2026-10-21
+
+### CONFIRMADO ACTUAL
+
+- Wordmark aprobado: **Proper.** con punto Proper Clay.
+- App icon aprobado: fondo Ink, P Paper/blanca y punto Proper Clay.
+- Personalidad: **amable, firme, moderna, clara y maker**.
+- Paleta vigente: Proper Green `#23634B`, Ink `#192C24`, Surface `#F5F5F2`, Paper `#FFFFFF`, Muted `#58695E`, Soft Sage `#E8EFE5`, Line `#E1E5DA`, Warm Canvas `#F8F4EB`, Proper Clay `#C76F56`.
+- Instagram informado por Marketing: `@properformakers`; nombre visible **Proper · 3D Print Management**; descriptor **3D Print Management for Makers**. El handle es namespace digital, no logo ni nombre de marca.
+- El Proper Asset Pack V1 y el handoff a Desarrollo están registrados en `docs/brand/proper-v1/`.
+
+### ANTECEDENTE CONFIRMADO
+
+- El NO-GO comercial preliminar de Proper se conserva como antecedente de riesgo; la decisión posterior autorizó usar Proper como working brand sin resolver jurídicamente aquel screening.
+- Spool Vault, Meld y Strata permanecen fuera como nombres futuros; Spool Vault sigue apareciendo donde es legado técnico/histórico.
+
+### PREFERENCIA DE TRABAJO
+
+- Marketing no debe improvisar avatar, highlights ni plantillas fuera del sistema de marca.
+- Los assets maestros/tokens prevalecen sobre reconstrucciones casuales; los tableros aprobados sirven como control visual si un derivado difiere.
+
+### EXPLORADO / PROPUESTO
+
+- Exploraciones como `Prop.Er`, símbolos P+dot anteriores y territorios de icono no seleccionados no forman parte de la identidad vigente.
+- Se produjo un Proper Social Kit V1; su aprobación final completa no consta todavía en el ledger.
+
+### PENDIENTE
+
+- Clearance legal/comercial de Proper.
+- Incorporar el SVG oficial de Stone Collective al proyecto para cerrar el endorsement visual sin recrearlo.
+- Aprobar/ingestar de forma durable el Proper Social Kit V1 y cerrar el handoff final a Marketing.
