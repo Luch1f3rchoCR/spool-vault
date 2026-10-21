@@ -7,6 +7,14 @@ import type { Supply, SupplyMovement, SupplyValues } from "@/lib/supplies";
 import styles from "./supplies-modal.module.css";
 
 const categories = ["Imanes", "Pines", "Tornillos", "Electrónica", "Pintura", "Empaque", "Otros"];
+const unitOptions = [
+  { value: "unidad", label: "Unidad (pieza)" },
+  { value: "metro", label: "Metro (m)" },
+  { value: "gramo", label: "Gramo (g)" },
+  { value: "kilogramo", label: "Kilogramo (kg)" },
+  { value: "ml", label: "Mililitro (ml)" },
+  { value: "litro", label: "Litro (l)" }
+];
 const money = (amount: number, currency: string) => new Intl.NumberFormat("es-CR", {style:"currency",currency,maximumFractionDigits:2}).format(amount);
 type Pending = {id:string; values:SupplyValues};
 function readPending(key:string): Pending | null {
@@ -27,12 +35,15 @@ export function SuppliesModal({supplies, movements, authenticated, baseCurrency,
   const [kind,setKind]=useState<"receipt" | "adjustment">("receipt");
   const [quantity,setQuantity]=useState("1");
   const [currency,setCurrency]=useState(baseCurrency);
+  const pendingUnit=initialPending?.values.unit ?? "unidad";
+  const [unitChoice,setUnitChoice]=useState(()=>unitOptions.some(option=>option.value===pendingUnit) ? pendingUnit : "__custom__");
+  const [customUnit,setCustomUnit]=useState(()=>unitOptions.some(option=>option.value===pendingUnit) ? "" : pendingUnit);
   const [pending,setPending]=useState<Pending | null>(initialPending);
   const guard=useRef(false);
   const selected=editing && editing!=="new" ? editing : null;
   const filteredSupplies=supplies.filter(s=>(s.name+" "+s.category).toLocaleLowerCase().includes(search.toLocaleLowerCase()));
   const historyMovements=history ? movements.filter(m=>m.supply_id===history.id) : [];
-  function start(item: Supply | "new") { setEditing(item); setKind("receipt");setQuantity("1");setMessage("");setPending(null); }
+  function start(item: Supply | "new") { setEditing(item); setKind("receipt");setQuantity("1");setMessage("");setPending(null);setUnitChoice("unidad");setCustomUnit(""); }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if(guard.current || !authenticated) return;
@@ -66,9 +77,14 @@ export function SuppliesModal({supplies, movements, authenticated, baseCurrency,
         <div className={styles.fields}>
           <label>Nombre<input name="name" required maxLength={120} placeholder="Imán 6 × 2 mm" /></label>
           <label>Categoría<select name="category">{categories.map(c=><option key={c}>{c}</option>)}</select></label>
-          <label>Unidad<input name="unit" required maxLength={30} defaultValue="unidad" /></label>
+          <label>Unidad de medida<select name={unitChoice==="__custom__" ? undefined : "unit"} value={unitChoice} onChange={event=>setUnitChoice(event.target.value)} aria-describedby="supply-unit-help">
+            {unitOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+            <option value="__custom__">Otra unidad…</option>
+          </select></label>
           <label>Moneda<select name="currency" value={currency} onChange={event=>setCurrency(event.target.value)}>{["CRC","USD","EUR"].map(c=><option key={c}>{c}</option>)}</select></label>
+          {unitChoice==="__custom__" && <label className={styles.wide}>Nombre de la unidad<input name="unit" required maxLength={30} pattern=".*\S.*" value={customUnit} onChange={event=>setCustomUnit(event.target.value)} placeholder="Por ejemplo: par" aria-describedby="supply-unit-help" /></label>}
         </div>
+        <p id="supply-unit-help" className={styles.help}>Usá la misma unidad para la cantidad y el costo: por pieza, metro, gramo… No se convierten unidades automáticamente.</p>
       </fieldset>}
       <fieldset disabled={busy || !!pending} className={styles.fieldset}>
         <legend>{selected ? "Movimiento de existencias" : "Existencias iniciales"}</legend>
