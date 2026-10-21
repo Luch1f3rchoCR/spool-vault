@@ -2,6 +2,14 @@
 
 Fecha de decisión: 2026-08-30
 
+## Actualización de decisión · 2026-09-26 / registrada 2026-10-21
+
+La elección del punto 1 de “Decisiones principales” —comparador de ofertas + canal referido como primer market— fue **reabierta por el fundador** el 26 de septiembre. Ya no debe leerse como modelo comercial comprometido.
+
+Dirección vigente: **validar el ecosistema de proveedores antes de construirlo**. Comparador/referral, leads, directorio, reposición contextual y marketplace transaccional son candidatos hasta obtener evidencia. Ver `docs/decisions/DEC-2026-09-26-provider-ecosystem-validation.md`.
+
+Las decisiones técnicas y de integridad de las demás secciones conservan su vigencia salvo que otro documento posterior las reemplace.
+
 ## Actualización de contexto · 2026-09-07
 
 Este plan conserva la agenda de market, AMS y producción. El estado de implementación se verifica en ROADMAP.md; las secciones de diseño no prueban que una función esté publicada.
@@ -14,7 +22,7 @@ Este documento convierte las ideas de crecimiento de Spool Vault en entregas peq
 
 ## Decisiones principales
 
-1. El primer market será un comparador de ofertas y un canal referido. El proveedor conserva el checkout, cobro, factura, entrega y soporte.
+1. **SUPERSEDED como elección cerrada (2026-09-26):** el comparador de ofertas y canal referido queda como candidato, no como primer market comprometido. La fase vigente es descubrimiento y validación antes de construir; cualquier piloto inicial debe minimizar complejidad y no presentar funciones futuras como disponibles.
 2. La compra y el costo histórico siguen siendo inmutables. Un dato incorrecto se corrige con un movimiento trazable; un dato omitido se completa con una compra faltante.
 3. La primera integración con Bambu/AMS será local y de solo lectura. Spool Vault asociará las bandejas a rollos reales y conciliará trabajos, pero no controlará la máquina inicialmente.
 4. Un proyecto describe la receta reusable. Una corrida de producción registra lo que realmente ocurrió y congela sus costos.
@@ -45,7 +53,9 @@ El formulario nunca debe inventar el precio. Ash Grey se completará cuando el u
 
 ## 2. Market de proveedores
 
-### Experiencia inicial
+> **Estado vigente:** visión futura en validación. Esta sección conserva hipótesis de diseño históricas; no autoriza implementación. Antes de construir catálogo, referral, leads o checkout, completar el gate de descubrimiento definido en la DEC vigente.
+
+### Experiencia inicial histórica / candidata
 
 El botón **Comprar** pasa a mostrar ofertas comparables para el filamento seleccionado:
 
@@ -59,7 +69,7 @@ El botón **Comprar** pasa a mostrar ofertas comparables para el filamento selec
 
 El orden por defecto debe priorizar coincidencia exacta, disponibilidad y costo total. Una posición pagada puede existir, pero siempre debe decir **Patrocinado** y no alterar silenciosamente la recomendación.
 
-### Modelo de negocio recomendado
+### Opciones de modelo de negocio — por validar
 
 La primera versión evita cobrar al consumidor dentro de Spool Vault. Opciones de ingreso, de menor a mayor compromiso:
 
