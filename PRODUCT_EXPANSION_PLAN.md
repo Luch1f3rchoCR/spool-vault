@@ -6,7 +6,7 @@ Fecha de decisión: 2026-08-30
 
 Este plan conserva la agenda de market, AMS y producción. El estado de implementación se verifica en ROADMAP.md; las secciones de diseño no prueban que una función esté publicada.
 
-Antes de ampliar la operación comercial, el fundador solicitó organizar un proyecto propio de Spool Vault y trabajar marca, investigación de clientes, marketing y modelo de negocio. El contexto de Stone Collective CR y sus artes aún está pendiente de recibir; la identidad final no está aprobada. Los modelos comerciales descritos aquí son opciones para validar, no ingresos ni acuerdos existentes.
+Antes de ampliar la operación comercial, el fundador solicitó separar marca, investigación de clientes, marketing y modelo de negocio. Proper V1 ya está aprobado como working brand y Stone Collective como endorsement secundario; el clearance legal/comercial y el SVG oficial de Stone siguen pendientes. Los modelos comerciales descritos aquí son opciones para validar, no ingresos ni acuerdos existentes.
 
 La primera bienvenida fundadora llegó a spam. Cerrar la incorporación y estudiar los hallazgos de un piloto pequeño tiene prioridad propuesta sobre ampliar el market o la integración AMS. Consultar [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) y los briefs en [docs/chatgpt/00_EMPEZAR_AQUI.md](./docs/chatgpt/00_EMPEZAR_AQUI.md).
 
