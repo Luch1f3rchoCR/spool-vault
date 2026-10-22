@@ -30,7 +30,7 @@ import { ModalFrame } from "@/components/modal-frame";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { AppNavigation, type WorkspaceSection } from "@/components/app-navigation";
 import { SuppliesModal } from "@/components/supplies-modal";
-import { normalizeSupply, type Supply, type SupplyMovement, type SupplyValues } from "@/lib/supplies";
+import { normalizeSupply, type Supply, type SupplyMovement, type SupplySaveValues } from "@/lib/supplies";
 import { WorkspaceDashboard, ProductionOverview } from "@/components/workspace-dashboard";
 import { ProperSignature, ProperWordmark } from "@/components/proper-brand";
 import { brand } from "@/lib/brand";
@@ -2092,11 +2092,11 @@ export default function Home() {
     }
   }
 
-  async function saveSupply(values: SupplyValues, requestId: string): Promise<{error: string; uncertain: boolean}> {
+  async function saveSupply(values: SupplySaveValues, requestId: string): Promise<{error: string; uncertain: boolean}> {
     if (!usingSupabase || !supabase || dataMode !== "authenticated") return {error:"Iniciá sesión para guardar insumos.",uncertain:false};
     try {
-      const {data,error}=await supabase.rpc("record_supply_movement",{p_request_id:requestId,p_values:values});
-      if(error || !data) return {error:`No se confirmó el movimiento: ${error?.message ?? "respuesta vacía"}`,uncertain:!error?.code || !/^(22|23|P0001)/.test(error.code)};
+      const {data,error}=await supabase.rpc(values.kind === "catalog" ? "create_supply" : "record_supply_movement",{p_request_id:requestId,p_values:values});
+      if(error || !data) return {error:`No se confirmó ${values.kind === "catalog" ? "la ficha" : "el movimiento"}: ${error?.message ?? "respuesta vacía"}`,uncertain:!error?.code || !/^(22|23|P0001)/.test(error.code)};
       const result=data as {supply:Supply;movements:SupplyMovement[]};
       const saved=normalizeSupply(result.supply);
       setSupplies(current=>[saved,...current.filter(s=>s.id!==saved.id)]);

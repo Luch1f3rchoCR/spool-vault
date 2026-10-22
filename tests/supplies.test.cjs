@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {supplyShortages,normalizeSupply}=require('../lib/supplies.ts');
+const {supplyShortages,normalizeSupply,parseSupplyTags}=require('../lib/supplies.ts');
 const {createVariantDraft}=require('../lib/project-variant.ts');
 test('aggregate repeated supplies; manual extras do not consume stock',()=>{
  const components=[{id:'a',supply_id:'s',name:'Iman'},{id:'b',supply_id:'s',name:'Iman'},{id:'c',name:'Manual'}];
@@ -11,6 +11,14 @@ test('aggregate repeated supplies; manual extras do not consume stock',()=>{
 });
 test('numeric database values are normalized',()=>{
  assert.equal(normalizeSupply({quantity:'12.5',unit_cost:'0.9'}).quantity,12.5);
+});
+test('catalog tags trim, deduplicate and validate without truncating',()=>{
+ assert.deepEqual(parseSupplyTags(' Neodimio, cajas, Neodimio, , '),['Neodimio','cajas']);
+ assert.deepEqual(parseSupplyTags(''),[]);
+ assert.equal(parseSupplyTags('a'.repeat(40))[0].length,40);
+ assert.throws(()=>parseSupplyTags('a'.repeat(41)),/40 caracteres/);
+ assert.equal(parseSupplyTags(Array.from({length:10},(_,i)=>`tag${i}`).join(',')).length,10);
+ assert.throws(()=>parseSupplyTags(Array.from({length:11},(_,i)=>`tag${i}`).join(',')),/10 etiquetas/);
 });
 test('variants retain tracked supply references without editing original',()=>{
  const source={id:'p',name:'Box',commercial_use_allowed:false,estimated_minutes:null};
