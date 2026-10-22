@@ -28,7 +28,7 @@
 .modal button:not(:disabled):hover { border-color: var(--proper-green); }
 .modal button.primary:not(:disabled):hover { background: var(--proper-ink); }
 .modal button:disabled { opacity: .5; cursor: not-allowed; }
-.modal :is(button, input, select):focus-visible { outline: 2px solid var(--proper-green); outline-offset: 3px; }
+.modal :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--proper-green); outline-offset: 3px; }
 .modal svg { flex-shrink: 0; }
 
 .intro, .help, .footnote, .resultCount, .viewHeading p {
@@ -50,6 +50,12 @@
 .search svg { position: absolute; left: 12px; top: 18px; }
 .search input { padding-left: 38px; }
 .modal input, .modal select { min-height: 46px; font-size: 1rem; }
+.modal textarea { font-size: 1rem; resize: vertical; }
+.details { padding: 14px 18px; overflow-wrap: anywhere; }
+.details summary { cursor: pointer; padding: 10px 0; font-size: .875rem; font-weight: 700; }
+.details p { white-space: pre-wrap; font-size: .875rem; line-height: 1.6; margin: 4px 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.tags li { max-width: 100%; padding: 4px 8px; border-radius: 6px; background: var(--proper-soft-sage); color: var(--proper-green); font-size: .8rem; }
 .resultCount { margin: 0 0 12px; font-size: .8rem; }
 
 .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
