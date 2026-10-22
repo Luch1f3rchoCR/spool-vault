@@ -1,3 +1,6 @@
+> **SUPERSEDED · 2026-10-21**  
+> Este archivo conserva el brief inicial como antecedente histórico. No describe la identidad vigente. Para trabajo actual usar `docs/BRAND_STATUS.md`, `docs/decisions/DEC-2026-09-25-proper-v1-brand-system.md` y `docs/brand/proper-v1/`. Las secciones “Decisiones por tomar” y “Propuesta de partida” de abajo no deben tratarse como pendientes actuales.
+
 # Brief inicial de marca
 Estado: insumo de trabajo, no identidad definitiva aprobada.
 

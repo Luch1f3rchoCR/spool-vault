@@ -9,7 +9,7 @@ Actuá como responsable de continuidad de Spool Vault. Leé el contexto, estado 
 
 ## 02 · Marca e identidad
 Mensaje inicial:
-Continuemos la marca de Spool Vault sobre el producto existente. Leé 04_MARCA.md y distinguí lo aprobado de lo propuesto. El fundador aportará detalles de Stone Collective CR y artes aún en borrador: revisalos antes de definir la identidad y no inventes su historia. Primero trabajá posicionamiento y relación con Stone Collective; después proponé tres direcciones justificadas. No generes un logo definitivo ni cambies nombre o colores aún. Señalá qué necesitamos verificar sobre nombres, derechos y activos. El primer entregable es un brief de marca que el fundador pueda aprobar.
+Continuemos Proper desde la identidad ya aprobada. Leé primero `../STATUS.md`, `../BRAND_STATUS.md`, `../decisions/DEC-2026-09-25-proper-v1-brand-system.md` y `../brand/proper-v1/09_PROPER_BRAND_V1.md`. No reabrir naming, wordmark, app icon, tagline, promesa, posicionamiento ni paleta salvo que aparezca un problema concreto que requiera decisión del fundador. Proper sigue pendiente de clearance legal/comercial; Stone Collective es endorsement secundario y su logo no se recrea. Mantener el Project Ledger cuando cierre decisiones nuevas del frente.
 
 ## 03 · Clientes y validación
 Mensaje inicial:

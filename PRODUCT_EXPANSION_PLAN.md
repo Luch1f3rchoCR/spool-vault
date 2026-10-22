@@ -2,11 +2,18 @@
 
 Fecha de decisión: 2026-08-30
 
+## Actualización de decisión · 2026-09-26 / registrada 2026-10-21
+
+El fundador reabrió la elección del punto 1 de “Decisiones principales”. “Comparador de ofertas + canal referido” ya no es un modelo comercial comprometido: queda como candidato junto con reposición contextual, leads/directorio, afiliación y marketplace transaccional.
+
+Dirección vigente: **validar el ecosistema de proveedores antes de construirlo**. Ver `docs/decisions/DEC-2026-09-26-provider-validation-before-market.md`.
+
+
 ## Actualización de contexto · 2026-09-07
 
 Este plan conserva la agenda de market, AMS y producción. El estado de implementación se verifica en ROADMAP.md; las secciones de diseño no prueban que una función esté publicada.
 
-Antes de ampliar la operación comercial, el fundador solicitó organizar un proyecto propio de Spool Vault y trabajar marca, investigación de clientes, marketing y modelo de negocio. El contexto de Stone Collective CR y sus artes aún está pendiente de recibir; la identidad final no está aprobada. Los modelos comerciales descritos aquí son opciones para validar, no ingresos ni acuerdos existentes.
+Antes de ampliar la operación comercial, el fundador solicitó separar marca, investigación de clientes, marketing y modelo de negocio. Proper V1 ya está aprobado como working brand y Stone Collective como endorsement secundario; el clearance legal/comercial y el SVG oficial de Stone siguen pendientes. Los modelos comerciales descritos aquí son opciones para validar, no ingresos ni acuerdos existentes.
 
 La primera bienvenida fundadora llegó a spam. Cerrar la incorporación y estudiar los hallazgos de un piloto pequeño tiene prioridad propuesta sobre ampliar el market o la integración AMS. Consultar [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) y los briefs en [docs/chatgpt/00_EMPEZAR_AQUI.md](./docs/chatgpt/00_EMPEZAR_AQUI.md).
 
@@ -14,7 +21,7 @@ Este documento convierte las ideas de crecimiento de Spool Vault en entregas peq
 
 ## Decisiones principales
 
-1. El primer market será un comparador de ofertas y un canal referido. El proveedor conserva el checkout, cobro, factura, entrega y soporte.
+1. **SUPERSEDED como elección cerrada (2026-09-26):** comparador + canal referido queda como candidato, no como primer market comprometido. La fase vigente es descubrimiento y validación antes de construir.
 2. La compra y el costo histórico siguen siendo inmutables. Un dato incorrecto se corrige con un movimiento trazable; un dato omitido se completa con una compra faltante.
 3. La primera integración con Bambu/AMS será local y de solo lectura. Spool Vault asociará las bandejas a rollos reales y conciliará trabajos, pero no controlará la máquina inicialmente.
 4. Un proyecto describe la receta reusable. Una corrida de producción registra lo que realmente ocurrió y congela sus costos.
@@ -45,7 +52,9 @@ El formulario nunca debe inventar el precio. Ash Grey se completará cuando el u
 
 ## 2. Market de proveedores
 
-### Experiencia inicial
+> **Estado vigente:** visión futura en validación. Las subsecciones siguientes conservan hipótesis históricas de diseño y no autorizan implementación antes de completar el gate de descubrimiento.
+
+### Experiencia inicial histórica / candidata
 
 El botón **Comprar** pasa a mostrar ofertas comparables para el filamento seleccionado:
 
@@ -59,7 +68,7 @@ El botón **Comprar** pasa a mostrar ofertas comparables para el filamento selec
 
 El orden por defecto debe priorizar coincidencia exacta, disponibilidad y costo total. Una posición pagada puede existir, pero siempre debe decir **Patrocinado** y no alterar silenciosamente la recomendación.
 
-### Modelo de negocio recomendado
+### Opciones de modelo de negocio — por validar
 
 La primera versión evita cobrar al consumidor dentro de Spool Vault. Opciones de ingreso, de menor a mayor compromiso:
 

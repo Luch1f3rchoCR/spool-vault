@@ -79,7 +79,9 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 - [x] Confirmar recepción real de una bienvenida: el fundador la recibió en Gmail/spam el 7 de septiembre.
 - [ ] Probar enlace/activación de esa bienvenida e investigar llegada a spam antes de ampliar invitaciones.
 - [ ] Configurar correo de autenticación de Supabase para resolver los límites del remitente predeterminado.
-- [ ] Confirmar alcance comercial definitivo del beneficio founder-v1 antes de ampliarlo.
+- [x] Confirmar alcance comercial del beneficio founder-v1 para el piloto personal: Proper Founder Personal, gratuita y lifetime para el alcance personal incluido; no enterprise ni futuros servicios/planes adicionales. Ver `docs/decisions/DEC-2026-09-26-founder-personal-beta.md`.
+- [ ] Alinear el momento de otorgamiento de Founder Personal con la política del piloto: hoy PR #23 activa `founder_personal_v1` en el primer ingreso; la decisión vigente exige otorgarlo después de completar razonablemente los 14 días.
+- [ ] Preparar y ejecutar la primera cohorte estructurada de 8 testers activos + 2 suplentes solo después de cerrar el recorrido real end-to-end y definir el gating/revisión de cumplimiento.
 
 ## Peso y tara
 
@@ -177,13 +179,14 @@ El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONT
 
 ## Experiencia y módulos siguientes
 
-- [ ] Revisar detalles de Stone Collective CR y artes en borrador que aportará el fundador; confirmar relación/nombre de marca antes de completar branding, About y Open Graph.
+- [x] Aprobar Proper V1 como working brand visible, con Stone Collective como endorsement secundario; ver `docs/BRAND_STATUS.md` y `docs/brand/proper-v1/`.
 - [x] Preparar contexto portátil e instrucciones para proyecto propio de ChatGPT en `docs/chatgpt/`.
 - [ ] Crear el proyecto privado Spool Vault, cargar fuentes y abrir chats de Dirección, Marca, Clientes, Marketing, Negocio y Desarrollo/QA.
-- [ ] Aprobar brief de marca después de revisar Stone Collective CR y los artes aportados.
+- [x] Congelar wordmark `Proper.`, app icon 02, tagline, promesa, posicionamiento, paleta y límites de implementación. Clearance legal/comercial sigue pendiente.
 - [ ] Validar cliente inicial mediante entrevistas y tareas del piloto, sin dar los segmentos propuestos por confirmados.
 - [ ] Comparar modelos de negocio y costos antes de fijar precios o integrar cobros.
 - [ ] Preparar marketing basado en funciones reales y público validado, con aprobación previa a publicaciones o gasto.
+- [ ] Cerrar aprobación e ingesta durable del Proper Social Kit V1 antes de usarlo como fuente oficial de Marketing.
 - [ ] Diseñar e implementar la calculadora de costo de impresión.
 - [x] Agregar parámetros configurables de electricidad, máquina, fallos y mano de obra.
 - [x] Crear proyectos/impresiones y asociar consumos reales.
@@ -199,16 +202,27 @@ Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Prod
 - [x] Aplicar las migraciones nuevas y publicar el bloque de primer ingreso antes de enviar la primera invitación.
 - [x] Publicar filamentos nuevos desde las líneas de una orden, además de vincular compras existentes. PR #26 fusionado como `741a7d9`, Supabase y Vercel Production confirmados el 11 de septiembre. SQL aislado, navegador 320/390/1280 px y humo de producción sin guardar aprobados. La orden, rollos, partidas, historial y pago se confirman juntos; los reintentos no crean otra operación aunque cambie el borrador.
 
-## Market de proveedores
+## Ecosistema de proveedores / market
 
-- [ ] Separar los proveedores personales del usuario de los comercios publicados en el market.
-- [ ] Crear un catálogo canónico para comparar la misma variante por marca, material, línea, color, peso y presentación con/sin spool.
-- [ ] Mostrar “Dónde comprar” con precio, moneda, disponibilidad, entrega, retiro y fecha de actualización.
-- [ ] Iniciar con enlaces referidos hacia el checkout del proveedor y seguimiento de clics respetuoso de la privacidad.
-- [ ] Diseñar un portal o carga CSV/API para que cada proveedor mantenga precios y existencias sin depender de scraping.
-- [ ] Definir ingresos iniciales por comisión referida, oportunidad enviada, plan de proveedor o posición patrocinada claramente identificada.
-- [ ] Validar el piloto comercial con Pritonic, Maker Store y al menos otro proveedor costarricense.
-- [ ] Evaluar checkout dentro de Spool Vault solamente después de resolver pagos, facturación, devoluciones, contracargos, reserva de inventario y soporte.
+**Gate vigente:** validar antes de construir. La decisión del 2026-09-26 reabrió “comparador + referral” como modelo fijo. Ver `docs/decisions/DEC-2026-09-26-provider-validation-before-market.md`.
+
+### Descubrimiento y validación — primero
+
+- [ ] Definir scorecard y guion de entrevista para proveedores.
+- [ ] Identificar y entrevistar 3–8 proveedores accesibles en Costa Rica con diversidad de categoría y operación.
+- [ ] Documentar cómo venden, adquieren clientes, mantienen catálogo/stock/precios y manejan recurrencia, logística, pagos y devoluciones.
+- [ ] Validar qué valor real puede aportar Proper al proveedor y al maker sin asumir que “más exposición” sea suficiente.
+- [ ] Definir señales de interés comercial real y umbrales antes de ejecutar un piloto.
+- [ ] Decidir con evidencia entre no construir, piloto manual, reposición/referral, leads/directorio, marketplace u otra combinación.
+
+### Candidatos de producto — no comprometidos
+
+- [ ] Separar proveedores personales de cualquier comercio publicado si se construye una capa comercial.
+- [ ] Evaluar catálogo canónico y comparación de variantes solo si la validación lo justifica.
+- [ ] Evaluar “Dónde comprar”, enlaces referidos y atribución respetuosa de la privacidad como hipótesis.
+- [ ] Evaluar portal, CSV/API o actualización manual según la capacidad real de los proveedores.
+- [ ] Definir monetización solo después de validar incentivos y economía.
+- [ ] Evaluar checkout dentro de Proper únicamente después de validar volumen y resolver pagos, facturación, impuestos, garantías, devoluciones, contracargos, stock, fulfillment, privacidad y soporte.
 
 ## Impresoras y AMS
 
