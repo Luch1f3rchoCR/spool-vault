@@ -40,6 +40,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 - `public.purchase_order_payments`: pago real inmutable con moneda, tipo de cambio, fecha, clase y fuente.
 - `public.user_profiles`: moneda base, datos opcionales de facturación y estado de membresía por usuario.
 - `public.filament_balance_report`: vista financiera consistente por usuario con saldo, compra, proveedor, spool y valor restante, sin mezclar monedas.
+- `public.historical_fx_snapshots`: snapshots BCCR inmutables por usuario, fecha y moneda; conserva indicadores 318/333, fechas efectivas y valores crudos.
+- `public.filament_inventory_valuation`: valor restante de filamento en moneda original, CRC y USD; usa landed cost para órdenes y costo de filamento para legado.
 
 The schema uses RLS, authenticated-only access, and explicit grants so the inventory is ready for Supabase Data API access without exposing it publicly.
 
@@ -53,6 +55,7 @@ The schema uses RLS, authenticated-only access, and explicit grants so the inven
 - `correct_purchase`: appends an audited correction and updates the roll's current cost in one retry-safe transaction.
 - `create_purchase_order`: groups existing purchase history into an immutable order and allocates shipping/other charges in one retry-safe transaction.
 - `create_purchase_order_v2`: creates the order, items and optional multi-currency payment in one retry-safe transaction.
+- `record_bccr_fx_snapshot`: server-only, retry-safe persistence for a validated historical BCCR snapshot; requires `BCCR_TOKEN` only in the server environment.
 - `save_user_profile`: upserts the signed-in user's financial preferences without accepting another user's id.
 - Deferred database checks keep `filament_rolls.spool_id` and `spools.status` synchronized at commit time; partial assignments are rejected.
 - A physical spool can belong to only one roll record at a time, including archived records, and clients cannot directly delete roll or spool history.

@@ -2,7 +2,7 @@
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
-const container = "spool-vault-sql-test-20260909";
+const container = process.env.PROPER_SQL_TEST_CONTAINER || "spool-vault-sql-test-20260909";
 const root = path.resolve(__dirname, "..");
 function command(args, input) {
  const result = spawnSync("docker", args, { input, encoding: "utf8", maxBuffer: 10 * 1024 * 1024 });
@@ -26,7 +26,14 @@ for(const name of migrations) {
    console.log("PASS pre-onboarding regression "+test);
   }
  }
+ const isHistoricalFx = name.includes("fin01a_historical_fx");
+ if (isHistoricalFx) {
+  // Reproduce Supabase's inherited grants, including destructive privileges.
+  sql("alter default privileges in schema public grant all on tables to service_role;");
+  sql("begin;\n" + file("supabase/migrations/"+name) + "\nrollback;");
+ }
  sql(file("supabase/migrations/"+name));
+ if (isHistoricalFx) sql("alter default privileges in schema public revoke all on tables from service_role;");
  console.log("PASS migration "+name);
 }
 sql(file("supabase/tests/tester_first_visit.sql"));
@@ -35,4 +42,6 @@ sql(file("supabase/tests/purchase_order_new_filaments.sql"));
 console.log("PASS order/new-filament rollback, isolation, mixed lines and retry checks");
 sql(file("supabase/tests/supply_stock_projects.sql"));
 console.log("PASS supply stock, weighted costs, production rollback, isolation and retry checks");
+sql(file("supabase/tests/fin01a_historical_fx.sql"));
+console.log("PASS FIN-01A historical FX, valuation, isolation and immutability checks");
 console.log(sql("select count(*) as remaining_test_users from auth.users;"));
