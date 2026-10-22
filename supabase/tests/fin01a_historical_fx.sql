@@ -84,8 +84,22 @@ select
 
 set local role service_role;
 do $$
-declare v_first public.historical_fx_snapshots; v_retry public.historical_fx_snapshots; v_count integer;
+declare v_first public.historical_fx_snapshots; v_retry public.historical_fx_snapshots; v_count integer; v_invalid numeric;
 begin
+ assert not has_table_privilege('service_role','public.historical_fx_snapshots','UPDATE'), 'inherited UPDATE grant';
+ assert not has_table_privilege('service_role','public.historical_fx_snapshots','DELETE'), 'inherited DELETE grant';
+ assert not has_table_privilege('service_role','public.historical_fx_snapshots','TRUNCATE'), 'inherited TRUNCATE grant';
+ foreach v_invalid in array array['NaN'::numeric, 'Infinity'::numeric, '-Infinity'::numeric, 0::numeric, -1::numeric] loop
+  begin
+   perform public.record_bccr_fx_snapshot('f1000000-0000-4000-8000-000000000001',gen_random_uuid(),'2026-09-20','USD','2026-09-20',v_invalid,null,null);
+   raise exception 'invalid 318 value accepted' using errcode='ZX001';
+  exception when sqlstate 'ZX001' then raise; when others then null; end;
+  begin
+   perform public.record_bccr_fx_snapshot('f1000000-0000-4000-8000-000000000001',gen_random_uuid(),'2026-09-20','EUR','2026-09-20',500,'2026-09-20',v_invalid);
+   raise exception 'invalid 333 value accepted' using errcode='ZX001';
+  exception when sqlstate 'ZX001' then raise; when others then null; end;
+ end loop;
+ assert not exists(select 1 from public.historical_fx_snapshots where acquisition_date='2026-09-20'), 'rejected values left snapshots';
  v_first:=public.record_bccr_fx_snapshot('f1000000-0000-4000-8000-000000000001','f1000000-0000-4000-8000-000000000010','2026-09-01','CRC','2026-09-01',500,null,null);
  v_retry:=public.record_bccr_fx_snapshot('f1000000-0000-4000-8000-000000000001','f1000000-0000-4000-8000-000000000010','2026-09-01','CRC','2026-09-01',500,null,null);
  assert v_retry.id=v_first.id, 'idempotent retry returned another snapshot';

@@ -19,6 +19,10 @@ create table public.historical_fx_snapshots (
   created_at timestamptz not null default now(),
   unique (user_id, request_id),
   unique (user_id, acquisition_date, source_currency),
+  check (crc_per_usd < 'Infinity'::numeric and source_to_crc_rate < 'Infinity'::numeric
+    and source_to_usd_rate < 'Infinity'::numeric and indicator_318_raw_value < 'Infinity'::numeric
+    and (usd_per_eur is null or usd_per_eur < 'Infinity'::numeric)
+    and (indicator_333_raw_value is null or indicator_333_raw_value < 'Infinity'::numeric)),
   check (indicator_318_effective_date = acquisition_date),
   check (
     (source_currency = 'EUR' and usd_per_eur is not null and indicator_333 = 333
@@ -29,15 +33,14 @@ create table public.historical_fx_snapshots (
   )
 );
 
-create index historical_fx_snapshots_user_date_idx
-  on public.historical_fx_snapshots (user_id, acquisition_date, source_currency);
-
 alter table public.historical_fx_snapshots enable row level security;
 create policy historical_fx_snapshots_read
 on public.historical_fx_snapshots for select to authenticated
 using ((select auth.uid()) = user_id);
 
-revoke all on table public.historical_fx_snapshots from public, anon, authenticated;
+-- Supabase default grants can include UPDATE/DELETE/TRUNCATE for service_role.
+-- Revoke those before granting only the append-only operations.
+revoke all on table public.historical_fx_snapshots from public, anon, authenticated, service_role;
 grant select on table public.historical_fx_snapshots to authenticated;
 grant select, insert on table public.historical_fx_snapshots to service_role;
 
@@ -63,13 +66,15 @@ declare
 begin
   if p_user_id is null then raise exception 'Usuario inválido'; end if;
   if p_request_id is null or p_acquisition_date is null then raise exception 'Solicitud y fecha requeridas'; end if;
-  if v_currency not in ('CRC', 'USD', 'EUR') then raise exception 'Moneda no soportada'; end if;
+  if v_currency is null or v_currency not in ('CRC', 'USD', 'EUR') then raise exception 'Moneda no soportada'; end if;
   if p_indicator_318_effective_date is distinct from p_acquisition_date
-    or p_indicator_318_raw_value is null or p_indicator_318_raw_value <= 0 then
+    or p_indicator_318_raw_value is null or p_indicator_318_raw_value <= 0
+    or p_indicator_318_raw_value >= 'Infinity'::numeric then
     raise exception 'Indicador 318 inválido para la fecha de adquisición';
   end if;
   if v_currency = 'EUR' and (p_indicator_333_effective_date is distinct from p_acquisition_date
-    or p_indicator_333_raw_value is null or p_indicator_333_raw_value <= 0) then
+    or p_indicator_333_raw_value is null or p_indicator_333_raw_value <= 0
+    or p_indicator_333_raw_value >= 'Infinity'::numeric) then
     raise exception 'Indicador 333 inválido para la fecha de adquisición';
   end if;
   if v_currency <> 'EUR' and (p_indicator_333_effective_date is not null or p_indicator_333_raw_value is not null) then

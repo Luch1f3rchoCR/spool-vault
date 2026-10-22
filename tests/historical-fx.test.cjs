@@ -3,11 +3,19 @@ const { test } = require("node:test");
 const {
   BCCR_USD_CRC_INDICATOR,
   BCCR_EUR_USD_INDICATOR,
+  isIsoAcquisitionDate,
   parseBccrObservation,
   resolveBccrObservations
 } = require("../lib/historical-fx.ts");
 
 const response = (date, value) => ({ estado: true, datos: [{ series: [{ fecha: date, valorDatoPorPeriodo: value }] }] });
+
+test("invalid acquisition dates return false rather than throwing", () => {
+  for (const value of [null, {}, "2026-99-99", "2026-02-30", "2026-02-29", "30/09/2026", ""]) {
+    assert.equal(isIsoAcquisitionDate(value), false);
+  }
+  assert.equal(isIsoAcquisitionDate("2024-02-29"), true);
+});
 
 test("validates and preserves an exact-date BCCR observation", () => {
   assert.deepEqual(parseBccrObservation(response("2026-09-30", 501.123456), 318, "2026-09-30"), {

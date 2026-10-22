@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     let body: { acquisition_date?: unknown; source_currency?: unknown };
     try { body = JSON.parse(rawBody); }
     catch { return respond({ error: "Solicitud inválida." }, 400); }
-    if (!isIsoAcquisitionDate(body.acquisition_date) || !isHistoricalFxCurrency(body.source_currency)) {
+    if (!body || !isIsoAcquisitionDate(body.acquisition_date) || !isHistoricalFxCurrency(body.source_currency)) {
       return respond({ error: "Fecha o moneda de adquisición inválida." }, 400);
     }
 

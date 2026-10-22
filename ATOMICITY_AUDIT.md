@@ -55,6 +55,8 @@ FIN-01A separa el tipo de cambio de pago de la valoración estándar del inventa
 
 Si una corrección append-only cambia fecha, moneda o costo consumible respecto de una partida de orden ya congelada, la valoración reporta `corrected_order_mismatch`: no combina el costo corregido con cargos históricos ni reutiliza la fecha o moneda obsoletas de la orden.
 
+Revisión previa a publicación de FIN-01A (21–22 de octubre): se revocan también los permisos heredados de `service_role` antes de conceder únicamente lectura/inserción; las pruebas reproducen grants de Supabase y verifican ausencia de UPDATE/DELETE/TRUNCATE. Se rechazan tasas no finitas en RPC y tabla. Pasaron las regresiones SQL en PostgreSQL 17 aislado (sin usuarios de prueba restantes), la aplicación/reversión local de la migración y el build. La migración aún no aplicada se ajustó antes de publicarla; activación en producción pendiente de verificar acceso Vercel y configuración BCCR. No se modificaron datos ni esquema de producción.
+
 Desde el 29 de agosto, la base también valida la relación rollo-spool al confirmar cada transacción. Las funciones pueden cambiar ambas tablas juntas, pero una escritura parcial se rechaza. Un índice único impide reutilizar el mismo spool físico en otra ficha, incluso si una de las fichas está archivada; además, el cliente autenticado ya no puede borrar directamente rollos o spools.
 
 La misma revisión centralizó el estado operativo del rollo. Se corrigieron diez etiquetas antiguas de `new` a `open` sin cambiar sus gramos, compras, consumos ni pesajes. Desde entonces, cualquier modificación de peso, peso inicial o umbral pasa por un trigger y los límites físicos también están protegidos por una restricción de tabla.
