@@ -1,5 +1,45 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { FilamentInventoryValuation, InventoryBalanceRow } from "./types";
+import type { FilamentInventoryValuation, HistoricalFxSnapshot, InventoryBalanceRow } from "./types";
+
+type FxRequest = Pick<HistoricalFxSnapshot, "acquisition_date" | "source_currency">;
+
+export function missingReportRates(rows: InventoryBalanceRow[], values: Map<string, FilamentInventoryValuation>) {
+  const requests = new Map<string, FxRequest>();
+  for (const row of rows) {
+    const value = matchReportValuation(row, values.get(row.roll_id));
+    const currency = value?.original_currency;
+    if (value?.incompleteness_reason !== "missing_fx_snapshot" || value.fx_status !== "incomplete"
+      || row.status === "archived" || !value.acquisition_date
+      || (currency !== "CRC" && currency !== "USD" && currency !== "EUR")) continue;
+    requests.set(`${value.acquisition_date}:${currency}`, { acquisition_date: value.acquisition_date, source_currency: currency });
+  }
+  return [...requests.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
+export async function requestReportRate(client: SupabaseClient, request: FxRequest, signal: AbortSignal, fetcher: typeof fetch = fetch) {
+  signal.throwIfAborted();
+  let onAbort = () => {};
+  const { data, error } = await new Promise<Awaited<ReturnType<typeof client.auth.getSession>>>((resolve, reject) => {
+    onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+    client.auth.getSession().then(resolve, reject);
+  }).finally(() => signal.removeEventListener("abort", onAbort));
+  signal.throwIfAborted();
+  if (error || !data.session?.access_token) throw new Error("La sesión venció. Volvé a iniciar sesión.");
+  // getSession only supplies the bearer; the existing server endpoint verifies getUser.
+  const response = await fetcher("/api/financial/historical-fx", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+    body: JSON.stringify(request), cache: "no-store", signal
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(typeof result?.error === "string" && result.error.length < 250 ? result.error : "No se pudo confirmar la consulta histórica.");
+  const snapshot = result?.snapshot;
+  if (!snapshot?.id || snapshot.user_id !== data.session.user.id || snapshot.source !== "BCCR"
+    || snapshot.acquisition_date !== request.acquisition_date || snapshot.source_currency !== request.source_currency) {
+    throw new Error("La respuesta no confirma la tasa solicitada.");
+  }
+  return { reused: result.reused === true };
+}
 
 // Read only: opening/exporting a report never creates an FX snapshot.
 export async function loadReportValuations(client: SupabaseClient, rollIds: string[], signal: AbortSignal) {

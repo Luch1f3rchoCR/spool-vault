@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const { loadReportValuations, matchReportValuation, summarizeValuations, valuationAmount, valuationNote, valuationCsvCells } = require("../lib/inventory-valuation-report.ts");
+const { loadReportValuations, matchReportValuation, missingReportRates, requestReportRate, summarizeValuations, valuationAmount, valuationNote, valuationCsvCells } = require("../lib/inventory-valuation-report.ts");
 
 const row = { roll_id: "roll-1", user_id: "owner", status: "open", initial_weight_g: 1000, available_weight_g: 500 };
 const value = { ...row, original_currency: "USD", remaining_original_value: 10, remaining_crc_value: 5000, remaining_usd_value: 10, fx_status: "complete", incompleteness_reason: null, acquisition_date: "2026-09-30", fx_source: "BCCR", cost_basis_source: "purchase_order_landed", cost_confidence: "actual" };
@@ -12,6 +12,53 @@ test("keeps historical currencies separate and totals only the filtered non-arch
     { currency: "CRC", total: 5000, included: 1, missing: 0 },
     { currency: "USD", total: 10, included: 1, missing: 0 }
   ]);
+});
+
+test("only offers distinct pending dates/currencies for visible, matching active rolls", () => {
+  const second = { ...row, roll_id: "roll-2" };
+  const pending = { ...value, fx_status: "incomplete", incompleteness_reason: "missing_fx_snapshot" };
+  const map = new Map([[row.roll_id, pending], [second.roll_id, { ...pending, roll_id: second.roll_id }]]);
+  assert.deepEqual(missingReportRates([row, second], map), [["2026-09-30:USD", { acquisition_date: "2026-09-30", source_currency: "USD" }]]);
+  for (const patch of [{ incompleteness_reason: "missing_cost" }, { original_currency: "JPY" }, { acquisition_date: null }, { status: "archived" }, { available_weight_g: 12 }]) {
+    assert.deepEqual(missingReportRates([row], new Map([[row.roll_id, { ...pending, ...patch }]])), []);
+  }
+  assert.deepEqual(missingReportRates([], map), []);
+});
+
+const fxRequest = { acquisition_date: "2026-09-30", source_currency: "USD" };
+const sessionClient = { auth: { getSession: async () => ({ data: { session: { access_token: "fixture", user: { id: "owner" } } }, error: null }) } };
+const snapshot = { id: "snapshot-1", user_id: "owner", source: "BCCR", ...fxRequest };
+test("requests only the existing same-origin endpoint with session bearer and stable retry payload", async () => {
+  const calls = [];
+  const fetcher = async (url, options) => {
+    calls.push([url, options]);
+    return Response.json({ snapshot, reused: calls.length > 1 });
+  };
+  assert.deepEqual(await requestReportRate(sessionClient, fxRequest, new AbortController().signal, fetcher), { reused: false });
+  assert.deepEqual(await requestReportRate(sessionClient, fxRequest, new AbortController().signal, fetcher), { reused: true });
+  assert.equal(calls[0][0], "/api/financial/historical-fx");
+  assert.equal(calls[0][1].method, "POST");
+  assert.equal(calls[0][1].headers.Authorization, "Bearer fixture");
+  assert.equal(calls[0][1].body, calls[1][1].body);
+  assert.deepEqual(JSON.parse(calls[0][1].body), fxRequest);
+});
+
+test("rejects expired session, server failures and malformed or mismatched confirmations", async () => {
+  await assert.rejects(requestReportRate({ auth: { getSession: async () => ({ data: { session: null }, error: null }) } }, fxRequest, new AbortController().signal, () => { throw new Error("must not fetch"); }), /sesión/);
+  for (const status of [401, 409, 502, 503]) {
+    await assert.rejects(requestReportRate(sessionClient, fxRequest, new AbortController().signal, async () => Response.json({ error: "Consulta rechazada" }, { status })), /Consulta rechazada/);
+  }
+  for (const patch of [{ id: null }, { user_id: "other" }, { acquisition_date: "2026-09-29" }, { source_currency: "CRC" }, { source: "Manual" }]) {
+    await assert.rejects(requestReportRate(sessionClient, fxRequest, new AbortController().signal, async () => Response.json({ snapshot: { ...snapshot, ...patch } })), /no confirma/);
+  }
+  await assert.rejects(requestReportRate(sessionClient, fxRequest, new AbortController().signal, async () => new Response("not JSON")), /no confirma/);
+});
+
+test("cancellation also releases a stalled session lookup without making a request", async () => {
+  const controller = new AbortController();
+  const pending = requestReportRate({ auth: { getSession: () => new Promise(() => {}) } }, fxRequest, controller.signal, () => { throw new Error("must not fetch"); });
+  controller.abort();
+  await assert.rejects(pending, { name: "AbortError" });
 });
 
 test("missing FX retains native value but never substitutes zero for missing conversion", () => {

@@ -16,14 +16,25 @@ const values = rows.map((row, index) => ({ ...row, original_currency: 'USD', acq
     page.on('pageerror', (error) => errors.push(error.message));
     const token = ['e30', Buffer.from(JSON.stringify({ sub: user.id, exp: Math.floor(Date.now()/1000)+3600 })).toString('base64url'), 'test'].join('.');
     await context.addInitScript(({ user, token }) => localStorage.setItem('sb-spool-test-auth-token', JSON.stringify({ access_token: token, refresh_token: 'test', expires_at: Math.floor(Date.now()/1000)+3600, expires_in: 3600, token_type: 'bearer', user })), { user, token });
-    let fail = false;
+    let fail = false, releaseRequest;
+    const requests = [], currentValues = values.map(value => ({ ...value }));
     await context.route('**/*', async (route) => {
       const req = route.request(), url = new URL(req.url()), name = url.pathname.split('/').pop();
       if (req.method() !== 'GET') writes.push(url.pathname);
+      if (url.origin === base && url.pathname === '/api/financial/historical-fx') {
+        requests.push(req.postDataJSON());
+        assert.equal(req.headers().authorization, `Bearer ${token}`);
+        if (requests.length === 1) {
+          await new Promise(resolve => { releaseRequest = resolve; });
+          return route.fulfill({ status: 503, json: { error: 'No pudimos confirmar la tasa.' } });
+        }
+        currentValues[1] = { ...currentValues[1], fx_status: 'complete', incompleteness_reason: null, remaining_crc_value: 6000, fx_source: 'BCCR' };
+        return route.fulfill({ json: { snapshot: { id: 'snapshot-1', user_id: user.id, source: 'BCCR', ...requests[0] }, reused: true } });
+      }
       if (url.origin === base) return url.pathname === '/api/supabase-config' ? route.fulfill({ json: { url: 'https://spool-test.supabase.co', publishableKey: 'sb_publishable_test' } }) : route.continue();
       if (url.origin !== 'https://spool-test.supabase.co') return route.abort();
       if (name === 'filament_inventory_valuation' && fail) return route.fulfill({ status: 400, json: { message: 'Fixture read error' } });
-      const result = name === 'user' ? user : name === 'user_profiles' ? { user_id: user.id, base_currency: 'CRC' } : name === 'get_tester_first_visit' ? { status: 'active' } : name === 'filament_balance_report' ? rows : name === 'filament_inventory_valuation' ? values : [];
+      const result = name === 'user' ? user : name === 'user_profiles' ? { user_id: user.id, base_currency: 'CRC' } : name === 'get_tester_first_visit' ? { status: 'active' } : name === 'filament_balance_report' ? rows : name === 'filament_inventory_valuation' ? currentValues : [];
       return route.fulfill({ json: result });
     });
     await page.goto(base);
@@ -39,11 +50,13 @@ const values = rows.map((row, index) => ({ ...row, original_currency: 'USD', acq
     assert.match(await summary.innerText(), /Subtotal disponible/);
     assert.match(await summary.innerText(), /1 pendientes, no incluidos/);
     assert.match(await summary.innerText(), /24/);
+    await modal.getByLabel('Fecha y moneda').scrollIntoViewIfNeeded();
     await fs.mkdir('node_modules/.tools/valuation-report', { recursive: true });
     await page.screenshot({ path: `node_modules/.tools/valuation-report/${width}.png` });
     const dimensions = await modal.evaluate(el => ({ width: el.clientWidth, scroll: el.scrollWidth, children: [...el.children].filter(child => child.scrollWidth > el.clientWidth).map(child => [child.className, child.scrollWidth]) }));
     assert.ok(dimensions.scroll <= dimensions.width + 1, JSON.stringify(dimensions));
     await modal.getByLabel('Buscar en el reporte').fill('Rojo');
+    assert.equal(await modal.getByRole('button', { name: 'Consultar tasa BCCR' }).count(), 0);
     assert.doesNotMatch(await summary.innerText(), /pendientes/);
     const [download] = await Promise.all([page.waitForEvent('download'), modal.getByRole('button', { name: 'Descargar CSV' }).click()]);
     const csv = await fs.readFile(await download.path(), 'utf8');
@@ -55,7 +68,42 @@ const values = rows.map((row, index) => ({ ...row, original_currency: 'USD', acq
     await modal.getByText('Tasa histórica BCCR pendiente').waitFor();
     assert.deepEqual(errors, []);
     assert.deepEqual(writes.filter(path => !path.endsWith('/get_tester_first_visit')), []);
-    console.log(`PASS ${width}px: partial/native values, filter, CSV, error/retry, no writes, no overflow/errors`);
+    const pendingRequest = page.waitForRequest(req => req.url() === `${base}/api/financial/historical-fx`);
+    await modal.getByRole('button', { name: 'Consultar tasa BCCR' }).click();
+    await pendingRequest;
+    assert.equal(await modal.getByRole('button', { name: 'Consultando BCCR…' }).isDisabled(), true);
+    assert.equal(await modal.getByRole('button', { name: 'Cerrar reporte' }).isDisabled(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await modal.isVisible(), true);
+    assert.equal(requests.length, 1);
+    releaseRequest();
+    await modal.getByRole('alert').filter({ hasText: 'No pudimos confirmar la tasa.' }).waitFor();
+    assert.match(await summary.innerText(), /Subtotal disponible/);
+    if (width === 1280) fail = true;
+    await modal.getByRole('button', { name: 'Consultar tasa BCCR' }).click();
+    if (width === 1280) {
+      await modal.getByRole('alert').filter({ hasText: 'La tasa fue confirmada, pero no se pudo recargar' }).waitFor();
+      assert.equal(await summary.count(), 0);
+      fail = false;
+      await modal.getByRole('button', { name: 'Reintentar valoración' }).click();
+      await summary.waitFor();
+      assert.equal(requests.length, 2, 'retry read does not request the rate again');
+      assert.equal(await modal.evaluate(el => el.contains(document.activeElement)), true);
+    } else {
+      const confirmed = modal.getByRole('status').filter({ hasText: 'Tasa BCCR confirmada' });
+      await confirmed.waitFor();
+      assert.equal(await confirmed.evaluate(el => el === document.activeElement), true);
+    }
+    assert.deepEqual(requests, [{ acquisition_date: '2026-09-30', source_currency: 'USD' }, { acquisition_date: '2026-09-30', source_currency: 'USD' }]);
+    assert.doesNotMatch(await summary.innerText(), /pendientes/);
+    assert.match(await summary.innerText(), /12.?000/);
+    assert.equal(await modal.getByRole('button', { name: 'Consultar tasa BCCR' }).count(), 0);
+    assert.equal(await modal.evaluate(el => el.scrollWidth <= el.clientWidth + 1), true);
+    assert.deepEqual(errors, []);
+    await page.keyboard.press('Escape');
+    await modal.waitFor({ state: 'detached' });
+    assert.equal(await modal.count(), 0);
+    console.log(`PASS ${width}px: filtered rates, explicit POST only, busy/close guard, failure/retry, refreshed totals, CSV, responsive`);
     await context.close();
   }
     const local = await browser.newContext({ viewport: { width: 390, height: 900 }, serviceWorkers: 'block' });
@@ -71,6 +119,7 @@ const values = rows.map((row, index) => ({ ...row, original_currency: 'USD', acq
     const localModal = localPage.getByRole('dialog', { name: 'Saldo de filamentos' });
     await localModal.getByText(/No se calculan conversiones en modo local\/demo/).waitFor();
     assert.equal(await localModal.getByRole('columnheader', { name: 'Histórico CRC' }).count(), 0);
+    assert.equal(await localModal.getByRole('button', { name: 'Consultar tasa BCCR' }).count(), 0);
     assert.deepEqual(external, []);
     console.log('PASS local/demo: no FX queries or fabricated converted values');
     await local.close();
