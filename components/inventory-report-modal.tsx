@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Download, Search, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Download, Search } from "lucide-react";
+import { ModalFrame } from "@/components/modal-frame";
 import type { FilamentInventoryValuation, InventoryBalanceRow, RollStatus } from "@/lib/types";
 import { getSupabaseClient } from "@/lib/supabase";
-import { loadReportValuations, matchReportValuation, summarizeValuations, valuationAmount, valuationCsvCells, valuationNote } from "@/lib/inventory-valuation-report";
+import { loadReportValuations, matchReportValuation, missingReportRates, requestReportRate, summarizeValuations, valuationAmount, valuationCsvCells, valuationNote } from "@/lib/inventory-valuation-report";
 
 const statusLabels: Record<RollStatus, string> = {
   new: "Nuevo",
@@ -81,6 +82,17 @@ export function InventoryReportModal({ rows, mode, isLoading, error, onClose }: 
     rows: InventoryBalanceRow[]; values: FilamentInventoryValuation[]; error: string;
   } | null>(null);
   const [retry, setRetry] = useState(0);
+  const [selectedRate, setSelectedRate] = useState("");
+  const [isRequestingRate, setIsRequestingRate] = useState(false);
+  const [rateNotice, setRateNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const rateRequest = useRef<AbortController | null>(null);
+  const rateFeedback = useRef<HTMLParagraphElement>(null);
+  useEffect(() => { if (rateNotice) rateFeedback.current?.focus(); }, [rateNotice]);
+  useEffect(() => {
+    setIsRequestingRate(false);
+    setRateNotice(null);
+    return () => { rateRequest.current?.abort(); rateRequest.current = null; };
+  }, [mode, rows]);
   useEffect(() => {
     if (mode !== "authenticated" || isLoading || error) return;
     const controller = new AbortController();
@@ -123,22 +135,48 @@ export function InventoryReportModal({ rows, mode, isLoading, error, onClose }: 
     return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filteredRows]);
   const historicalTotals = summarizeValuations(filteredRows, valuations);
+  const missingRates = missingReportRates(filteredRows, valuations);
+  const selectedRequest = missingRates.find(([key]) => key === selectedRate) ?? missingRates[0];
+
+  async function consultRate() {
+    if (rateRequest.current || mode !== "authenticated" || !currentValuation || currentValuation.error || !selectedRequest) return;
+    const client = getSupabaseClient();
+    if (!client) return;
+    const controller = new AbortController();
+    rateRequest.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 30_000);
+    setIsRequestingRate(true);
+    setRateNotice(null);
+    let confirmed = false;
+    try {
+      await requestReportRate(client, selectedRequest[1], controller.signal);
+      confirmed = true;
+      const values = await loadReportValuations(client, rows.map((row) => row.roll_id), controller.signal);
+      if (rateRequest.current !== controller) return;
+      setValuationResult({ rows, values, error: "" });
+      setRateNotice({ text: `Tasa BCCR confirmada para ${selectedRequest[1].acquisition_date} · ${selectedRequest[1].source_currency}. Valoración actualizada; compras y costos originales sin cambios.`, error: false });
+    } catch (cause) {
+      if (rateRequest.current !== controller) return;
+      if (confirmed) {
+        setValuationResult({ rows, values: [], error: "La tasa fue confirmada, pero no se pudo recargar la valoración. Reintentá la lectura." });
+        setRateNotice(null);
+      } else setRateNotice({ text: `${cause instanceof Error && cause.name !== "AbortError" && cause.name !== "TypeError" ? cause.message : "No pudimos confirmar el resultado de la consulta."} Podés reintentar la misma fecha y moneda sin duplicar la tasa.`, error: true });
+    } finally {
+      window.clearTimeout(timeout);
+      if (rateRequest.current === controller) { rateRequest.current = null; setIsRequestingRate(false); }
+    }
+  }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="panel modal-panel report-modal" role="dialog" aria-modal="true" aria-labelledby="report-title">
-        <div className="modal-head">
-          <div><p className="eyebrow">Reporte de inventario</p><h2 id="report-title">Saldo de filamentos</h2></div>
-          <button className="modal-close" type="button" onClick={onClose} aria-label="Cerrar reporte"><X size={20} /></button>
-        </div>
+    <ModalFrame title="Saldo de filamentos" titleId="report-title" eyebrow="Reporte de inventario" className="report-modal" viewKey={currentValuation?.error ? "valuation-error" : "valuation"} busy={isRequestingRate} onClose={onClose} closeLabel="Cerrar reporte">
 
         {mode !== "authenticated" && <p className="report-mode-note">{mode === "demo" ? "Vista con datos de demostración." : "Vista local · estos valores no están sincronizados."}</p>}
         {error && <p className="report-error" role="alert">{error}</p>}
 
         <div className="report-toolbar">
-          <label className="search-box"><Search size={17} /><input aria-label="Buscar en el reporte" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el reporte..." /></label>
-          <label className="report-archive-toggle"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Incluir archivados</label>
-          <button type="button" onClick={() => downloadCsv(filteredRows, mode === "authenticated" ? valuations : null)} disabled={!filteredRows.length || isLoading || (mode === "authenticated" && !currentValuation && !error)}><Download size={17} /> Descargar CSV</button>
+          <label className="search-box"><Search size={17} /><input disabled={isRequestingRate} aria-label="Buscar en el reporte" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el reporte..." /></label>
+          <label className="report-archive-toggle"><input disabled={isRequestingRate} type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Incluir archivados</label>
+          <button type="button" onClick={() => downloadCsv(filteredRows, mode === "authenticated" ? valuations : null)} disabled={isRequestingRate || !filteredRows.length || isLoading || (mode === "authenticated" && !currentValuation && !error)}><Download size={17} /> Descargar CSV</button>
         </div>
 
         <h3>Importes originales · por moneda</h3>
@@ -159,7 +197,18 @@ export function InventoryReportModal({ rows, mode, isLoading, error, onClose }: 
               </article>)}
             </div>
             <p>Las conversiones usan tasas BCCR guardadas para la fecha de adquisición; los importes en su propia moneda no requieren conversión. Las tasas faltantes no se consultan automáticamente.</p>
+            {missingRates.length > 0 && <div>
+              <p>Elegí una fecha y moneda pendiente según los filtros. Consultar guarda o recupera una tasa histórica para todos tus filamentos de esa fecha y moneda, incluidos los que no muestra el filtro. No cambia compras ni el monto pagado.</p>
+              <div className="report-toolbar">
+                <label style={{ gridColumn: "1 / -1" }}>Fecha y moneda<select value={selectedRequest?.[0] ?? ""} disabled={isRequestingRate} onChange={(event) => { setSelectedRate(event.target.value); setRateNotice(null); }}>
+                  {missingRates.map(([key, request]) => <option key={key} value={key}>{request.acquisition_date} · {request.source_currency}</option>)}
+                </select></label>
+                <button type="button" onClick={() => void consultRate()} disabled={isRequestingRate}>{isRequestingRate ? "Consultando BCCR…" : "Consultar tasa BCCR"}</button>
+              </div>
+            </div>}
           </>}
+          {isRequestingRate && <p role="status">Consultando y actualizando la valoración. Esperá la confirmación.</p>}
+          {rateNotice && <p ref={rateFeedback} tabIndex={-1} className={rateNotice.error ? "report-error" : "report-mode-note"} role={rateNotice.error ? "alert" : "status"}>{rateNotice.text}</p>}
         </section>}
         {mode !== "authenticated" && <p>La valoración histórica BCCR requiere un inventario sincronizado. No se calculan conversiones en modo local/demo.</p>}
 
@@ -188,7 +237,6 @@ export function InventoryReportModal({ rows, mode, isLoading, error, onClose }: 
             </table>
           </div>
         ) : <p className="empty-state">No hay rollos que coincidan con el reporte.</p>}
-      </section>
-    </div>
+    </ModalFrame>
   );
 }
