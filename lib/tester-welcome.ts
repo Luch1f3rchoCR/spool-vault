@@ -1,9 +1,10 @@
 export const FOUNDER_SCOPE = "Acceso personal gratuito de por vida a las funciones de inventario, compras, pesajes, etiquetas y proyectos de esta versión. Sin cobros recurrentes. Vinculado a tu cuenta.";
 export const FOUNDER_EXCLUSIONS = "Los servicios externos y futuros planes adicionales no están incluidos.";
 export const APP_URL = "https://spool-vault.vercel.app/";
+export const WELCOME_SUBJECT = "Bienvenido a Proper · Probador fundador";
 
 export function welcomeText(name: string, email: string) {
-  return `Hola, ${name || "probador fundador"}:\n\nTe damos la bienvenida al grupo de pruebas de Spool Vault.\n\nTu licencia: Probador fundador · gratis de por vida.\n${FOUNDER_SCOPE}\n${FOUNDER_EXCLUSIONS}\n\nEntrá a ${APP_URL} e iniciá sesión con ${email}. Recibirás un enlace seguro para verificar tu correo. Al ingresar por primera vez, completá un breve formulario sobre tu experiencia, uso e impresoras y activá tu acceso de probador. Después podrás administrar tus máquinas desde Perfil > Mis impresoras.\n\nNos gustaría que probés la app con tus filamentos y nos contés qué falla, qué resulta confuso y qué ideas tenés. Podés enviar tus aportes desde Tu espacio > Compartir una idea.\n\nGracias por ayudarnos a mejorar Spool Vault.\nEl equipo de Spool Vault`;
+  return `Hola, ${name || "probador fundador"}:\n\nTe damos la bienvenida al grupo de pruebas de Proper.\n\nTu licencia: Probador fundador · gratis de por vida.\n${FOUNDER_SCOPE}\n${FOUNDER_EXCLUSIONS}\n\nEntrá a ${APP_URL} e iniciá sesión con ${email}. Recibirás un enlace seguro para verificar tu correo. Al ingresar por primera vez, completá un breve formulario sobre tu experiencia, uso e impresoras y activá tu acceso de probador. Después podrás administrar tus máquinas desde Perfil > Mis impresoras.\n\nNos gustaría que probés la app con tus filamentos y nos contés qué falla, qué resulta confuso y qué ideas tenés. Podés enviar tus aportes desde Tu espacio > Compartir una idea.\n\nGracias por ayudarnos a mejorar Proper.\nEl equipo de Proper`;
 }
 
 function escapeHtml(value: string) {
@@ -14,9 +15,9 @@ export function welcomePayload(name: string, email: string, from: string) {
   const text = welcomeText(name, email);
   const paragraphs = text.split("\n\n").map((paragraph) => `<p style="line-height:1.6;margin:0 0 18px">${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("");
   return {
-    from, to: [email], subject: "Bienvenido a Spool Vault · Probador fundador",
+    from, to: [email], subject: WELCOME_SUBJECT,
     text,
-    html: `<!doctype html><html lang="es"><body style="margin:0;background:#f4f6f5;color:#172b24;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;padding:32px 24px;background:white"><h1 style="font-size:28px;margin:0 0 24px">Spool Vault</h1>${paragraphs}<a href="${APP_URL}" style="display:inline-block;padding:14px 20px;background:#20684d;color:white;text-decoration:none;border-radius:6px">Entrar a Spool Vault</a><p style="font-size:12px;color:#64736b;margin-top:28px">Spool Vault by Stone Collective</p></main></body></html>`
+    html: `<!doctype html><html lang="es"><body style="margin:0;background:#f4f6f5;color:#172b24;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;padding:32px 24px;background:white"><h1 style="font-size:28px;margin:0 0 24px">Proper</h1>${paragraphs}<a href="${APP_URL}" style="display:inline-block;padding:14px 20px;background:#20684d;color:white;text-decoration:none;border-radius:6px">Entrar a Proper</a><p style="font-size:12px;color:#64736b;margin-top:28px">Proper by Stone Collective</p></main></body></html>`
   };
 }
 

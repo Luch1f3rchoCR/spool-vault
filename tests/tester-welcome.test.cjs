@@ -7,6 +7,38 @@ const vm = require('node:vm');
 const { transform, loadBindings } = require('next/dist/build/swc');
 const helpers = import(pathToFileURL(path.resolve('lib/tester-welcome.ts')).href);
 
+test('new welcomes use the approved brand without renaming technical addresses', async () => {
+  const { welcomePayload, welcomeText, WELCOME_SUBJECT, APP_URL, FOUNDER_SCOPE, FOUNDER_EXCLUSIONS } = await helpers;
+  const brand = JSON.parse(fs.readFileSync('app/brand/proper-brand-tokens.json', 'utf8'));
+  const from = 'Spool Vault <hola@example.invalid>';
+  const mail = welcomePayload('Lucho', 'person@example.invalid', from);
+  assert.equal(WELCOME_SUBJECT, `Bienvenido a ${brand.name} · Probador fundador`);
+  assert.equal(mail.subject, WELCOME_SUBJECT);
+  assert.equal(mail.text, welcomeText('Lucho', 'person@example.invalid'));
+  assert.ok(mail.text.includes(`grupo de pruebas de ${brand.name}.`));
+  assert.ok(mail.text.endsWith(`El equipo de ${brand.name}`));
+  assert.ok(mail.html.includes(`>${brand.name}</h1>`));
+  assert.ok(mail.html.includes(`>Entrar a ${brand.name}</a>`));
+  assert.ok(mail.html.includes(`${brand.name} ${brand.copy.endorsement}`));
+  for (const content of [mail.text, mail.html]) {
+    assert.ok(!content.includes('Spool Vault'));
+    assert.ok(content.includes(FOUNDER_SCOPE));
+    assert.ok(content.includes(FOUNDER_EXCLUSIONS));
+  }
+  assert.equal(APP_URL, 'https://spool-vault.vercel.app/');
+  assert.ok(mail.html.includes(`href="${APP_URL}"`));
+  assert.equal(mail.from, from);
+  assert.match(welcomeText('', 'person@example.invalid'), /^Hola, probador fundador:/);
+});
+
+test('manual welcome uses the same subject and text as automatic delivery', async () => {
+  await helpers;
+  const source = fs.readFileSync('components/account-community.tsx', 'utf8');
+  assert.match(source, /subject=\$\{encodeURIComponent\(WELCOME_SUBJECT\)\}/);
+  assert.match(source, /body=\$\{encodeURIComponent\(welcomeText\(member.display_name, member.email\)\)\}/);
+  assert.ok(!source.includes('Bienvenido a Spool Vault'));
+});
+
 test('welcome escapes recipient text and describes the account-bound license', async () => {
   const { welcomePayload } = await helpers;
   const mail = welcomePayload('<img src=x onerror=alert(1)>', 'person@example.invalid', 'Spool Vault <hola@example.invalid>');
