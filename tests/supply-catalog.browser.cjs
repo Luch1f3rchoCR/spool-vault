@@ -23,6 +23,7 @@ const user={id:'d1000000-0000-4000-8000-000000000001',email:'catalog@example.inv
    if(name==='user') result=user;
    else if(name==='user_profiles') result={user_id:user.id,base_currency:'CRC',display_name:'Prueba'};
    else if(name==='get_tester_first_visit') result={status:'active'};
+   else if(name==='inventory_value_summary') result={user_id:user.id,as_of:'2026-10-25T12:00:00Z',rows:[],pending_rates:[],missing_supply_dates:[]};
    else if(name==='supply_stock') result=catalog?[catalog]:[];
    else if(name==='create_supply') {
     creates.push(req.postDataJSON());
@@ -88,6 +89,7 @@ const user={id:'d1000000-0000-4000-8000-000000000001',email:'catalog@example.inv
   await modal.getByRole('button',{name:'Guardar movimiento'}).click();
   await modal.getByText('Insumo y existencias guardados correctamente.',{exact:true}).waitFor();
   assert.equal(entries[0].p_values.supply_id,'catalog-1'); assert.equal(entries[0].p_values.unit,'par');
+  assert.match(entries[0].p_values.purchased_at,/^\d{4}-\d{2}-\d{2}$/);
   await modal.getByRole('button',{name:'Nuevo insumo',exact:true}).click();
   assert.equal(await modal.getByLabel('Nombre',{exact:true}).inputValue(),'');
   assert.equal(await modal.getByLabel('Etiquetas (opcional)',{exact:true}).inputValue(),'');

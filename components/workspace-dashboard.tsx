@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ArrowUpRight, FolderKanban, Layers3, Printer, ReceiptText } from "lucide-react";
 import type { FilamentRoll, PrintProject, ProductionRun, PurchaseOrder } from "@/lib/types";
 import type { WorkspaceSection } from "@/components/app-navigation";
@@ -8,9 +9,10 @@ type Props = {
   displayName: string; rolls: FilamentRoll[]; projects: PrintProject[];
   runs: ProductionRun[]; orders: PurchaseOrder[];
   onNavigate: (section: WorkspaceSection) => void;
+  inventoryValue?: ReactNode;
 };
 
-export function WorkspaceDashboard({ displayName, rolls, projects, runs, orders, onNavigate }: Props) {
+export function WorkspaceDashboard({ displayName, rolls, projects, runs, orders, onNavigate, inventoryValue }: Props) {
   const activity = [
     ...orders.map(order => ({ id: `purchase:${order.id}`, title: "Compra registrada", detail: order.supplier_name,
       date: order.created_at || order.purchased_at, section: "purchases" as const, icon: ReceiptText })),
@@ -37,6 +39,7 @@ export function WorkspaceDashboard({ displayName, rolls, projects, runs, orders,
       <span><span>{card.title}</span><strong>{card.count}</strong><small>{card.detail}</small></span>
       <ArrowUpRight size={15} aria-hidden="true" />
     </button>)}</div>
+    {inventoryValue}
     <section className="dashboard-activity" aria-labelledby="activity-title">
       <div className="section-head"><h2 id="activity-title">Actividad reciente</h2><span>Últimos registros</span></div>
       {activity.length ? activity.map(item => <button type="button" key={item.id} onClick={() => onNavigate(item.section)}>

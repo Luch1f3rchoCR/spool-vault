@@ -1,5 +1,11 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
+## Saldo conjunto de filamentos e insumos · 2026-10-25
+
+`inventory_value_summary()` lee ambos saldos en una misma instantánea STABLE/invoker, con RLS por propietario. Filamentos reutiliza FIN-01A; insumos convierte cada entrada a su fecha de compra y descuenta el promedio histórico al consumir. Un ciclo agotado reinicia la valoración de la reposición. No escribe ni consulta BCCR al abrir; datos faltantes u orden cronológico ambiguo se muestran como parciales, sin cero ficticio ni tasa actual de reemplazo. Costos y consumos históricos quedan intactos.
+
+`complete_supply_purchase_date` agrega una fecha ausente sin editar el movimiento, con bloqueo por solicitud/entrada, comparación del reintento y permisos append-only. Las solicitudes de tasas solo aceptan pendientes propios; snapshots permanecen inmutables. Guardado de fecha con clave persistida en la pestaña, confirmación de dueño/solicitud/entrada/fecha, espera máxima, doble envío y cierre bloqueados durante operación. Pruebas y límites en `docs/INVENTORY_VALUE_SUMMARY.md`; evidencia de publicación en su PR. No se modificaron datos reales de inventario durante los ensayos.
+
 ## Perfiles de impresión · 2026-10-24
 
 `save_filament_print_profile` agrega una revisión por operación, con clave única de usuario/solicitud y bloqueo transaccional por perfil. Reintentos idénticos devuelven la revisión original incluso después de una edición posterior; contenido cambiado se rechaza. La versión esperada evita perder ediciones concurrentes. La tabla es append-only; trigger y RLS validan dueño del rollo e impresora, y la vista actual es invoker. El historial y exportación conservan cada revisión; no cambian inventario físico, compras ni costos productivos.

@@ -26,6 +26,7 @@ import {
   X
 } from "lucide-react";
 import { InventoryReportModal } from "@/components/inventory-report-modal";
+import { InventoryValueCards, InventoryValueDetails, useInventoryValueSummary } from "@/components/inventory-value-summary";
 import { FilamentPrintProfilesModal } from "@/components/filament-print-profiles-modal";
 import { AddActionsModal } from "@/components/add-actions-modal";
 import { ModalFrame } from "@/components/modal-frame";
@@ -737,6 +738,7 @@ export default function Home() {
   const [missingPurchaseRollId, setMissingPurchaseRollId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showValueDetails, setShowValueDetails] = useState(false);
   const [showPurchaseOrders, setShowPurchaseOrders] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [reportRows, setReportRows] = useState<InventoryBalanceRow[]>([]);
@@ -1183,9 +1185,11 @@ export default function Home() {
 
   const printProfileRoll = rolls.find(roll => roll.id === printProfileRollId);
   const hasPrintProfile = Boolean(printProfileRoll);
+  const inventoryValue = useInventoryValueSummary(rolls, supplies, dataMode, signedInUserId);
+  const hasValueDetails = showValueDetails && dataMode === "authenticated";
 
   useEffect(() => {
-    document.body.style.overflow = hasPrintProfile || showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
+    document.body.style.overflow = hasValueDetails || hasPrintProfile || showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
       || showSpools || showReport || showPurchaseOrders || showProjects || showSupplies || showProfile || showWorkspaceMenu
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
@@ -1193,6 +1197,7 @@ export default function Home() {
     };
   }, [
     hasPrintProfile,
+    hasValueDetails,
     correctingPurchaseId,
     editingRollId,
     missingPurchaseRollId,
@@ -1383,20 +1388,15 @@ export default function Home() {
     const totalWeight = rolls.reduce((sum, roll) => sum + Number(roll.available_weight_g), 0);
     const lowRolls = rolls.filter(shouldReorderRoll);
     const materials = new Set(rolls.map((roll) => roll.material));
-    const inventoryCost = rolls.reduce((sum, roll) => {
-      if (roll.currency !== userProfile.base_currency || roll.filament_cost_amount == null || !roll.initial_weight_g) return sum;
-      return sum + (Number(roll.available_weight_g) / Number(roll.initial_weight_g)) * Number(roll.filament_cost_amount);
-    }, 0);
 
     return {
       rollCount: rolls.length,
       totalWeight,
       lowCount: lowRolls.length,
       materialCount: materials.size,
-      manualOpeningBalanceCount: manualOpeningBalanceRollIds.size,
-      inventoryCost
+      manualOpeningBalanceCount: manualOpeningBalanceRollIds.size
     };
-  }, [manualOpeningBalanceRollIds.size, rolls, userProfile.base_currency]);
+  }, [manualOpeningBalanceRollIds.size, rolls]);
 
   const filteredRolls = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
@@ -3523,7 +3523,8 @@ export default function Home() {
         <AppNavigation active={workspaceSection} onSelect={navigateWorkspace} />
       </aside>
       <main className="workspace-content" data-view={workspaceView}>
-      {workspaceView === "home" && <WorkspaceDashboard displayName={userProfile.display_name || ""} rolls={rolls} projects={projects} runs={productionRuns} orders={purchaseOrders} onNavigate={navigateWorkspace} />}
+      {workspaceView === "home" && <WorkspaceDashboard displayName={userProfile.display_name || ""} rolls={rolls} projects={projects} runs={productionRuns} orders={purchaseOrders} onNavigate={navigateWorkspace}
+        inventoryValue={<InventoryValueCards {...inventoryValue} mode={dataMode} onRefresh={inventoryValue.refresh} onDetails={() => setShowValueDetails(true)} />} />}
       {workspaceView === "production" && <ProductionOverview runs={productionRuns} onProjects={() => setShowProjects(true)} />}
       <section className="hero">
         <div>
@@ -3572,12 +3573,8 @@ export default function Home() {
           <strong>{emptySpools.length}</strong>
           <span>spools vacíos</span>
         </article>
-        <article>
-          <Weight size={18} aria-hidden="true" />
-          <strong>{formatMoney(userProfile.base_currency, dashboard.inventoryCost)}</strong>
-          <span>inventario en {userProfile.base_currency}</span>
-        </article>
       </section>
+      {workspaceView === "inventory" && <InventoryValueCards {...inventoryValue} mode={dataMode} onRefresh={inventoryValue.refresh} onDetails={() => setShowValueDetails(true)} />}
 
       <p className={`sync-note sync-${dataMode}`} role={dataMode === "error" ? "alert" : "status"}>
         {dataMode === "error" || dataMode === "demo" ? (
@@ -4397,13 +4394,16 @@ export default function Home() {
         />
       )}
 
+      {hasValueDetails && <InventoryValueDetails key={signedInUserId} {...inventoryValue} userId={signedInUserId}
+        onRefresh={inventoryValue.refresh} onClose={() => setShowValueDetails(false)} />}
+
       {showReport && (
         <InventoryReportModal
           rows={reportRows}
           mode={dataMode}
           isLoading={isLoadingReport}
           error={reportError}
-          onClose={() => setShowReport(false)}
+          onClose={() => { setShowReport(false); inventoryValue.refresh(); }}
         />
       )}
 

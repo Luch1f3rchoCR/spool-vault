@@ -61,6 +61,25 @@ export type FilamentPrintProfile = FilamentPrintProfileValues & {
   created_at: string;
 };
 
+export type InventoryValueRow = {
+  asset_type: "filament" | "supply";
+  id: string;
+  name: string;
+  quantity: number;
+  original_currency: string;
+  remaining_original_value: number | null;
+  remaining_crc_value: number | null;
+  remaining_usd_value: number | null;
+  issue: string | null;
+};
+export type InventoryValueSummary = {
+  user_id: string;
+  as_of: string;
+  rows: InventoryValueRow[];
+  pending_rates: Array<Pick<HistoricalFxSnapshot, "acquisition_date" | "source_currency">>;
+  missing_supply_dates: Array<{ movement_id: string; supply_name: string; quantity: number; unit: string; recorded_at: string }>;
+};
+
 export type Supplier = {
   id: string;
   name: string;

@@ -62,7 +62,8 @@ export function SuppliesModal({supplies, movements, authenticated, baseCurrency,
     } : {
       supply_id:selected?.id ?? null, name:String(data.get("name") ?? ""), category:String(data.get("category") ?? "Otros"),
       unit:selected?.unit ?? String(data.get("unit")), currency:selected?.currency ?? String(data.get("currency")),
-      kind, quantity:Number(quantity), unit_cost:Number(data.get("cost") ?? 0), reason:String(data.get("reason"))
+      kind, quantity:Number(quantity), unit_cost:Number(data.get("cost") ?? 0), reason:String(data.get("reason")),
+      ...(Number(quantity)>0 ? {purchased_at:String(data.get("purchased_at") ?? "")} : {})
     });
     const requestId=pending?.id ?? crypto.randomUUID();
     guard.current=true;setBusy(true);setPending({id:requestId,values});setMessage("");
@@ -108,6 +109,8 @@ export function SuppliesModal({supplies, movements, authenticated, baseCurrency,
         {selected && <label className={styles.wide}>Movimiento<select value={kind} onChange={e=>setKind(e.target.value as typeof kind)}><option value="receipt">Entrada de existencias</option><option value="adjustment">Ajuste con motivo</option></select></label>}
         <label>{kind==="receipt" ? "Cantidad que ingresa" : "Diferencia (+ agrega, − retira)"}<input type="number" required min={kind==="receipt" ? "0.001" : undefined} max="999999999" step="0.001" value={quantity} onChange={e=>setQuantity(e.target.value)} /></label>
         <label>Costo por unidad ({selected?.currency ?? currency})<input name="cost" type="number" required min="0" max="999999999" step="0.0001" defaultValue={selected?.unit_cost.toFixed(4) ?? ""} disabled={Number(quantity)<0} aria-describedby="supply-cost-help" /></label>
+        {Number(quantity)>0 && <label>Fecha de compra / adquisición<input name="purchased_at" type="date" required
+          defaultValue={pending && pending.values.kind!=="catalog" ? pending.values.purchased_at ?? "" : new Intl.DateTimeFormat("en-CA",{timeZone:"America/Costa_Rica"}).format(new Date())} /></label>}
         <label className={styles.wide}>Motivo / proveedor / referencia<input name="reason" required maxLength={500} placeholder="Compra de paquete de 100 · proveedor…" /></label>
         </div>
         <p id="supply-cost-help" className={styles.help}>Ingresá el costo de una unidad, no el total del paquete. Los retiros usan el costo promedio actual.</p>
