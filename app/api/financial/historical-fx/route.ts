@@ -55,7 +55,16 @@ export async function POST(request: Request) {
       .eq("acquisition_date", body.acquisition_date).eq("original_currency", body.source_currency)
       .eq("incompleteness_reason", "missing_fx_snapshot").limit(1);
     if (required.error) return respond({ error: "No pudimos comprobar el inventario pendiente." }, 503);
-    if (!required.data?.length) return respond({ error: "No hay filamento pendiente que requiera este tipo de cambio." }, 409);
+    if (!required.data?.length) {
+      const summary = await userClient.rpc("inventory_value_summary");
+      if (summary.error || summary.data?.user_id !== auth.data.user.id || !Array.isArray(summary.data?.pending_rates)) {
+        return respond({ error: "No pudimos comprobar el inventario pendiente." }, 503);
+      }
+      if (!summary.data.pending_rates.some((rate: { acquisition_date?: unknown; source_currency?: unknown }) =>
+        rate?.acquisition_date === body.acquisition_date && rate?.source_currency === body.source_currency)) {
+        return respond({ error: "No hay inventario pendiente que requiera este tipo de cambio." }, 409);
+      }
+    }
     if (!config.secret || !config.bccrToken) return respond({ error: "El servicio histórico BCCR no está configurado." }, 503);
 
     let observations;

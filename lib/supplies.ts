@@ -11,6 +11,7 @@ export type SupplyMovement = {
 export type SupplyValues = {
   supply_id: string | null; name: string; category: string; unit: string; currency: string;
   kind: "receipt" | "adjustment"; quantity: number; unit_cost: number; reason: string;
+  purchased_at?: string;
 };
 export type SupplyCatalogValues = {
   kind: "catalog"; supply_id: null; name: string; category: string;

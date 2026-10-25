@@ -20,7 +20,8 @@ const values = rows.map((row, index) => ({ ...row, original_currency: 'USD', acq
     const requests = [], currentValues = values.map(value => ({ ...value }));
     await context.route('**/*', async (route) => {
       const req = route.request(), url = new URL(req.url()), name = url.pathname.split('/').pop();
-      if (req.method() !== 'GET') writes.push(url.pathname);
+      // This STABLE invoker RPC is a read, even though PostgREST uses POST.
+      if (req.method() !== 'GET' && name !== 'inventory_value_summary') writes.push(url.pathname);
       if (url.origin === base && url.pathname === '/api/financial/historical-fx') {
         requests.push(req.postDataJSON());
         assert.equal(req.headers().authorization, `Bearer ${token}`);
@@ -34,6 +35,7 @@ const values = rows.map((row, index) => ({ ...row, original_currency: 'USD', acq
       if (url.origin === base) return url.pathname === '/api/supabase-config' ? route.fulfill({ json: { url: 'https://spool-test.supabase.co', publishableKey: 'sb_publishable_test' } }) : route.continue();
       if (url.origin !== 'https://spool-test.supabase.co') return route.abort();
       if (name === 'filament_inventory_valuation' && fail) return route.fulfill({ status: 400, json: { message: 'Fixture read error' } });
+      if (name === 'inventory_value_summary') return route.fulfill({ json: { user_id: user.id, as_of: '2026-10-25T12:00:00Z', rows: [], pending_rates: [], missing_supply_dates: [] } });
       const result = name === 'user' ? user : name === 'user_profiles' ? { user_id: user.id, base_currency: 'CRC' } : name === 'get_tester_first_visit' ? { status: 'active' } : name === 'filament_balance_report' ? rows : name === 'filament_inventory_valuation' ? currentValues : [];
       return route.fulfill({ json: result });
     });

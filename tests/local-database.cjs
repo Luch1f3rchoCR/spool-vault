@@ -27,7 +27,7 @@ for(const name of migrations) {
   }
  }
  const isHistoricalFx = name.includes("fin01a_historical_fx");
- if (isHistoricalFx || name.includes("filament_print_profiles")) {
+ if (isHistoricalFx || name.includes("filament_print_profiles") || name.includes("inventory_value_summary")) {
   // Reproduce Supabase's inherited grants, including destructive privileges.
   sql("alter default privileges in schema public grant all on tables to service_role;");
   sql("begin;\n" + file("supabase/migrations/"+name) + "\nrollback;");
@@ -46,4 +46,6 @@ sql(file("supabase/tests/fin01a_historical_fx.sql"));
 console.log("PASS FIN-01A historical FX, valuation, isolation and immutability checks");
 sql(file("supabase/tests/filament_print_profiles.sql"));
 console.log("PASS print settings, revision history, isolation, rejection and retry checks");
+sql(file("supabase/tests/inventory_value_summary.sql"));
+console.log("PASS joint historical inventory valuation, moving averages, date completion, isolation and retry checks");
 console.log(sql("select count(*) as remaining_test_users from auth.users;"));
