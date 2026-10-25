@@ -26,3 +26,5 @@ Navegador con servicios simulados a 320/390/1280 px: resumen conjunto, parcial/c
 Migración local: `20261025175856_inventory_value_summary.sql`. Aplicarla antes de publicar interfaz/endpoint; el frontend anterior sigue siendo compatible. Registrar versión remota y despliegue exacto en el PR y en `supabase/README.md`. No se han creado compras ni insumos de prueba en cuentas reales; los ensayos de navegador autenticado usan proveedores simulados. El humo público sin sesión no demuestra una consulta BCCR real autenticada.
 
 Agentes/skills intactos. `ROADMAP.md` se conserva por el solapamiento con Marketing/PR #45.
+
+Supabase aplicado: versión remota `20261025182036` (`inventory_value_summary`), equivalente al archivo local `20261025175856`. Verificación estructural y asesores sin nuevos hallazgos de seguridad. Publicación de la interfaz y humo público: [PR #54](https://github.com/Luch1f3rchoCR/spool-vault/pull/54).
