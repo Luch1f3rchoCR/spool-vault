@@ -25,6 +25,7 @@ import {
   X
 } from "lucide-react";
 import { InventoryReportModal } from "@/components/inventory-report-modal";
+import { FilamentPrintProfilesModal } from "@/components/filament-print-profiles-modal";
 import { AddActionsModal } from "@/components/add-actions-modal";
 import { ModalFrame } from "@/components/modal-frame";
 import { MobileNavigation } from "@/components/mobile-navigation";
@@ -730,6 +731,7 @@ export default function Home() {
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [scanActionRollId, setScanActionRollId] = useState("");
   const [editingRollId, setEditingRollId] = useState("");
+  const [printProfileRollId, setPrintProfileRollId] = useState("");
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
   const [missingPurchaseRollId, setMissingPurchaseRollId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
@@ -4122,6 +4124,12 @@ export default function Home() {
         </div>
       )}
 
+      {printProfileRollId && rolls.find(roll => roll.id === printProfileRollId) && (
+        <FilamentPrintProfilesModal key={`${signedInUserId}:${printProfileRollId}`} roll={rolls.find(roll => roll.id === printProfileRollId)!}
+          printers={printers} userId={signedInUserId} synced={usingSupabase && dataMode === "authenticated"}
+          onClose={() => setPrintProfileRollId("")} />
+      )}
+
       {editingRoll && (
         <RollEditModal
           roll={editingRoll}
@@ -4557,6 +4565,9 @@ export default function Home() {
               >
                 <Pencil size={16} aria-hidden="true" />
                 Editar filamento
+              </button>
+              <button className="secondary-action" type="button" onClick={() => setPrintProfileRollId(selectedRoll.id)}>
+                Perfiles de impresión
               </button>
               {selectedRollPurchase ? (
                 <button

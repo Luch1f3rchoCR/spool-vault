@@ -1,5 +1,21 @@
 # Perfiles de impresión · tramo independiente
 
+## Integración vigente · 2026-10-24
+
+Rama `feat/print-profiles-integration`, desde main `cddd708`. FIN-01A ya está publicado y liberó la integración. El antecedente del 3 de octubre queda archivado abajo.
+
+- Acceso «Perfiles de impresión» desde el detalle del filamento. Modal con múltiples configuraciones por rollo, creación, edición precargada e historial de las últimas 100 revisiones. Todas las revisiones permanecen en la base y en la exportación JSON.
+- Contrato único en `lib/types.ts`, controles originales y presentación del modal de Insumos reutilizados. Los valores son declarados, nunca parámetros recomendados ni comandos enviados a impresoras. No hay refactor visual global.
+- Cada edición agrega una fila inmutable en `filament_print_profiles`; `profile_id` conserva la identidad y `version` rechaza ediciones concurrentes obsoletas. Vista actual invoker; RLS/trigger validan propietario del rollo e impresora. No modifica compras, inventario ni corridas.
+- RPC `save_filament_print_profile`: misma clave y contenido devuelve la revisión original; contenido cambiado se rechaza. El intento se conserva en `sessionStorage` por usuario/rollo antes del envío, incluso tras cerrar/recargar la pestaña. Errores inciertos congelan los valores para reintentar. Esperas de sesión/red limitadas a 30 segundos.
+- Requiere sesión e inventario sincronizado; demo/local lo explica sin simular persistencia. Impresoras se administran desde Perfil.
+- Migración CLI: `20261025021216_filament_print_profiles.sql`; incluye tabla/vista/RPC y revisiones en el respaldo existente. Aplicar base de datos antes de interfaz; no reaplicar por diferencias de timestamp remoto.
+- Verificado: 8 pruebas unitarias; esquema completo y rollback de DDL, regresiones SQL y casos de éxito/rechazo/reintento/aislamiento/versiones/exportación en PostgreSQL 17 sin red; navegador simulado a 320/390/1280 px (respuesta perdida, recarga, edición, historial, foco, bloqueo y responsive); TypeScript y build. Evidencia visual no versionada: `node_modules/.tools/print-profiles/`.
+- Sin correos ni perfiles de prueba en cuentas reales. El navegador autenticado usa servicios simulados; el humo público no demuestra un guardado autenticado real.
+- Registrar publicación y versión remota de migración en el PR. Marketing/PR #45 y `ROADMAP.md` siguen reservados; agentes intactos. Migración de URL separada.
+
+## Antecedente archivado · 2026-10-03
+
 Fecha: 2026-10-03 · rama `feat/filament-print-profiles` · base `dac3f219d84740412b1a30bd839b1bc245f571fc`.
 
 ## Alcance implementado
