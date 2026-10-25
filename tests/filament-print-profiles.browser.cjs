@@ -50,6 +50,7 @@ const roll = { id: 'da250000-0000-4000-8000-000000000021', brand: 'Elegoo', mate
         await page.getByRole('button', { name: /Perfil.*profiles@example/ }).waitFor();
         await page.getByRole('button', { name: 'Inventario', exact: true }).filter({ visible: true }).click();
         await page.getByRole('button', { name: 'Perfiles de impresión', exact: true }).click();
+        await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden');
       }
       await open();
       const modal = page.getByRole('dialog');
@@ -89,6 +90,8 @@ const roll = { id: 'da250000-0000-4000-8000-000000000021', brand: 'Elegoo', mate
       await expect(modal.getByRole('heading', { name: 'PLA Pro probado · Revisión 1' })).toBeVisible();
       assert.equal(revisions.length, 2); assert.equal(revisions[0].nozzle_temperature_c, 220); assert.equal(revisions[1].nozzle_temperature_c, 225);
       await page.screenshot({ path: `node_modules/.tools/print-profiles/history-${width}.png` });
+      await modal.getByRole('button', { name: 'Cerrar perfiles de impresión' }).click();
+      await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('');
       assert.deepEqual(errors, []);
       await context.close();
       console.log(`PASS ${width}px: create, busy guard, lost response/reload/retry, edit and immutable history`);
@@ -103,6 +106,9 @@ const roll = { id: 'da250000-0000-4000-8000-000000000021', brand: 'Elegoo', mate
     await page.getByRole('button', { name: 'Perfiles de impresión', exact: true }).click();
     await expect(page.getByRole('dialog')).toContainText('El modo local/demo no guarda estas configuraciones');
     assert.equal(await page.getByRole('button', { name: 'Nueva configuración' }).count(), 0);
+    await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('');
     await context.close();
     console.log('PASS demo/local: explicit sign-in requirement, no false persistence');
   } finally { await browser.close(); }

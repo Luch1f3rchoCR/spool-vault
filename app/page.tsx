@@ -1181,14 +1181,18 @@ export default function Home() {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_RUN_COSTS_KEY, productionRunCosts);
   }, [dataMode, productionRunCosts, usingSupabase]);
 
+  const printProfileRoll = rolls.find(roll => roll.id === printProfileRollId);
+  const hasPrintProfile = Boolean(printProfileRoll);
+
   useEffect(() => {
-    document.body.style.overflow = showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
+    document.body.style.overflow = hasPrintProfile || showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
       || showSpools || showReport || showPurchaseOrders || showProjects || showSupplies || showProfile || showWorkspaceMenu
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [
+    hasPrintProfile,
     correctingPurchaseId,
     editingRollId,
     missingPurchaseRollId,
@@ -4125,8 +4129,8 @@ export default function Home() {
         </div>
       )}
 
-      {printProfileRollId && rolls.find(roll => roll.id === printProfileRollId) && (
-        <FilamentPrintProfilesModal key={`${signedInUserId}:${printProfileRollId}`} roll={rolls.find(roll => roll.id === printProfileRollId)!}
+      {printProfileRoll && (
+        <FilamentPrintProfilesModal key={`${signedInUserId}:${printProfileRoll.id}`} roll={printProfileRoll}
           printers={printers} userId={signedInUserId} synced={usingSupabase && dataMode === "authenticated"}
           onClose={() => setPrintProfileRollId("")} />
       )}
