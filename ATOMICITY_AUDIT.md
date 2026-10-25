@@ -1,5 +1,11 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
+## Perfiles de impresión · 2026-10-24
+
+`save_filament_print_profile` agrega una revisión por operación, con clave única de usuario/solicitud y bloqueo transaccional por perfil. Reintentos idénticos devuelven la revisión original incluso después de una edición posterior; contenido cambiado se rechaza. La versión esperada evita perder ediciones concurrentes. La tabla es append-only; trigger y RLS validan dueño del rollo e impresora, y la vista actual es invoker. El historial y exportación conservan cada revisión; no cambian inventario físico, compras ni costos productivos.
+
+El modal conserva el intento en la pestaña antes del envío, bloquea doble envío/cierre durante la operación y congela valores tras errores inciertos. Solo confirma una respuesta que coincide con usuario, solicitud, perfil, versión y valores; las esperas de sesión/red vencen en 30 segundos. Demo/local no simula persistencia. Pruebas SQL aisladas: éxito, rechazo, replay original, payload cambiado, permisos, RLS, revisión obsoleta, impresoras inactivas, exportación y rollback. Pruebas de navegador con proveedor simulado a 320/390/1280 px: respuesta perdida y recarga sin duplicados, edición/historial y estados ocupados. Publicación y migración remota se registran en el PR; no se han creado datos de prueba en producción.
+
 ## Insumos + proyectos · 2026-09-29
 
 Implementado en la migración aditiva `20260928030951_supply_stock_projects.sql` (publicación por confirmar en PR). Existencias derivadas de movimientos inmutables; entradas/ajustes reintentables con comparación de payload, saldo no negativo y RLS por usuario. Los costos de salida usan promedio ponderado por insumo/moneda. La producción bloquea los insumos en orden estable y sus triggers descuentan dentro de la misma transacción que filamentos/costos, incluso para versiones anteriores del RPC. Crear receta no consume. Componentes antiguos/manuales no cambian; históricos no se recalculan. Exportación incluye catálogo y movimientos.

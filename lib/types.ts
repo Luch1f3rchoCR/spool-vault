@@ -38,6 +38,29 @@ export type FilamentRoll = {
   last_update_request_id?: string | null;
 };
 
+export type FilamentPrintProfileValues = {
+  roll_id: string;
+  printer_id: string;
+  name: string;
+  slicer: string | null;
+  nozzle_diameter_mm: number | null;
+  nozzle_temperature_c: number | null;
+  bed_temperature_c: number | null;
+  flow_ratio: number | null;
+  notes: string | null;
+};
+
+// Each edit appends a revision; profile_id identifies the configuration across edits.
+export type FilamentPrintProfile = FilamentPrintProfileValues & {
+  id: string;
+  user_id: string;
+  profile_id: string;
+  version: number;
+  request_id: string;
+  printer_name: string;
+  created_at: string;
+};
+
 export type Supplier = {
   id: string;
   name: string;
