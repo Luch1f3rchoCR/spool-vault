@@ -47,6 +47,8 @@ The schema uses RLS, authenticated-only access, and explicit grants so the inven
 
 ## Safe writes
 
+Print-settings migration applied to production as cloud version `20261025021944` (`filament_print_profiles`), corresponding to local `20261025021216_filament_print_profiles.sql`. Do not reapply it for the timestamp difference. Post-DDL checks confirmed owner RLS, invoker view/RPC, insert-only revisions, restricted anonymous access and export inclusion. Advisors added no security finding; the previous leaked-password-protection warning and informational unused indexes remain.
+
 Print settings (`20261025021216_filament_print_profiles.sql`): `filament_print_profiles` stores immutable revisions; `filament_print_profiles_current` exposes the latest revision through an invoker view with owner RLS. `save_filament_print_profile` validates roll/printer ownership, locks the profile identity, rejects stale versions and changed retry payloads, and replays the exact saved revision. New configurations require an active printer; existing configurations can retain a now-inactive printer. `export_my_data` includes all own revisions. Apply this additive migration before the interface. No printer commands, consumption or cost changes occur. Tests live in `supabase/tests/filament_print_profiles.sql` and run only in the isolated local harness.
 
 - `create_roll_with_purchase`: creates/reuses the supplier, roll and purchase in one transaction.

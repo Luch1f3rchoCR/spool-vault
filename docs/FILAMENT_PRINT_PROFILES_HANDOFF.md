@@ -14,6 +14,8 @@ Rama `feat/print-profiles-integration`, desde main `cddd708`. FIN-01A ya está p
 - Sin correos ni perfiles de prueba en cuentas reales. El navegador autenticado usa servicios simulados; el humo público no demuestra un guardado autenticado real.
 - Registrar publicación y versión remota de migración en el PR. Marketing/PR #45 y `ROADMAP.md` siguen reservados; agentes intactos. Migración de URL separada.
 
+Migración aplicada en producción: `20261025021944` (`filament_print_profiles`), equivalente al archivo local `20261025021216`. Verificación estructural y asesores aprobados sin nuevos hallazgos de seguridad; los índices aún sin uso son informativos. Interfaz y humo público se registran en [PR #51](https://github.com/Luch1f3rchoCR/spool-vault/pull/51).
+
 ## Antecedente archivado · 2026-10-03
 
 Fecha: 2026-10-03 · rama `feat/filament-print-profiles` · base `dac3f219d84740412b1a30bd839b1bc245f571fc`.
