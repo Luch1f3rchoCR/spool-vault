@@ -19,6 +19,7 @@ import {
   ScanLine,
   Search,
   ShoppingCart,
+  SlidersHorizontal,
   Sparkles,
   UserRound,
   Weight,
@@ -4559,33 +4560,34 @@ export default function Home() {
 
             <div className="detail-actions">
               <button
-                className="secondary-action edit-roll-action"
+                className="secondary-action"
                 type="button"
                 onClick={() => setEditingRollId(selectedRoll.id)}
               >
                 <Pencil size={16} aria-hidden="true" />
-                Editar filamento
+                <span>Editar filamento</span>
               </button>
               <button className="secondary-action" type="button" onClick={() => setPrintProfileRollId(selectedRoll.id)}>
-                Perfiles de impresión
+                <SlidersHorizontal size={16} aria-hidden="true" />
+                <span>Perfiles de impresión</span>
               </button>
               {selectedRollPurchase ? (
                 <button
-                  className="secondary-action edit-roll-action"
+                  className="secondary-action"
                   type="button"
                   onClick={() => setCorrectingPurchaseId(selectedRollPurchase.original.id)}
                 >
                   <ReceiptText size={16} aria-hidden="true" />
-                  Corregir compra
+                  <span>Corregir compra</span>
                 </button>
               ) : (
                 <button
-                  className="secondary-action edit-roll-action missing-purchase-action"
+                  className="secondary-action missing-purchase-action"
                   type="button"
                   onClick={() => setMissingPurchaseRollId(selectedRoll.id)}
                 >
                   <AlertTriangle size={16} aria-hidden="true" />
-                  Registrar compra faltante
+                  <span>Registrar compra faltante</span>
                 </button>
               )}
             </div>
