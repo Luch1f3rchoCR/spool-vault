@@ -85,7 +85,7 @@ export function InventoryValueDetails({ data, loading, error, userId, onRefresh,
   const [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   const guard = useRef(false), active = useRef<AbortController | null>(null), feedback = useRef<HTMLParagraphElement>(null);
   useEffect(() => () => active.current?.abort(), []);
-  useEffect(() => { if (message) feedback.current?.focus(); }, [message]);
+  useEffect(() => { if (message || error) feedback.current?.focus(); }, [message, error]);
   const chosenRate = data?.pending_rates.find(rate => `${rate.acquisition_date}:${rate.source_currency}` === rateKey) ?? data?.pending_rates[0];
   const chosenMovement = pending?.p_movement_id || (data?.missing_supply_dates.some(item => item.movement_id === movement) ? movement : data?.missing_supply_dates[0]?.movement_id);
 
@@ -125,7 +125,7 @@ export function InventoryValueDetails({ data, loading, error, userId, onRefresh,
   return <ModalFrame title="Valor del inventario" titleId="inventory-values-title" eyebrow="SALDO ACTUAL" className={modalStyles.modal}
     busy={busy} onClose={() => { if (!guard.current) onClose(); }} closeLabel="Cerrar valoración">
     <p className={modalStyles.intro}>Cantidad actual a costo histórico. Los consumos reducen el saldo; no se reescriben compras ni costos de producción.</p>
-    {(message || error) && <p ref={feedback} tabIndex={-1} role="status" className={modalStyles.feedback}>{message || error}</p>}
+    {(message || error) && <p ref={feedback} tabIndex={-1} role={error ? "alert" : "status"} className={modalStyles.feedback}>{[message, error].filter(Boolean).join(" ")}</p>}
     {loading && <p role="status">Actualizando valoración…</p>}
     {error && <button type="button" disabled={busy || loading} onClick={onRefresh}>Reintentar resumen</button>}
     {(!!data?.missing_supply_dates.length || pending) && <form className={modalStyles.form} onSubmit={event => { event.preventDefault(); void perform("date"); }}>

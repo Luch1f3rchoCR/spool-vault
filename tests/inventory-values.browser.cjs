@@ -20,7 +20,7 @@ const supply={id:'da260000-0000-4000-8000-000000000012',name:'Imanes',category:'
    if(url.origin===base&&url.pathname==='/api/financial/historical-fx'){
     assert.equal(request.headers().authorization,`Bearer ${token}`);rateRequests.push(request.postDataJSON());
     if(rateRequests.length===1)return route.fulfill({status:503,json:{error:'BCCR no confirmó la consulta'}});
-    phase=2;return route.fulfill({json:{snapshot:{id:'snapshot',user_id:user.id,source:'BCCR',...rateRequests[0]},reused:true}});
+    phase=2;failSummary=true;return route.fulfill({json:{snapshot:{id:'snapshot',user_id:user.id,source:'BCCR',...rateRequests[0]},reused:true}});
    }
    if(url.origin===base)return url.pathname==='/api/supabase-config'?route.fulfill({json:{url:'https://spool-test.supabase.co',publishableKey:'sb_publishable_test'}}):route.continue();
    if(url.origin!=='https://spool-test.supabase.co')return route.abort();
@@ -50,6 +50,9 @@ const supply={id:'da260000-0000-4000-8000-000000000012',name:'Imanes',category:'
   await modal.getByRole('button',{name:'Reintentar fecha'}).click();await modal.getByRole('button',{name:'Consultar tasa BCCR'}).waitFor();assert.deepEqual(dateRequests[0],dateRequests[1]);
   await modal.getByRole('button',{name:'Consultar tasa BCCR'}).click();await modal.getByText(/BCCR no confirmó/).waitFor();
   await modal.getByRole('button',{name:'Consultar tasa BCCR'}).click();await modal.getByText(/Tasa histórica confirmada/).waitFor();
+  await modal.getByRole('alert').filter({hasText:'No pudimos cargar el saldo histórico'}).waitFor();
+  failSummary=false;await modal.getByRole('button',{name:'Reintentar resumen'}).click();
+  await expect(modal.getByRole('alert')).toHaveCount(0);assert.equal(rateRequests.length,2,'read retry repeated the provider write');
   await expect(modal.getByText('Tasas históricas pendientes',{exact:true})).toHaveCount(0);assert.deepEqual(rateRequests[0],rateRequests[1]);
   await modal.getByRole('button',{name:'Cerrar valoración'}).click();
   await expect(usd).not.toContainText('Subtotal');assert.equal((await usd.locator('strong').innerText()).replace(/\D/g,''),'1000');
