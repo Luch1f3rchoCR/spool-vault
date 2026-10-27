@@ -63,7 +63,7 @@ El recorrido real del primer invitado sigue sin evidencia end-to-end de cierre e
 2. Se guardan juntos la licencia reservada y una bienvenida pendiente. Repetir el mismo correo recupera el alta original sin cambiar datos ni crear otra licencia.
 3. Con correo configurado, puede enviar la bienvenida al guardar o desde el registro del probador.
 4. Sin correo configurado, puede abrir el mensaje listo en su programa de correo. Esta acción no se marca como envío automático confirmado.
-5. Las bienvenidas generadas con la versión del PR #55 enlazan a `https://properformakers.vercel.app/`; no llevan contraseñas ni tokens de acceso. El destinatario inicia sesión con el correo registrado. El enlace anterior sigue activo para mensajes ya enviados; no se reenvían ni reescriben. Auth permite el dominio nuevo y el fundador confirmó recepción del correo de acceso; falta verificar login/logout completos.
+5. Las bienvenidas generadas con la versión del PR #55 enlazan a `https://properformakers.vercel.app/`; no llevan contraseñas ni tokens de acceso. El destinatario inicia sesión con el correo registrado. El enlace anterior sigue activo para mensajes ya enviados; no se reenvían ni reescriben. Auth permite el dominio nuevo y el fundador confirmó recepción, apertura del enlace y acceso a su inventario; falta comprobar logout/reingreso y onboarding de un invitado nuevo.
 
 ## Remitente acordado
 

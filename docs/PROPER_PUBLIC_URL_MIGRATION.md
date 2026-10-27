@@ -2,7 +2,7 @@
 
 ## Estado vigente · 2026-10-26 (Costa Rica)
 
-**Dominio y URLs de Auth configurados; recepción del correo confirmada por el fundador. Los enlaces de esta versión usan la URL nueva; publicación del PR #55 autorizada. Prueba completa de acceso, logout y reingreso pendiente.** El inventario del 6 de octubre se conserva más abajo como evidencia histórica y no describe la configuración actual.
+**Dominio y URLs de Auth configurados; el fundador confirmó recepción del correo, apertura del enlace y acceso a su inventario en el dominio nuevo. Los enlaces de esta versión usan la URL nueva; publicación del PR #55 autorizada. Logout y reingreso aún sin comprobar.** El inventario del 6 de octubre se conserva más abajo como evidencia histórica y no describe la configuración actual.
 
 Rama `chore/proper-url-transition`, desde `main` / `origin/main` `c5894ffa1fcfce22eb5d9ecbeaf986280a4ac5a3`, con worktree inicialmente limpio. PR #55. Se recuperó el documento del commit `aa0aa7f`; el cambio de código se limita a enlaces públicos, sin modificar el flujo de autenticación ni la persistencia.
 
@@ -18,20 +18,20 @@ Rama `chore/proper-url-transition`, desde `main` / `origin/main` `c5894ffa1fcfce
 - HTTPS 200 en ambos dominios y `/manifest.webmanifest`: Proper, `start_url: /`, `display: standalone`. Instalación PWA no probada.
 - `/?roll=migration-smoke` responde 200 conservando el parámetro en ambos orígenes. Comprueba transporte, no una etiqueta real ni acceso a un rollo autenticado.
 - Navegador en el dominio nuevo: Inicio, Inventario y apertura del login; datos demo identificados. El login muestra `https://properformakers.vercel.app/` como destino. Esto valida el destino generado por el cliente, **no la aceptación por Supabase ni el acceso completo**.
-- Consola sin errores ni advertencias capturados en ese recorrido. El fundador solicitó el enlace y confirmó recepción del correo; el agente no envió correos, OTP ni invitaciones, ni escribió datos reales. Recepción no implica login confirmado: login/logout y reingreso pendientes.
+- Consola sin errores ni advertencias capturados en ese recorrido. El fundador solicitó el enlace y confirmó recepción, apertura y acceso a su inventario en `properformakers.vercel.app`. Evidencia autenticada aportada por el fundador; el agente no envió correos, OTP ni invitaciones, ni escribió datos reales. Logout y reingreso pendientes.
 - La actualización inicial era documental. La siguiente añade enlaces públicos y sus expectativas: `node --test tests/tester-welcome.test.cjs` (7/7), `npm run build` (una ejecución; compilación y TypeScript aprobados), revisión de diff y `git diff --check`. Advertencia no bloqueante de Node sobre detección de módulos en la prueba; sin cambio de configuración para silenciarla. El build del inventario inferior pertenece a la revisión histórica.
 
 ### Pendientes actuales y límites
 
 1. Supabase `xbeqmfgiekcyoqevlypi`: el fundador abrió sesión en Safari y autorizó expresamente ambos cambios. Site URL pasó de `http://localhost:3000` a `https://properformakers.vercel.app/`; Redirect URLs añadió exactamente `https://properformakers.vercel.app/`, conservando `https://spool-vault.vercel.app/**` y `http://localhost:3000/**`. Se confirmó persistencia después de recargar: tres URLs y nuevo Site URL. Las plantillas de magic link y confirmación son las predeterminadas y usan `{{ .ConfirmationURL }}`; no se editaron plantillas ni SMTP.
-2. Recepción del correo confirmada por el fundador; falta comprobar activación, login/logout y reingreso. No enviar a un tester real sin autorización específica. Variables públicas efectivas de Production/Preview no inspeccionadas ni modificadas.
+2. Recepción del correo y login con inventario confirmados por el fundador. Falta comprobar logout/reingreso y activación de una cuenta founder nueva; no confundir el acceso del propietario existente con ese onboarding. No enviar a un tester real sin autorización específica. Variables públicas efectivas de Production/Preview no inspeccionadas ni modificadas.
 3. PR #55 actualiza APP_URL en `lib/tester-welcome.ts`, copiar enlace reutiliza esa constante en `components/account-community.tsx`, expectativas correspondientes y placeholder del escáner en `app/page.tsx`; también instrucciones activas de `RESEND_SETUP.md` / `TESTER_PROGRAM.md`. No se reenviaron ni reescribieron bienvenidas guardadas/enviadas.
 4. Las antiguas reservas FIN-01A / perfiles / currency access / founder welcome ya se integraron. PR #45 mantiene documentación compartida activa: no tocar sus archivos, `ROADMAP.md`, `docs/STATUS.md` ni `docs/WORKLOG.md`. Continúan fuera de alcance `AGENTS.md`, `.agents/`, `skills-lock.json`, `docs/specs/` e infraestructura de agentes/UI.
 5. Código y preview verificados. El fundador autorizó publicar PR #55 el 26 de octubre; comprobar merge, deployment y ambos alias al cerrar. No redirigir el dominio viejo ni ampliar la migración con esta autorización.
 
 Reversión de Auth, solo si se necesita y con aprobación correspondiente: el Site URL previo era `http://localhost:3000`; la única URL añadida fue `https://properformakers.vercel.app/`. No se borró ni amplió ninguna entrada anterior. No revertir a ciegas mientras existan accesos nuevos en curso.
 
-No se recomienda todavía un redirect permanente: sesiones, caché e inventario local pertenecen al origen y no se trasladan automáticamente. Mantener acceso por el dominio anterior, etiquetas físicas y parámetros/fragmentos. El nombre técnico del proyecto puede permanecer. No anunciar la migración como validada de extremo a extremo hasta confirmar el acceso completo.
+No se recomienda todavía un redirect permanente: sesiones, caché e inventario local pertenecen al origen y no se trasladan automáticamente. Mantener acceso por el dominio anterior, etiquetas físicas y parámetros/fragmentos. El nombre técnico del proyecto puede permanecer. El acceso por correo con inventario está confirmado por el fundador; esto no cubre logout/reingreso, etiquetas reales, instalación PWA ni onboarding de un invitado nuevo.
 
 ## Inventario histórico · 2026-10-06 (superado por el estado anterior)
 
