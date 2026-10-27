@@ -1,5 +1,40 @@
 # Proper · Migración de URL pública
 
+## Estado vigente · 2026-10-26 (Costa Rica)
+
+**Nuevo dominio agregado y carga pública comprobada; transición de autenticación pendiente. No promover todavía el nuevo enlace para invitaciones.** El inventario del 6 de octubre se conserva más abajo como evidencia histórica y no describe la configuración actual.
+
+Rama `chore/proper-url-transition`, desde `main` / `origin/main` `c5894ffa1fcfce22eb5d9ecbeaf986280a4ac5a3`, con worktree inicialmente limpio. Se recuperó el documento del commit `aa0aa7f`; no se modificó código funcional.
+
+### Vercel confirmado
+
+- Equipo: `Luch1F3rcho’s projects`, slug `luch1-f3rcho-s-projects`, ID `team_eJeFDHovBeGJLUygmEf1i7a8`. Proyecto existente `spool-vault`, ID `prj_QVsF6XJKAH1sqVrgmR8rKlERgn4Y`. Se usaron IDs explícitos porque el fundador tiene varias cuentas/equipos.
+- `https://properformakers.vercel.app/` agregado al proyecto, `verified: true`; alias asociado a la producción existente `dpl_8add1SLM1vY1wCogb7DKR1cSetz5` (`spool-vault-ek4yiyaqy-luch1-f3rcho-s-projects.vercel.app`), correspondiente al main indicado, READY.
+- `https://spool-vault.vercel.app/` continúa verificado y activo, sin redirect. La asignación exitosa y el alias nuevo confirman control; el antiguo 404 por sí solo no demostraba disponibilidad.
+- Sin renombre del proyecto, nuevo despliegue, promoción, cambios de secretos, variables, DNS externo, remitentes ni protecciones de acceso.
+
+### Verificación de esta actualización
+
+- HTTPS 200 en ambos dominios y `/manifest.webmanifest`: Proper, `start_url: /`, `display: standalone`. Instalación PWA no probada.
+- `/?roll=migration-smoke` responde 200 conservando el parámetro en ambos orígenes. Comprueba transporte, no una etiqueta real ni acceso a un rollo autenticado.
+- Navegador en el dominio nuevo: Inicio, Inventario y apertura del login; datos demo identificados. El login muestra `https://properformakers.vercel.app/` como destino. Esto valida el destino generado por el cliente, **no la aceptación por Supabase ni el acceso completo**.
+- Consola sin errores ni advertencias capturados en ese recorrido. No se enviaron correos, OTP ni invitaciones, ni se escribieron datos reales. Login/logout autenticados pendientes.
+- Cambio exclusivamente documental: revisión de diff y `git diff --check`; sin build nuevo de la app. El build registrado abajo pertenece a la revisión histórica.
+
+### Pendientes actuales y límites
+
+1. El panel Supabase del proyecto `xbeqmfgiekcyoqevlypi` abrió sign-in; se solicitó al fundador iniciar sesión sin compartir credenciales. El conector disponible no expone Site URL / Redirect URLs. Leer esos valores y las plantillas antes de modificar Auth; conservar temporalmente ambos dominios y las URLs locales válidas, sin comodines amplios.
+2. Comprobar correo, activación, login/logout y reingreso con cuenta de prueba consentida. No enviar a un tester real sin autorización específica. Variables públicas efectivas de Production/Preview no inspeccionadas ni modificadas.
+3. Después de validar Auth, actualizar únicamente APP_URL en `lib/tester-welcome.ts`, copiar enlace en `components/account-community.tsx`, expectativas correspondientes y placeholder del escáner en `app/page.tsx`; revisar instrucciones activas de `RESEND_SETUP.md` / `TESTER_PROGRAM.md`. Los enlaces ejecutables todavía apuntan al dominio viejo. No reenviar ni reescribir bienvenidas ya guardadas/enviadas.
+4. Las antiguas reservas FIN-01A / perfiles / currency access / founder welcome ya se integraron. PR #45 mantiene documentación compartida activa: no tocar sus archivos, `ROADMAP.md`, `docs/STATUS.md` ni `docs/WORKLOG.md`. Continúan fuera de alcance `AGENTS.md`, `.agents/`, `skills-lock.json`, `docs/specs/` e infraestructura de agentes/UI.
+5. Cerrar el código futuro con pruebas dirigidas, un build final, diff check, commit + push y PR borrador. **No merge ni despliegue de cambios de repo sin autorización.**
+
+No se recomienda todavía un redirect permanente: sesiones, caché e inventario local pertenecen al origen y no se trasladan automáticamente. Mantener acceso por el dominio anterior, etiquetas físicas y parámetros/fragmentos. El nombre técnico del proyecto puede permanecer. Hasta completar Auth y publicar los enlaces, seguir usando el dominio viejo para invitaciones.
+
+## Inventario histórico · 2026-10-06 (superado por el estado anterior)
+
+Las reservas, dominios, commits y bloqueos descritos en esta sección corresponden exclusivamente a esa fecha. No interpretarlos como instrucciones o estado vigente.
+
 Estado al 2026-10-06 (Costa Rica): **inventario terminado; migración externa pendiente, sin cambios aplicados**.
 
 Rama: `chore/proper-public-url`. Base: `main` actualizado a `28e4a7d5864dad0439a79250b3282f266809e6a6`. El worktree estaba limpio antes del bloque. Solo se añade este documento; no se cambian URLs ejecutables a un dominio que todavía no está validado.
