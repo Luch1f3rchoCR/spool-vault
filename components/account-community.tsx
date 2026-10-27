@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Copy, CreditCard, Download, Lightbulb, Mail, RefreshCw, Send, UserPlus, Users, X } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { FOUNDER_SCOPE, WELCOME_SUBJECT, welcomeText } from "@/lib/tester-welcome";
+import { APP_URL, FOUNDER_SCOPE, WELCOME_SUBJECT, welcomeText } from "@/lib/tester-welcome";
 import type { ProfileView } from "@/components/profile-panel";
 
 type Membership = {
@@ -278,7 +278,7 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
         <button className="primary-action" type="submit"><UserPlus size={18} />{busy ? "Procesando…" : mailConfigured && sendOnSave ? "Guardar y enviar bienvenida" : "Dar acceso gratuito de por vida"}</button>
       </fieldset></form>
       {inviteReady && <button type="button" className="account-copy" disabled={busy} onClick={() => void perform(async () => {
-        await navigator.clipboard.writeText("https://spool-vault.vercel.app/");
+        await navigator.clipboard.writeText(APP_URL);
         setNotice("Enlace copiado. La persona debe entrar con el correo que registraste.");
       })}><Copy size={18} />Copiar enlace de la app</button>}
       <h4>Probadores</h4>

@@ -25,7 +25,7 @@ test('new welcomes use the approved brand without renaming technical addresses',
     assert.ok(content.includes(FOUNDER_SCOPE));
     assert.ok(content.includes(FOUNDER_EXCLUSIONS));
   }
-  assert.equal(APP_URL, 'https://spool-vault.vercel.app/');
+  assert.equal(APP_URL, 'https://properformakers.vercel.app/');
   assert.ok(mail.html.includes(`href="${APP_URL}"`));
   assert.equal(mail.from, from);
   assert.match(welcomeText('', 'person@example.invalid'), /^Hola, probador fundador:/);
@@ -46,7 +46,7 @@ test('welcome escapes recipient text and describes the account-bound license', a
   assert.ok(mail.html.includes('&lt;img'));
   assert.deepEqual(mail.to, ['person@example.invalid']);
   assert.match(mail.text, /gratis de por vida/);
-  assert.match(mail.text, /https:\/\/spool-vault.vercel.app\//);
+  assert.match(mail.text, /https:\/\/properformakers.vercel.app\//);
 });
 
 test('old or invalid uncertain deliveries cannot be resent after deduplication expires', async () => {

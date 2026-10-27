@@ -63,7 +63,7 @@ El recorrido real del primer invitado sigue sin evidencia end-to-end de cierre e
 2. Se guardan juntos la licencia reservada y una bienvenida pendiente. Repetir el mismo correo recupera el alta original sin cambiar datos ni crear otra licencia.
 3. Con correo configurado, puede enviar la bienvenida al guardar o desde el registro del probador.
 4. Sin correo configurado, puede abrir el mensaje listo en su programa de correo. Esta acción no se marca como envío automático confirmado.
-5. La bienvenida enlaza a `https://spool-vault.vercel.app/`; no lleva contraseñas ni tokens de acceso. El destinatario inicia sesión con el correo registrado.
+5. Tras publicar PR #55, las nuevas bienvenidas enlazarán a `https://properformakers.vercel.app/`; no llevan contraseñas ni tokens de acceso. El destinatario inicia sesión con el correo registrado. El enlace anterior sigue activo para mensajes ya enviados; no se reenvían ni reescriben. La configuración de Auth ya permite el dominio nuevo, con prueba de acceso por correo aún pendiente.
 
 ## Remitente acordado
 

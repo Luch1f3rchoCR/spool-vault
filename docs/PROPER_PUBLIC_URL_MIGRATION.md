@@ -2,9 +2,9 @@
 
 ## Estado vigente · 2026-10-26 (Costa Rica)
 
-**Nuevo dominio agregado y carga pública comprobada; transición de autenticación pendiente. No promover todavía el nuevo enlace para invitaciones.** El inventario del 6 de octubre se conserva más abajo como evidencia histórica y no describe la configuración actual.
+**Dominio y URLs de Auth configurados; prueba autenticada pendiente. Enlaces del código preparados en este PR, todavía no publicados. No promover aún el nuevo enlace para invitaciones.** El inventario del 6 de octubre se conserva más abajo como evidencia histórica y no describe la configuración actual.
 
-Rama `chore/proper-url-transition`, desde `main` / `origin/main` `c5894ffa1fcfce22eb5d9ecbeaf986280a4ac5a3`, con worktree inicialmente limpio. Se recuperó el documento del commit `aa0aa7f`; no se modificó código funcional.
+Rama `chore/proper-url-transition`, desde `main` / `origin/main` `c5894ffa1fcfce22eb5d9ecbeaf986280a4ac5a3`, con worktree inicialmente limpio. PR #55. Se recuperó el documento del commit `aa0aa7f`; el cambio de código se limita a enlaces públicos, sin modificar el flujo de autenticación ni la persistencia.
 
 ### Vercel confirmado
 
@@ -19,15 +19,17 @@ Rama `chore/proper-url-transition`, desde `main` / `origin/main` `c5894ffa1fcfce
 - `/?roll=migration-smoke` responde 200 conservando el parámetro en ambos orígenes. Comprueba transporte, no una etiqueta real ni acceso a un rollo autenticado.
 - Navegador en el dominio nuevo: Inicio, Inventario y apertura del login; datos demo identificados. El login muestra `https://properformakers.vercel.app/` como destino. Esto valida el destino generado por el cliente, **no la aceptación por Supabase ni el acceso completo**.
 - Consola sin errores ni advertencias capturados en ese recorrido. No se enviaron correos, OTP ni invitaciones, ni se escribieron datos reales. Login/logout autenticados pendientes.
-- Cambio exclusivamente documental: revisión de diff y `git diff --check`; sin build nuevo de la app. El build registrado abajo pertenece a la revisión histórica.
+- La actualización inicial era documental. La siguiente añade enlaces públicos y sus expectativas: `node --test tests/tester-welcome.test.cjs` (7/7), `npm run build` (una ejecución; compilación y TypeScript aprobados), revisión de diff y `git diff --check`. Advertencia no bloqueante de Node sobre detección de módulos en la prueba; sin cambio de configuración para silenciarla. El build del inventario inferior pertenece a la revisión histórica.
 
 ### Pendientes actuales y límites
 
-1. El panel Supabase del proyecto `xbeqmfgiekcyoqevlypi` abrió sign-in; se solicitó al fundador iniciar sesión sin compartir credenciales. El conector disponible no expone Site URL / Redirect URLs. Leer esos valores y las plantillas antes de modificar Auth; conservar temporalmente ambos dominios y las URLs locales válidas, sin comodines amplios.
+1. Supabase `xbeqmfgiekcyoqevlypi`: el fundador abrió sesión en Safari y autorizó expresamente ambos cambios. Site URL pasó de `http://localhost:3000` a `https://properformakers.vercel.app/`; Redirect URLs añadió exactamente `https://properformakers.vercel.app/`, conservando `https://spool-vault.vercel.app/**` y `http://localhost:3000/**`. Se confirmó persistencia después de recargar: tres URLs y nuevo Site URL. Las plantillas de magic link y confirmación son las predeterminadas y usan `{{ .ConfirmationURL }}`; no se editaron plantillas ni SMTP.
 2. Comprobar correo, activación, login/logout y reingreso con cuenta de prueba consentida. No enviar a un tester real sin autorización específica. Variables públicas efectivas de Production/Preview no inspeccionadas ni modificadas.
-3. Después de validar Auth, actualizar únicamente APP_URL en `lib/tester-welcome.ts`, copiar enlace en `components/account-community.tsx`, expectativas correspondientes y placeholder del escáner en `app/page.tsx`; revisar instrucciones activas de `RESEND_SETUP.md` / `TESTER_PROGRAM.md`. Los enlaces ejecutables todavía apuntan al dominio viejo. No reenviar ni reescribir bienvenidas ya guardadas/enviadas.
+3. Preparado en PR #55: APP_URL en `lib/tester-welcome.ts`, copiar enlace reutiliza esa constante en `components/account-community.tsx`, expectativas correspondientes y placeholder del escáner en `app/page.tsx`; instrucciones activas de `RESEND_SETUP.md` / `TESTER_PROGRAM.md` distinguen preparación y publicación. Producción todavía contiene los enlaces viejos. No se reenviaron ni reescribieron bienvenidas guardadas/enviadas.
 4. Las antiguas reservas FIN-01A / perfiles / currency access / founder welcome ya se integraron. PR #45 mantiene documentación compartida activa: no tocar sus archivos, `ROADMAP.md`, `docs/STATUS.md` ni `docs/WORKLOG.md`. Continúan fuera de alcance `AGENTS.md`, `.agents/`, `skills-lock.json`, `docs/specs/` e infraestructura de agentes/UI.
-5. Cerrar el código futuro con pruebas dirigidas, un build final, diff check, commit + push y PR borrador. **No merge ni despliegue de cambios de repo sin autorización.**
+5. Código preparado y verificado para revisión en el PR borrador. **No merge ni despliegue de cambios de repo sin autorización.**
+
+Reversión de Auth, solo si se necesita y con aprobación correspondiente: el Site URL previo era `http://localhost:3000`; la única URL añadida fue `https://properformakers.vercel.app/`. No se borró ni amplió ninguna entrada anterior. No revertir a ciegas mientras existan accesos nuevos en curso.
 
 No se recomienda todavía un redirect permanente: sesiones, caché e inventario local pertenecen al origen y no se trasladan automáticamente. Mantener acceso por el dominio anterior, etiquetas físicas y parámetros/fragmentos. El nombre técnico del proyecto puede permanecer. Hasta completar Auth y publicar los enlaces, seguir usando el dominio viejo para invitaciones.
 

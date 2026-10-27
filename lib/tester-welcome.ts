@@ -1,6 +1,6 @@
 export const FOUNDER_SCOPE = "Acceso personal gratuito de por vida a las funciones de inventario, compras, pesajes, etiquetas y proyectos de esta versión. Sin cobros recurrentes. Vinculado a tu cuenta.";
 export const FOUNDER_EXCLUSIONS = "Los servicios externos y futuros planes adicionales no están incluidos.";
-export const APP_URL = "https://spool-vault.vercel.app/";
+export const APP_URL = "https://properformakers.vercel.app/";
 export const WELCOME_SUBJECT = "Bienvenido a Proper · Probador fundador";
 
 export function welcomeText(name: string, email: string) {
