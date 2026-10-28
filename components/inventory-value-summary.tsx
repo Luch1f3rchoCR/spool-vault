@@ -45,26 +45,22 @@ export function InventoryValueCards({ data, loading, error, mode, onRefresh, onD
   data: InventoryValueSummary | null; loading: boolean; error: string; mode: Mode; onRefresh: () => void; onDetails: () => void;
 }) {
   return <section className={styles.panel} aria-label="Saldo actual del inventario">
-    <header><div><p className={styles.eyebrow}>TU INVERSIÓN DISPONIBLE</p><h2>Saldo actual del inventario</h2></div><Wallet size={23} aria-hidden="true" /></header>
-    <p className={styles.help}>Filamentos e insumos que todavía tenés, a costo de compra. Conversión BCCR de cada adquisición.</p>
+    <header><Wallet size={19} aria-hidden="true" /><div><h2>Saldo actual</h2><p className={styles.help}>Filamentos e insumos · costo histórico</p></div></header>
     <div className={styles.cards}>{(["CRC", "USD"] as const).map(currency => {
       const total = data ? inventoryValueTotal(data.rows, currency) : null;
       return <article key={currency} aria-label={`Saldo en ${currency}`}>
         <span className={styles.currency}>{currency === "CRC" ? "Colones · CRC" : "Dólares · USD"}</span>
         <strong className={styles.amount}>{loading ? "Cargando…" : money(total?.total ?? null, currency)}</strong>
-        {total && <><span>{total.missing ? `Subtotal · ${total.missing} sin valorar` : "Saldo a costo histórico"}</span>
-          <dl>{(["filament", "supply"] as const).map(kind => { const part = inventoryValueTotal(data!.rows, currency, kind); return <div key={kind}>
-            <dt>{kind === "filament" ? "Filamentos" : "Insumos"}</dt><dd>{money(part.total, currency)}{part.missing > 0 ? " *" : ""}</dd>
-          </div>; })}</dl></>}
+        {total && <span>{total.missing ? `Parcial · ${total.missing} sin valorar` : "Total a costo histórico"}</span>}
       </article>;
     })}</div>
-    {mode !== "authenticated" && <p className={styles.help}>Iniciá sesión para valorar tu inventario sincronizado. El modo local/demo no calcula conversiones.</p>}
-    {error && <p role="alert" className={styles.help}>{error}</p>}
-    {data && data.rows.some(row => row.remaining_crc_value == null || row.remaining_usd_value == null) && <p className={styles.help} role="status">Valoración parcial: los importes pendientes no se cuentan como cero. Completá los datos para obtener ambos totales.</p>}
     {mode === "authenticated" && <div className={styles.actions}>
-      <button type="button" disabled={loading || !data} onClick={onDetails}>Ver desglose y completar</button>
+      <button type="button" disabled={loading || !data} onClick={onDetails} aria-label="Ver desglose y completar">Ver desglose</button>
       <button type="button" disabled={loading} onClick={onRefresh}><RefreshCw size={15} aria-hidden="true" />{loading ? "Actualizando…" : "Actualizar saldo"}</button>
     </div>}
+    {mode !== "authenticated" && <p className={styles.help}>Iniciá sesión para valorar tu inventario sincronizado. El modo local/demo no calcula conversiones.</p>}
+    {error && <p role="alert" className={styles.help}>{error}</p>}
+    {data && data.rows.some(row => row.remaining_crc_value == null || row.remaining_usd_value == null) && <p className={styles.help} role="status">Saldo parcial: faltan datos históricos. Los pendientes no se cuentan como cero.</p>}
   </section>;
 }
 
