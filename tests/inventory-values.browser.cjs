@@ -62,6 +62,11 @@ const supply={id:'da260000-0000-4000-8000-000000000012',name:'Imanes',category:'
   await cards.screenshot({path:`node_modules/.tools/inventory-values/complete-${width}.png`});
   await page.getByRole('button',{name:'Inventario',exact:true}).filter({visible:true}).click();
   await expect(page.getByRole('region',{name:'Saldo actual del inventario'})).toHaveCount(1);assert.equal((await usd.locator('strong').innerText()).replace(/\D/g,''),'1000');
+  const inventoryLayout=await cards.evaluate(el=>({top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom,heading:document.querySelector('.hero')?.getBoundingClientRect().bottom,metrics:document.querySelector('.metrics')?.getBoundingClientRect().top,domOrder:!!(el.compareDocumentPosition(document.querySelector('.metrics'))&Node.DOCUMENT_POSITION_FOLLOWING)}));
+  assert.ok(inventoryLayout.top>=inventoryLayout.heading&&inventoryLayout.bottom<=inventoryLayout.metrics&&inventoryLayout.domOrder,'inventory summary must sit between heading and metrics in visual and DOM order');
+  await page.getByRole('button',{name:'Agregar',exact:true}).focus();await page.keyboard.press('Tab');
+  await expect(cards.getByRole('button',{name:'Ver desglose y completar'})).toBeFocused();
+  await page.screenshot({path:`node_modules/.tools/inventory-values/inventory-${width}.png`});
   failSummary=true;await cards.getByRole('button',{name:'Actualizar saldo'}).click();await cards.getByRole('alert').waitFor();assert.equal(await crc.locator('strong').innerText(),'—');
   failSummary=false;await cards.getByRole('button',{name:'Actualizar saldo'}).click();await expect(usd).toContainText('Total a costo histórico');
   assert.deepEqual(errors,[]);await context.close();console.log(`PASS ${width}px: joint balances, partial states, date retry/reload, BCCR retry, refresh and responsive`);

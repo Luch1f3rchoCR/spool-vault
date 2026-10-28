@@ -3542,6 +3542,7 @@ export default function Home() {
         </div>
       </section>
 
+      {workspaceView === "inventory" && <InventoryValueCards {...inventoryValue} mode={dataMode} onRefresh={inventoryValue.refresh} onDetails={() => setShowValueDetails(true)} />}
       <section className="metrics" aria-label="Resumen">
         <article>
           <PackagePlus size={18} aria-hidden="true" />
@@ -3574,7 +3575,6 @@ export default function Home() {
           <span>spools vacíos</span>
         </article>
       </section>
-      {workspaceView === "inventory" && <InventoryValueCards {...inventoryValue} mode={dataMode} onRefresh={inventoryValue.refresh} onDetails={() => setShowValueDetails(true)} />}
 
       <p className={`sync-note sync-${dataMode}`} role={dataMode === "error" ? "alert" : "status"}>
         {dataMode === "error" || dataMode === "demo" ? (
