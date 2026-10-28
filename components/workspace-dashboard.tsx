@@ -34,12 +34,12 @@ export function WorkspaceDashboard({ displayName, rolls, projects, runs, orders,
       <h1 id="dashboard-title" tabIndex={-1}>Hola{displayName.trim() ? `, ${displayName.trim().split(/\s+/)[0]}` : ""} <span aria-hidden="true">👋</span></h1>
       <p>Todo lo importante de tu taller, en un solo lugar.</p>
     </div>
+    {inventoryValue}
     <div className="dashboard-cards">{cards.map(card => <button type="button" key={card.section} className={`dashboard-card dashboard-${card.section}`} onClick={() => onNavigate(card.section)}>
       <span className="dashboard-card-icon"><card.icon size={23} aria-hidden="true" /></span>
       <span><span>{card.title}</span><strong>{card.count}</strong><small>{card.detail}</small></span>
       <ArrowUpRight size={15} aria-hidden="true" />
     </button>)}</div>
-    {inventoryValue}
     <section className="dashboard-activity" aria-labelledby="activity-title">
       <div className="section-head"><h2 id="activity-title">Actividad reciente</h2><span>Últimos registros</span></div>
       {activity.length ? activity.map(item => <button type="button" key={item.id} onClick={() => onNavigate(item.section)}>

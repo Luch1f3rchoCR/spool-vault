@@ -35,11 +35,14 @@ const supply={id:'da260000-0000-4000-8000-000000000012',name:'Imanes',category:'
   });
   await page.goto(base);await page.getByRole('button',{name:/Perfil.*inventory-values@example/}).waitFor();
   const cards=page.getByRole('region',{name:'Saldo actual del inventario'}),crc=cards.getByRole('article',{name:'Saldo en CRC'}),usd=cards.getByRole('article',{name:'Saldo en USD'});
-  await expect(crc).toContainText('Filamentos');await expect(crc).toContainText('Insumos');
-  await expect(usd).toContainText('Subtotal · 1 sin valorar');
+  await expect(cards).toContainText('Filamentos e insumos · costo histórico');
+  await expect(usd).toContainText('Parcial · 1 sin valorar');
   assert.equal((await crc.locator('strong').innerText()).replace(/\D/g,''),'5000');assert.equal((await usd.locator('strong').innerText()).replace(/\D/g,''),'800');
   assert.equal(dateRequests.length+rateRequests.length,0,'opening dashboard wrote financial data');
   assert.ok(await cards.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+  const compactLayout=await cards.evaluate(el=>({height:el.getBoundingClientRect().height,bottom:el.getBoundingClientRect().bottom,next:document.querySelector('.dashboard-cards')?.getBoundingClientRect().top}));
+  assert.ok(compactLayout.height<=(width===1280?160:300),`compact summary height: ${compactLayout.height}`);
+  assert.ok(compactLayout.bottom<=compactLayout.next,'home summary must precede the dashboard metrics');
   await fs.mkdir('node_modules/.tools/inventory-values',{recursive:true});await cards.screenshot({path:`node_modules/.tools/inventory-values/partial-${width}.png`});
   await cards.getByRole('button',{name:'Ver desglose y completar'}).click();const modal=page.getByRole('dialog',{name:'Valor del inventario'});
   await modal.getByLabel('Fecha real de compra').fill('2026-10-10');await modal.getByRole('button',{name:'Confirmar fecha de compra'}).click();
@@ -55,12 +58,17 @@ const supply={id:'da260000-0000-4000-8000-000000000012',name:'Imanes',category:'
   await expect(modal.getByRole('alert')).toHaveCount(0);assert.equal(rateRequests.length,2,'read retry repeated the provider write');
   await expect(modal.getByText('Tasas históricas pendientes',{exact:true})).toHaveCount(0);assert.deepEqual(rateRequests[0],rateRequests[1]);
   await modal.getByRole('button',{name:'Cerrar valoración'}).click();
-  await expect(usd).not.toContainText('Subtotal');assert.equal((await usd.locator('strong').innerText()).replace(/\D/g,''),'1000');
+  await expect(usd).not.toContainText('Parcial');assert.equal((await usd.locator('strong').innerText()).replace(/\D/g,''),'1000');
   await cards.screenshot({path:`node_modules/.tools/inventory-values/complete-${width}.png`});
   await page.getByRole('button',{name:'Inventario',exact:true}).filter({visible:true}).click();
   await expect(page.getByRole('region',{name:'Saldo actual del inventario'})).toHaveCount(1);assert.equal((await usd.locator('strong').innerText()).replace(/\D/g,''),'1000');
+  const inventoryLayout=await cards.evaluate(el=>({top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom,heading:document.querySelector('.hero')?.getBoundingClientRect().bottom,metrics:document.querySelector('.metrics')?.getBoundingClientRect().top,domOrder:!!(el.compareDocumentPosition(document.querySelector('.metrics'))&Node.DOCUMENT_POSITION_FOLLOWING)}));
+  assert.ok(inventoryLayout.top>=inventoryLayout.heading&&inventoryLayout.bottom<=inventoryLayout.metrics&&inventoryLayout.domOrder,'inventory summary must sit between heading and metrics in visual and DOM order');
+  await page.getByRole('button',{name:'Agregar',exact:true}).focus();await page.keyboard.press('Tab');
+  await expect(cards.getByRole('button',{name:'Ver desglose y completar'})).toBeFocused();
+  await page.screenshot({path:`node_modules/.tools/inventory-values/inventory-${width}.png`});
   failSummary=true;await cards.getByRole('button',{name:'Actualizar saldo'}).click();await cards.getByRole('alert').waitFor();assert.equal(await crc.locator('strong').innerText(),'—');
-  failSummary=false;await cards.getByRole('button',{name:'Actualizar saldo'}).click();await expect(usd).toContainText('Saldo a costo histórico');
+  failSummary=false;await cards.getByRole('button',{name:'Actualizar saldo'}).click();await expect(usd).toContainText('Total a costo histórico');
   assert.deepEqual(errors,[]);await context.close();console.log(`PASS ${width}px: joint balances, partial states, date retry/reload, BCCR retry, refresh and responsive`);
  }
  const context=await browser.newContext(),page=await context.newPage();await page.route('**/*',route=>{const url=new URL(route.request().url());return url.origin!==base?route.abort():url.pathname==='/api/supabase-config'?route.fulfill({json:{}}):route.continue();});
