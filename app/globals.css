@@ -818,11 +818,33 @@ h3 {
 }
 
 .purchase-order-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: 12px;
   margin-bottom: 14px;
 }
+
+.purchase-order-form > .purchase-order-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.purchase-order-header { grid-column: 1 / -1; }
+.purchase-draft-lines { list-style: none; margin: 16px 0 0; padding: 0; }
+.purchase-draft-lines > li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px 10px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.purchase-draft-description { min-width: 0; overflow-wrap: anywhere; }
+.purchase-draft-description strong, .purchase-draft-description small { display: block; }
+.purchase-draft-description small { margin-top: 4px; color: var(--muted); font-size: .78rem; }
+.purchase-draft-price { font-size: .88rem; white-space: nowrap; }
+.purchase-draft-actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.purchase-draft-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--proper-paper); color: var(--ink); font: inherit; font-size: .8rem; cursor: pointer; }
+.purchase-draft-actions button:hover { background: var(--surface); border-color: var(--accent); }
+.purchase-draft-actions button:disabled { cursor: not-allowed; opacity: .5; }
+.purchase-draft-empty { padding: 24px 0; color: var(--muted); line-height: 1.5; }
+.purchase-existing { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
+.purchase-existing > summary { min-height: 44px; padding: 10px 0; cursor: pointer; font-weight: 700; color: var(--accent); }
+.purchase-line-editor-fields { border: 0; padding: 0; margin: 16px 0; min-width: 0; }
+.purchase-line-editor-fields small { color: var(--muted); }
+.purchase-line-editor-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 
 .purchase-order-step {
   min-width: 0;
@@ -3302,7 +3324,7 @@ textarea:focus {
     width: 100%;
   }
 
-  .purchase-order-form {
+  .purchase-order-form > .purchase-order-fields {
     grid-template-columns: 1fr;
   }
 

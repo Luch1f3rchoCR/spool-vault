@@ -58,6 +58,7 @@ async function run(browser, width) {
       }]));
     }, { order, item, usdOrder, usdItem });
     await page.goto(baseUrl);
+    await page.getByRole("button", { name: "Inventario", exact: true }).click();
     await page.getByRole("button", { name: "Agregar", exact: true }).click();
     await page.getByRole("dialog", { name: "¿Qué querés agregar?" }).waitFor();
     await checkViewport(page);
