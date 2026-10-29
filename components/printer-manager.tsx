@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ChevronLeft, Edit3, Plus, Printer, Save } from "lucide-react";
 import type { PrinterProfile, UserProfile } from "@/lib/types";
+import styles from "./printer-manager.module.css";
 
 export type PrinterValues = {
   printer_id: string | null;
@@ -68,6 +69,7 @@ function money(currency: string, value: number) {
 }
 
 export function PrinterManager({ printers, profile, isSaving, onBack, onSave, backLabel = "Proyectos" }: Props) {
+  const helpId = useId();
   const [values, setValues] = useState<PrinterValues | null>(null);
   const sortedPrinters = [...printers].sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.name.localeCompare(b.name));
 
@@ -85,19 +87,33 @@ export function PrinterManager({ printers, profile, isSaving, onBack, onSave, ba
           <button type="button" onClick={() => setValues(null)} disabled={isSaving}><ChevronLeft size={17} />Volver</button>
           <div><p className="eyebrow">Equipo</p><h3>{values.printer_id ? "Editar impresora" : "Nueva impresora"}</h3></div>
         </div>
-        <p className="form-help">La moneda corresponde a la tarifa propia; debe coincidir con la moneda de costos de Perfil para usarla en una impresión. No hacemos conversiones automáticas. La potencia y el costo por hora son opcionales. Si los dejás vacíos, Proper usa los valores generales de Perfil.</p>
+        <p className="form-help">Registrá tu equipo. La potencia y el costo por hora son opcionales: podés completarlos después.</p>
         <div className="form-grid printer-form-grid">
           <label>Nombre<input required maxLength={120} value={values.name} disabled={isSaving} placeholder="Ej. P1S principal" onChange={(event) => setValues({ ...values, name: event.target.value })} /></label>
           <label>Marca<input maxLength={120} value={values.manufacturer} disabled={isSaving} placeholder="Ej. Bambu Lab" onChange={(event) => setValues({ ...values, manufacturer: event.target.value })} /></label>
           <label>Modelo<input maxLength={120} value={values.model} disabled={isSaving} placeholder="Ej. P1S" onChange={(event) => setValues({ ...values, model: event.target.value })} /></label>
           <label>Boquilla (mm)<input type="number" min="0.05" max="10" step="0.01" value={values.nozzle_diameter_mm} disabled={isSaving} placeholder="0.4" onChange={(event) => setValues({ ...values, nozzle_diameter_mm: event.target.value })} /></label>
           <label>Ubicación<input maxLength={160} value={values.location} disabled={isSaving} placeholder="Taller, oficina…" onChange={(event) => setValues({ ...values, location: event.target.value })} /></label>
-          <label>Potencia promedio (W)<input type="number" min="0.01" max="100000" step="0.01" value={values.average_power_w} disabled={isSaving} placeholder={profile.printer_average_power_w == null ? "Usar Perfil" : `Perfil: ${profile.printer_average_power_w} W`} onChange={(event) => setValues({ ...values, average_power_w: event.target.value })} /></label>
-          <label>Costo de máquina por hora<input type="number" min="0" max="1000000000" step="0.0001" value={values.machine_cost_per_hour} disabled={isSaving} placeholder={`Perfil: ${money(profile.production_cost_currency, profile.machine_cost_per_hour)}`} onChange={(event) => setValues({ ...values, machine_cost_per_hour: event.target.value })} /></label>
-          <label>Moneda de la tarifa<select value={values.machine_cost_currency} disabled={isSaving} onChange={(event) => setValues({ ...values, machine_cost_currency: event.target.value })}><option value="CRC">CRC — colones</option><option value="USD">USD — dólares</option><option value="EUR">EUR — euros</option></select></label>
+          <div><label>Potencia promedio (W)<input type="number" min="0.01" max="100000" step="0.01" value={values.average_power_w} disabled={isSaving} aria-describedby={`${helpId}-power`} placeholder="Opcional" onChange={(event) => setValues({ ...values, average_power_w: event.target.value })} /></label>
+            <p className={styles.help} id={`${helpId}-power`}>Consumo eléctrico medio mientras imprime, en watts; no la potencia máxima de la etiqueta. Podés medirlo con un medidor de consumo. {profile.printer_average_power_w == null ? "Vacío: usa la potencia de Perfil; actualmente no está configurada." : `Vacío: usa ${profile.printer_average_power_w} W de Perfil.`} El precio por kWh se configura en Perfil.</p>
+          </div>
+          <div><label>Costo de máquina por hora<input type="number" min="0" max="1000000000" step="0.0001" value={values.machine_cost_per_hour} disabled={isSaving} aria-describedby={`${helpId}-rate`} placeholder="Usar tarifa de Perfil" onChange={(event) => setValues({ ...values, machine_cost_per_hour: event.target.value })} /></label>
+            <p className={styles.help} id={`${helpId}-rate`}>Desgaste y mantenimiento por hora de uso. No incluyás filamento, electricidad ni mano de obra. Vacío: usa {money(profile.production_cost_currency, profile.machine_cost_per_hour)} / h de Perfil ({profile.production_cost_currency}). Escribí 0 solo si querés excluir este costo.</p>
+          </div>
+          <div><label>Moneda de la tarifa<select value={values.machine_cost_currency} disabled={isSaving} aria-describedby={`${helpId}-currency`} onChange={(event) => setValues({ ...values, machine_cost_currency: event.target.value })}><option value="CRC">CRC — colones</option><option value="USD">USD — dólares</option><option value="EUR">EUR — euros</option></select></label>
+            <p className={styles.help} id={`${helpId}-currency`}>Moneda del costo por hora que escribís para esta impresora. Para usar una tarifa propia al registrar una impresión, debe coincidir con la moneda de costos de Perfil: {profile.production_cost_currency}. No hacemos conversiones automáticas.</p>
+          </div>
           <label className="wide">Notas<textarea maxLength={1000} value={values.notes} disabled={isSaving} placeholder="Mantenimiento, perfil recomendado, observaciones…" onChange={(event) => setValues({ ...values, notes: event.target.value })} /></label>
           <label className="wide checkbox-field"><input type="checkbox" checked={values.is_active} disabled={isSaving} onChange={(event) => setValues({ ...values, is_active: event.target.checked })} /><span>Disponible para nuevas impresiones</span></label>
         </div>
+        <details className={styles.guide}>
+          <summary tabIndex={0}>¿Cómo defino el costo de máquina?</summary>
+          <div>
+            <p>Una forma de estimarlo es dividir el costo del equipo que querés recuperar entre las horas de uso previstas y sumar una reserva de mantenimiento por hora.</p>
+            <p>Ejemplo ilustrativo: ₡300.000 ÷ 3.000 horas = ₡100 por hora, antes de mantenimiento. No es una tarifa recomendada para tu modelo ni se aplica automáticamente.</p>
+            <p>La electricidad se calcula aparte con los watts, el precio por kWh y la duración de la impresión. La mano de obra usa el tiempo de trabajo y la tarifa de Perfil. Así evitás contar un mismo gasto dos veces.</p>
+          </div>
+        </details>
         <button className="primary-action" type="submit" disabled={isSaving || !values.name.trim()}><Save size={18} />{isSaving ? "Guardando impresora…" : "Guardar impresora"}</button>
       </form>
     );
