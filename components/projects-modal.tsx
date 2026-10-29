@@ -6,6 +6,7 @@ export type { ProjectCreateValues } from "@/lib/project-variant";
 import { supplyShortages, type Supply } from "@/lib/supplies";
 import { ModalFrame } from "@/components/modal-frame";
 import { ProductionCostBreakdown } from "@/components/production-cost-breakdown";
+import { ProductionHistory } from "@/components/production-history";
 import { PrinterManager, type PrinterValues } from "@/components/printer-manager";
 import {
   AlertTriangle,
@@ -550,7 +551,7 @@ export function ProjectsModal({
               }) : <div className="project-empty"><FolderKanban size={34} /><h3>Tu primera receta está lista para nacer</h3><p>Guardá el STL/3MF, los filamentos, gramos, tiempo e insumos que necesita.</p><button className="primary-action" type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Crear primer proyecto</button></div>}
             </div>
 
-            {runs.length > 0 && <section className="production-history"><div className="section-head"><div><p className="eyebrow">Histórico</p><h3>Producción reciente</h3></div><span>{runs.length} registros</span></div>{sortedRuns.slice(0, 8).map((run) => <div key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><strong>{run.project_name}</strong><span>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</span><ProductionCostBreakdown run={run} filaments={runFilaments.filter(line => line.run_id === run.id)} components={runComponents.filter(line => line.run_id === run.id)} operatingCosts={runCosts.find(cost => cost.run_id === run.id)} /></div>)}</section>}
+            <ProductionHistory runs={sortedRuns} filaments={runFilaments} components={runComponents} costs={runCosts} />
           </>
         )}
     </ModalFrame>
