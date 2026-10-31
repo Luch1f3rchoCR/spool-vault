@@ -1,7 +1,7 @@
 # Project Ledger · estado actual
 
 Actualizado: 2026-10-21  
-Frentes sincronizados en el Project Ledger: **Marca e Identidad**; **Modelo de negocio**; **Clientes y Piloto**.
+Frentes sincronizados en el Project Ledger: **Marca e Identidad**; **Modelo de negocio**; **Clientes y Piloto**; **Marketing y lanzamiento**.
 
 Este archivo inicia la capa administrativa común del Project Ledger sin reemplazar los documentos técnicos existentes.
 
@@ -32,16 +32,32 @@ Este archivo inicia la capa administrativa común del Project Ledger sin reempla
 ## Social · estado actual
 
 - Instagram: `@properformakers`.
+- Facebook Page: **Proper · 3D Print Management**.
+- Instagram y Facebook están conectados en Meta Business Suite.
+- Gmail administrativo de las cuentas sociales: `properformakers@gmail.com`; no se trata como correo público definitivo.
 - Nombre visible informado por Marketing: **Proper · 3D Print Management**.
 - Descriptor contextual: **3D Print Management for Makers**.
 - `properformakers` es namespace digital, no nombre ni logo.
+- Canales iniciales de trabajo: Instagram + Facebook.
 - Se produjo un **Proper Social Kit V1** a partir del Asset Pack; en este ledger no consta una aprobación explícita posterior del kit completo ni su incorporación al repositorio, por lo que se mantiene como entregable **pendiente de cierre**.
+- Marketing aprobó como dirección social una línea editorial cálida/pastel con Proper green/ink + Clay, luz suave tipo estudio y objetos maker/3D. Esta aprobación no autoriza por sí sola rediseñar superficies operativas del producto.
+
+## Marketing y lanzamiento · CONFIRMADO ACTUAL
+
+- La presencia social debe mostrar funciones reales y distinguir claramente funciones actuales de visión futura.
+- El primer reclutamiento beta es orgánico; no hay anuncios pagados aprobados.
+- Marketing atrae candidatos y comunica el programa; Clientes/Piloto conserva criterios, selección, onboarding, métricas, feedback y otorgamiento de Founder Personal.
+- Founder Personal no se usa como giveaway masivo ni como titular principal de adquisición.
+- Prioridad de reclutamiento acordada: contacto personal con makers identificados → comunidades especializadas → redes propias de Proper → otros canales orgánicos relevantes.
+- Maker Faire San José 2027 se mantiene como oportunidad a monitorear, no como participación confirmada.
+- La política de idioma todavía no está cerrada. La propuesta de trabajo es Spanish-first mientras app y piloto sean Spanish-first, conservando **Everything behind your prints.** como tagline y usando inglés de forma selectiva.
 
 ## Pendientes del frente
 
 - Clearance legal/comercial de Proper.
 - Incorporar al proyecto el SVG oficial de Stone Collective antes de usar el endorsement visual definitivo.
 - Cerrar aprobación/ingesta durable del Social Kit V1 y su handoff final a Marketing.
+- Marketing: aprobar la política de idioma, convertir los conceptos iniciales en piezas finales y coordinar la apertura de beta con Clientes/Piloto.
 - Mantener cualquier migración de identificadores técnicos fuera del alcance de Marca hasta una decisión específica.
 
 
