@@ -40,10 +40,20 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 - `public.purchase_order_payments`: pago real inmutable con moneda, tipo de cambio, fecha, clase y fuente.
 - `public.user_profiles`: moneda base, datos opcionales de facturación y estado de membresía por usuario.
 - `public.filament_balance_report`: vista financiera consistente por usuario con saldo, compra, proveedor, spool y valor restante, sin mezclar monedas.
+- `public.historical_fx_snapshots`: snapshots BCCR inmutables por usuario, fecha y moneda; conserva indicadores 318/333, fechas efectivas y valores crudos.
+- `public.filament_inventory_valuation`: valor restante de filamento en moneda original, CRC y USD; usa landed cost para órdenes y costo de filamento para legado.
 
 The schema uses RLS, authenticated-only access, and explicit grants so the inventory is ready for Supabase Data API access without exposing it publicly.
 
 ## Safe writes
+
+Joint-value migration applied in production as `20261025182036` (`inventory_value_summary`), corresponding to local `20261025175856_inventory_value_summary.sql`. Do not reapply it for the timestamp difference. Post-DDL checks confirmed STABLE/invoker summary, owner RLS, insert-only date annotations, no anonymous access, acquisition-date validation and export of date/FX provenance. Security advisors added no findings; the prior leaked-password warning and informational unused indexes remain. Deployment evidence is tracked in PR #54.
+
+Joint current-stock valuation (`20261025175856_inventory_value_summary.sql`): `inventory_value_summary()` is a STABLE invoker RPC reading current filaments and supply stock under owner RLS. Supplies replay weighted historical incoming costs and proportional withdrawals; zero-stock cycles reset, unknown dates/rates or ambiguous mixed timestamps remain incomplete. `supply_purchase_dates` completes a missing acquisition date once, append-only, through `complete_supply_purchase_date` with retry keys and ownership checks. New supply entries store a validated `purchased_at` inside their immutable request payload; old clients/retries remain compatible. Account export includes these annotations and `historical_fx_snapshots`. Deploy this migration before the dashboard/API change. No inventory rows, purchases or production snapshots are rewritten. Full contracts and verification: `docs/INVENTORY_VALUE_SUMMARY.md`.
+
+Print-settings migration applied to production as cloud version `20261025021944` (`filament_print_profiles`), corresponding to local `20261025021216_filament_print_profiles.sql`. Do not reapply it for the timestamp difference. Post-DDL checks confirmed owner RLS, invoker view/RPC, insert-only revisions, restricted anonymous access and export inclusion. Advisors added no security finding; the previous leaked-password-protection warning and informational unused indexes remain.
+
+Print settings (`20261025021216_filament_print_profiles.sql`): `filament_print_profiles` stores immutable revisions; `filament_print_profiles_current` exposes the latest revision through an invoker view with owner RLS. `save_filament_print_profile` validates roll/printer ownership, locks the profile identity, rejects stale versions and changed retry payloads, and replays the exact saved revision. New configurations require an active printer; existing configurations can retain a now-inactive printer. `export_my_data` includes all own revisions. Apply this additive migration before the interface. No printer commands, consumption or cost changes occur. Tests live in `supabase/tests/filament_print_profiles.sql` and run only in the isolated local harness.
 
 - `create_roll_with_purchase`: creates/reuses the supplier, roll and purchase in one transaction.
 - `record_consumption`: creates the log and discounts inventory in one transaction.
@@ -53,6 +63,7 @@ The schema uses RLS, authenticated-only access, and explicit grants so the inven
 - `correct_purchase`: appends an audited correction and updates the roll's current cost in one retry-safe transaction.
 - `create_purchase_order`: groups existing purchase history into an immutable order and allocates shipping/other charges in one retry-safe transaction.
 - `create_purchase_order_v2`: creates the order, items and optional multi-currency payment in one retry-safe transaction.
+- `record_bccr_fx_snapshot`: server-only, retry-safe persistence for a validated historical BCCR snapshot; requires `BCCR_TOKEN` only in the server environment.
 - `save_user_profile`: upserts the signed-in user's financial preferences without accepting another user's id.
 - Deferred database checks keep `filament_rolls.spool_id` and `spools.status` synchronized at commit time; partial assignments are rejected.
 - A physical spool can belong to only one roll record at a time, including archived records, and clients cannot directly delete roll or spool history.

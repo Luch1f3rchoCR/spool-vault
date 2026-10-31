@@ -5,6 +5,8 @@ import { createVariantDraft, type ProjectCreateValues } from "@/lib/project-vari
 export type { ProjectCreateValues } from "@/lib/project-variant";
 import { supplyShortages, type Supply } from "@/lib/supplies";
 import { ModalFrame } from "@/components/modal-frame";
+import { ProductionCostBreakdown } from "@/components/production-cost-breakdown";
+import { ProductionHistory } from "@/components/production-history";
 import { PrinterManager, type PrinterValues } from "@/components/printer-manager";
 import {
   AlertTriangle,
@@ -544,12 +546,12 @@ export function ProjectsModal({
                     || operatingCosts.machine_cost_amount == null
                     || operatingCosts.labor_cost_amount == null;
                   const comparable = run.sale_amount != null && run.sale_currency && totals.size === 1 && totals.has(run.sale_currency) && !incomplete ? totals.get(run.sale_currency) ?? null : null;
-                  return <div className="project-run-row" key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><div><strong>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</strong><small>{duration(run.actual_minutes)} · {filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString("es-CR")} g{operatingCosts ? ` · ${duration(operatingCosts.actual_labor_minutes)} de trabajo` : " · costos operativos pendientes"}{operatingCosts?.printer_name ? ` · ${operatingCosts.printer_name}` : ""}</small></div><div className="run-money">{Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{money(currency, total)}</span>)}{run.sale_amount != null && <strong>Venta {money(run.sale_currency || baseCurrency, run.sale_amount)}</strong>}{comparable != null && <small>Utilidad {money(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable)}</small>}</div></div>;
+                  return <div className="project-run-row" key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><div><strong>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</strong><small>{duration(run.actual_minutes)} · {filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString("es-CR")} g{operatingCosts ? ` · ${duration(operatingCosts.actual_labor_minutes)} de trabajo` : " · costos operativos pendientes"}{operatingCosts?.printer_name ? ` · ${operatingCosts.printer_name}` : ""}</small></div><div className="run-money"><small>{incomplete ? "Subtotal registrado" : "Costo registrado"}</small>{Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{money(currency, total)}</span>)}{run.sale_amount != null && <strong>Venta {money(run.sale_currency || baseCurrency, run.sale_amount)}</strong>}{comparable != null && <small>Utilidad {money(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable)}</small>}</div><ProductionCostBreakdown run={run} filaments={filamentLines} components={componentLines} operatingCosts={operatingCosts} /></div>;
                 })}</article>;
               }) : <div className="project-empty"><FolderKanban size={34} /><h3>Tu primera receta está lista para nacer</h3><p>Guardá el STL/3MF, los filamentos, gramos, tiempo e insumos que necesita.</p><button className="primary-action" type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Crear primer proyecto</button></div>}
             </div>
 
-            {runs.length > 0 && <section className="production-history"><div className="section-head"><div><p className="eyebrow">Histórico</p><h3>Producción reciente</h3></div><span>{runs.length} registros</span></div>{sortedRuns.slice(0, 8).map((run) => <div key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><strong>{run.project_name}</strong><span>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</span></div>)}</section>}
+            <ProductionHistory runs={sortedRuns} filaments={runFilaments} components={runComponents} costs={runCosts} />
           </>
         )}
     </ModalFrame>

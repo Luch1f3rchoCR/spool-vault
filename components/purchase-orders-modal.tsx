@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Calculator, CreditCard, PackageCheck, Plus, ReceiptText, Save, Truck, Trash2 } from "lucide-react";
+import { Calculator, CreditCard, PackageCheck, Pencil, Plus, ReceiptText, Save, Truck, Trash2 } from "lucide-react";
 import { ModalFrame } from "@/components/modal-frame";
 import type {
   CostConfidence,
@@ -134,6 +134,16 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [newRolls, setNewRolls] = useState<NewOrderRoll[]>([]);
+  const [lineDraft, setLineDraft] = useState<NewOrderRoll | null>(null);
+  const [lineError, setLineError] = useState("");
+  const linesHeading = useRef<HTMLHeadingElement>(null);
+  const returnToLines = useRef(false);
+  useEffect(() => {
+    if (!lineDraft && returnToLines.current) {
+      linesHeading.current?.focus();
+      returnToLines.current = false;
+    }
+  }, [lineDraft]);
   const [supplierName, setSupplierName] = useState("");
   const [currency, setCurrency] = useState(baseCurrency);
   const [feedback, setFeedback] = useState("");
@@ -250,7 +260,7 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
 
   async function submitOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current || isSaving || !selectedPurchases.length || !manualMatches || !paymentValid) return;
+    if (submitting.current || isSaving || lineDraft || !selectedPurchases.length || !manualMatches || !paymentValid) return;
     submitting.current = true;
     setFeedback("");
     const manualAllocations = Object.fromEntries(selectedPurchases.map((purchase) => [purchase.id, {
@@ -284,8 +294,56 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
 
   useEffect(() => { if (feedback && !isSaving) { feedbackRef.current?.focus(); feedbackRef.current?.scrollIntoView({ block: "nearest" }); } }, [feedback, isSaving]);
 
-  function updateLine(id: string, patch: Partial<NewOrderRoll>) {
-    setNewRolls((rows) => rows.map((row) => row.line_id === id ? { ...row, ...patch } : row));
+  function updateLine(patch: Partial<NewOrderRoll>) {
+    setLineDraft((line) => line ? { ...line, ...patch } : line);
+    setLineError("");
+  }
+
+  function closeLine() {
+    if (isSaving) return;
+    returnToLines.current = true;
+    setLineDraft(null);
+    setLineError("");
+  }
+
+  function includeLine(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!lineDraft || isSaving) return;
+    if (!lineDraft.color_name.trim()) { setLineError("Escribí el nombre del color."); return; }
+    const line = { ...lineDraft, color_name: lineDraft.color_name.trim() };
+    setNewRolls((rows) => rows.some((row) => row.line_id === line.line_id)
+      ? rows.map((row) => row.line_id === line.line_id ? line : row) : [...rows, line]);
+    closeLine();
+  }
+
+  if (lineDraft) {
+    const line = lineDraft;
+    const editing = newRolls.some((row) => row.line_id === line.line_id);
+    return <ModalFrame className="purchase-orders-modal" titleId="purchase-line-title" eyebrow="Borrador de compra"
+      title={editing ? "Editar filamento de la compra" : "Agregar filamento a la compra"} busy={isSaving}
+      onClose={closeLine} onBack={closeLine} viewKey={`line-${line.line_id}`} closeLabel="Volver a la compra">
+      <p className="form-help">Una línea por rollo físico. Incluirlo aquí no guarda inventario: todo se registra junto al guardar la compra completa.</p>
+      <form className="purchase-line-editor" onSubmit={includeLine}>
+        <fieldset disabled={isSaving} className="purchase-line-editor-fields form-grid">
+          <label>Marca<select value={line.brand} onChange={(event) => updateLine({ brand: event.target.value })}>{brandOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
+          <label>Material<select value={line.material} onChange={(event) => updateLine({ material: event.target.value, product_line: lineOptionsByMaterial[event.target.value]?.[0] || "Genérico" })}>{materialOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
+          <label>Línea<select value={line.product_line} onChange={(event) => updateLine({ product_line: event.target.value })}>{(lineOptionsByMaterial[line.material] || ["Genérico"]).map((name) => <option key={name}>{name}</option>)}</select></label>
+          <label>Nombre del color<input required maxLength={120} value={line.color_name} onChange={(event) => updateLine({ color_name: event.target.value })} /></label>
+          <label>Color aproximado<input type="color" value={/^#[0-9a-f]{6}$/i.test(line.color_hex) ? line.color_hex : "#999999"} onChange={(event) => updateLine({ color_hex: event.target.value })} /></label>
+          <label>HEX<input required pattern="#[0-9A-Fa-f]{6}" maxLength={7} value={line.color_hex} onChange={(event) => updateLine({ color_hex: event.target.value })} /></label>
+          <label>Peso del filamento (g)<input required type="number" min="0.01" max="999999" step="0.01" value={line.quantity_g} onChange={(event) => updateLine({ quantity_g: Number(event.target.value) })} /></label>
+          <label>Precio del producto ({orderCurrency})<input required type="number" min="0" step="0.01" value={line.total_price} onChange={(event) => updateLine({ total_price: event.target.value === "" ? "" : Number(event.target.value) })} /><small>Incluye spool si lo compraste; no incluye envío.</small></label>
+          <label>Presentación<select value={line.package_type} onChange={(event) => updateLine({ package_type: event.target.value as PackageType, spool_cost: 0 })}><option value="refill">Sin spool / refill</option><option value="spooled">Con spool</option></select></label>
+          {line.package_type === "spooled" && <label>Costo del spool incluido ({orderCurrency})<input required type="number" min="0" max={Number(line.total_price)} step="0.01" value={line.spool_cost} onChange={(event) => updateLine({ spool_cost: Number(event.target.value) })} /></label>}
+          <label>Ubicación (opcional)<input maxLength={160} value={line.location} onChange={(event) => updateLine({ location: event.target.value })} /></label>
+        </fieldset>
+        {lineError && <p className="account-error" role="alert">{lineError}</p>}
+        <div className="purchase-line-editor-actions">
+          <button className="secondary-action" type="button" onClick={closeLine} disabled={isSaving}>Cancelar</button>
+          <button className="primary-action" type="submit" disabled={isSaving}><Plus size={18} aria-hidden="true" />{editing ? "Actualizar línea" : "Incluir en la compra"}</button>
+        </div>
+      </form>
+    </ModalFrame>;
   }
 
   return (
@@ -309,38 +367,39 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
         {showForm && (
           <form className="purchase-order-form" onSubmit={submitOrder} aria-busy={isSaving}>
             <fieldset disabled={isSaving} className="purchase-order-fields">
+            <div className="purchase-order-header form-grid">
+              <label>Proveedor de la orden<input required maxLength={200} list="order-suppliers" value={orderSupplier} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setSupplierName(event.target.value)} /></label>
+              <datalist id="order-suppliers">{supplierNames.map((name) => <option key={name} value={name} />)}</datalist>
+              <label>Moneda de la orden<select value={orderCurrency} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setCurrency(event.target.value)}>{Array.from(new Set([orderCurrency, baseCurrency, "CRC", "USD", "EUR"])).map((code) => <option key={code}>{code}</option>)}</select></label>
+            </div>
             <div className="purchase-order-step">
-              <div className="section-head"><div><p className="eyebrow">Paso 1</p><h3>Elegí las partidas</h3></div><span>{selectedPurchases.length} seleccionadas</span></div>
-              <p className="form-help">Podés agrupar compras del mismo proveedor y moneda. La historia original no se modifica.</p>
-              <button type="button" disabled={isSaving || selectedPurchases.length >= 100} onClick={() => setNewRolls((rows) => [...rows, {
+              <div className="section-head"><div><p className="eyebrow">Paso 1</p><h3 ref={linesHeading} tabIndex={-1}>Partidas de la compra</h3></div><span>{selectedPurchases.length} líneas</span></div>
+              <p className="form-help">Agregá un rollo a la vez. Podés editar o quitar sus líneas antes de guardar la compra completa.</p>
+              <button type="button" disabled={isSaving || selectedPurchases.length >= 100} onClick={() => setLineDraft({
                 line_id: crypto.randomUUID(), brand: brandOptions[0] || "Genérico", material: "PLA", product_line: lineOptionsByMaterial.PLA?.[0] || "Genérico",
                 color_name: "", color_hex: "#999999", quantity_g: 1000, total_price: "", package_type: "refill", spool_cost: 0, location: ""
-              }])}><Plus size={17} />Filamento nuevo</button>
-              {newRolls.length > 0 && <>
-                <p className="form-help">Una línea por rollo físico. Todo se guarda junto al confirmar la orden; cerrar sin guardar no agrega inventario. Con spool indica la presentación: podés asignar su spool físico después.</p>
-                <div className="form-grid">
-                  <label>Proveedor de la orden<input required maxLength={200} list="order-suppliers" value={orderSupplier} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setSupplierName(event.target.value)} /></label>
-                  <datalist id="order-suppliers">{supplierNames.map((name) => <option key={name} value={name} />)}</datalist>
-                  <label>Moneda de la orden<select value={orderCurrency} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setCurrency(event.target.value)}>{Array.from(new Set([orderCurrency, baseCurrency, "CRC", "USD", "EUR"])).map((code) => <option key={code}>{code}</option>)}</select></label>
-                </div>
-                {newRolls.map((line, index) => <fieldset key={line.line_id} disabled={isSaving} className="order-new-roll">
-                  <legend>Filamento nuevo {index + 1}</legend>
-                  <div className="form-grid">
-                    <label>Marca<select value={line.brand} onChange={(event) => updateLine(line.line_id, { brand: event.target.value })}>{brandOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
-                    <label>Material<select value={line.material} onChange={(event) => updateLine(line.line_id, { material: event.target.value, product_line: lineOptionsByMaterial[event.target.value]?.[0] || "Genérico" })}>{materialOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
-                    <label>Línea<select value={line.product_line} onChange={(event) => updateLine(line.line_id, { product_line: event.target.value })}>{(lineOptionsByMaterial[line.material] || ["Genérico"]).map((name) => <option key={name}>{name}</option>)}</select></label>
-                    <label>Nombre del color<input required maxLength={120} value={line.color_name} onChange={(event) => updateLine(line.line_id, { color_name: event.target.value })} /></label>
-                    <label>Color aproximado<input type="color" value={/^#[0-9a-f]{6}$/i.test(line.color_hex) ? line.color_hex : "#999999"} onChange={(event) => updateLine(line.line_id, { color_hex: event.target.value })} /></label>
-                    <label>HEX<input required pattern="#[0-9A-Fa-f]{6}" maxLength={7} value={line.color_hex} onChange={(event) => updateLine(line.line_id, { color_hex: event.target.value })} /></label>
-                    <label>Peso del filamento (g)<input required type="number" min="0.01" max="999999" step="0.01" value={line.quantity_g} onChange={(event) => updateLine(line.line_id, { quantity_g: Number(event.target.value) })} /></label>
-                    <label>Precio del producto ({orderCurrency})<input required type="number" min="0" step="0.01" value={line.total_price} onChange={(event) => updateLine(line.line_id, { total_price: event.target.value === "" ? "" : Number(event.target.value) })} /><small>Incluye spool si lo compraste; no incluye envío.</small></label>
-                    <label>Presentación<select value={line.package_type} onChange={(event) => updateLine(line.line_id, { package_type: event.target.value as PackageType, spool_cost: 0 })}><option value="refill">Sin spool / refill</option><option value="spooled">Con spool</option></select></label>
-                    {line.package_type === "spooled" && <label>Costo del spool incluido ({orderCurrency})<input required type="number" min="0" max={Number(line.total_price)} step="0.01" value={line.spool_cost} onChange={(event) => updateLine(line.line_id, { spool_cost: Number(event.target.value) })} /></label>}
-                    <label>Ubicación (opcional)<input maxLength={160} value={line.location} onChange={(event) => updateLine(line.line_id, { location: event.target.value })} /></label>
-                  </div>
-                  <button type="button" onClick={() => setNewRolls((rows) => rows.filter((row) => row.line_id !== line.line_id))}><Trash2 size={16} />Quitar filamento {index + 1}</button>
-                </fieldset>)}
-              </>}
+              })}><Plus size={17} aria-hidden="true" />Agregar filamento</button>
+              <ol className="purchase-draft-lines" aria-label="Partidas de la compra">
+                {selectedPurchases.map((purchase, index) => {
+                  const line = newRolls.find((row) => row.line_id === purchase.id);
+                  return <li key={purchase.id}>
+                    <span className="mini-swatch" style={{ backgroundColor: purchase.color_hex }} />
+                    <div className="purchase-draft-description"><strong>{index + 1}. {purchase.color_name}</strong><small>{purchase.brand} · {purchase.product_line || purchase.material}</small><small>{purchase.quantity_g.toLocaleString("es-CR")} g · {purchase.package_type === "spooled" ? "Con spool" : "Sin spool / refill"} · {line ? "Por registrar" : "Compra registrada"}</small></div>
+                    <strong className="purchase-draft-price">{money(orderCurrency, purchase.total_price)}</strong>
+                    <div className="purchase-draft-actions">
+                      {line && <button type="button" disabled={isSaving} aria-label={`Editar línea ${index + 1}: ${purchase.color_name}`} onClick={() => setLineDraft({ ...line })}><Pencil size={16} aria-hidden="true" />Editar</button>}
+                      <button type="button" disabled={isSaving} aria-label={`Quitar línea ${index + 1}: ${purchase.color_name}`} onClick={() => line
+                        ? setNewRolls((rows) => rows.filter((row) => row.line_id !== line.line_id))
+                        : setSelectedIds((ids) => ids.filter((id) => id !== purchase.id))}><Trash2 size={16} aria-hidden="true" /><span>Quitar</span></button>
+                    </div>
+                  </li>;
+                })}
+              </ol>
+              {!selectedPurchases.length && <p className="purchase-draft-empty">Todavía no hay líneas. Agregá el primer filamento para preparar tu compra.</p>}
+              <p className="form-help">Las líneas nuevas son un borrador; el inventario se actualiza únicamente al guardar la compra.</p>
+              <details className="purchase-existing">
+                <summary tabIndex={0}>Agrupar compras ya registradas ({availablePurchases.length})</summary>
+                <p className="form-help">Del mismo proveedor y moneda. Agruparlas no vuelve a ingresar filamento ni modifica su historia.</p>
               <div className="purchase-candidate-list">
                 {availablePurchases.map((purchase) => {
                   const compatible = !anchor || (
@@ -350,7 +409,7 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
                   const selected = selectedIds.includes(purchase.id);
                   return (
                     <label key={purchase.id} className={selected ? "selected" : ""}>
-                      <input type="checkbox" checked={selected} disabled={isSaving || (!compatible && !selected)} onChange={() => togglePurchase(purchase)} />
+                      <input type="checkbox" checked={selected} disabled={isSaving || (!selected && selectedPurchases.length >= 100) || (!compatible && !selected)} onChange={() => togglePurchase(purchase)} />
                       <span className="mini-swatch" style={{ backgroundColor: purchase.color_hex }} />
                       <span><strong>{purchase.brand} · {purchase.product_line || purchase.material} · {purchase.color_name}</strong><small>{purchase.supplier_name.trim()} · {purchase.purchased_at}</small></span>
                       <strong>{money(purchase.currency, purchase.total_price)}</strong>
@@ -358,6 +417,7 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
                   );
                 })}
               </div>
+              </details>
             </div>
 
             <div className="purchase-order-step">

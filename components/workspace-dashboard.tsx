@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ArrowUpRight, FolderKanban, Layers3, Printer, ReceiptText } from "lucide-react";
 import type { FilamentRoll, PrintProject, ProductionRun, PurchaseOrder } from "@/lib/types";
 import type { WorkspaceSection } from "@/components/app-navigation";
@@ -8,9 +9,10 @@ type Props = {
   displayName: string; rolls: FilamentRoll[]; projects: PrintProject[];
   runs: ProductionRun[]; orders: PurchaseOrder[];
   onNavigate: (section: WorkspaceSection) => void;
+  inventoryValue?: ReactNode;
 };
 
-export function WorkspaceDashboard({ displayName, rolls, projects, runs, orders, onNavigate }: Props) {
+export function WorkspaceDashboard({ displayName, rolls, projects, runs, orders, onNavigate, inventoryValue }: Props) {
   const activity = [
     ...orders.map(order => ({ id: `purchase:${order.id}`, title: "Compra registrada", detail: order.supplier_name,
       date: order.created_at || order.purchased_at, section: "purchases" as const, icon: ReceiptText })),
@@ -32,6 +34,7 @@ export function WorkspaceDashboard({ displayName, rolls, projects, runs, orders,
       <h1 id="dashboard-title" tabIndex={-1}>Hola{displayName.trim() ? `, ${displayName.trim().split(/\s+/)[0]}` : ""} <span aria-hidden="true">👋</span></h1>
       <p>Todo lo importante de tu taller, en un solo lugar.</p>
     </div>
+    {inventoryValue}
     <div className="dashboard-cards">{cards.map(card => <button type="button" key={card.section} className={`dashboard-card dashboard-${card.section}`} onClick={() => onNavigate(card.section)}>
       <span className="dashboard-card-icon"><card.icon size={23} aria-hidden="true" /></span>
       <span><span>{card.title}</span><strong>{card.count}</strong><small>{card.detail}</small></span>

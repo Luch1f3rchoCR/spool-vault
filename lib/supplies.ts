@@ -1,6 +1,7 @@
 export type Supply = {
   id: string; name: string; category: string; unit: string; currency: string;
   quantity: number; unit_cost: number; created_at: string;
+  tags?: string[]; description?: string;
 };
 export type SupplyMovement = {
   id: string; supply_id: string; kind: "receipt" | "adjustment" | "production";
@@ -10,7 +11,20 @@ export type SupplyMovement = {
 export type SupplyValues = {
   supply_id: string | null; name: string; category: string; unit: string; currency: string;
   kind: "receipt" | "adjustment"; quantity: number; unit_cost: number; reason: string;
+  purchased_at?: string;
 };
+export type SupplyCatalogValues = {
+  kind: "catalog"; supply_id: null; name: string; category: string;
+  unit: string; currency: string; tags: string[]; description: string;
+};
+export type SupplySaveValues = SupplyValues | SupplyCatalogValues;
+export function parseSupplyTags(text: string): string[] {
+  const tags = [...new Set(text.split(",").map(tag => tag.trim()).filter(Boolean))];
+  if (tags.length > 10 || tags.some(tag => [...tag].length > 40)) {
+    throw new Error("Usá hasta 10 etiquetas de máximo 40 caracteres cada una.");
+  }
+  return tags;
+}
 export function normalizeSupply(s: Supply): Supply {
   return { ...s, quantity: Number(s.quantity), unit_cost: Number(s.unit_cost) };
 }

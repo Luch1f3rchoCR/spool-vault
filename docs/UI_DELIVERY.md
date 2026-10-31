@@ -2,6 +2,16 @@
 
 Actualizado: 2026-09-26. Fuente compartida para no reconstruir el contexto entre chats.
 
+## INV-03 · Ficha sin existencias iniciales (2026-10-21)
+
+- Rama `feat/supply-catalog`: «Nuevo insumo» crea una ficha con nombre, categoría, unidad, moneda y metadatos opcionales. Etiquetas separadas por comas (hasta 10 de 40 caracteres, sin duplicados exactos); descripción hasta 2000 caracteres. Se muestran en la tarjeta y las etiquetas participan en la búsqueda. «Entrada / ajuste» alimenta existencias después.
+- Crear ficha no crea compra ni movimiento ni costo: saldo inicial cero. No cambia cálculos, contratos de producción o entradas existentes. Mantiene reintentos pendientes de la versión anterior; las fichas nuevas recuperan sus campos al recargar durante un resultado incierto.
+- Migración nueva **no aplicada a producción**: `20261021123817_supply_catalog.sql`. Añade metadatos con valores vacíos compatibles y clave/payload de creación a `supplies`; amplía `supply_stock` al final sin cambiar sus columnas anteriores. `create_supply` es invoker, solo authenticated, con propietario derivado de sesión, bloqueo por usuario/solicitud, comparación exacta del payload y unicidad. No permite cantidades, costos ni otro propietario. No concede UPDATE/DELETE y conserva RLS; exportación existente incluye los nuevos datos.
+- Verificado: `node --test tests/supplies.test.cjs` (4 pruebas), `npx tsc --noEmit`, un build completo y `git diff --check`. `node tests/supply-catalog.cjs` crea un PostgreSQL 17 efímero sin red/puertos, prueba la migración primero con rollback, ejecuta éxito/rechazo/reintento/aislamiento/permisos/exportación, regresión de insumos-producción y dos creaciones concurrentes con una sola ficha. El contenedor de prueba se elimina al terminar; no usa el ejecutor reservado de FIN-01A.
+- Browser: `tests/supply-catalog.browser.cjs`, Playwright contra compilación local sin configuración Supabase y respuestas simuladas. 320/390/1280 px: cancelación sin escritura, validación, saldo cero sin RPC de movimientos, reintento idéntico tras recarga, metadatos visibles/búsqueda, entrada posterior, recuperación de entrada pendiente antigua y teclado. Capturas temporales en `node_modules/.tools/supply-catalog/`; no datos reales.
+- Publicación pendiente de autorización: aplicar/verificar la migración **antes** de publicar el frontend y ejecutar asesores en el entorno autorizado. Los controles SQL locales verificaron RLS, permisos, invoker y search_path; no equivalen a asesores alojados ni a un ensayo HTTP autenticado en Supabase. No probar altas en un preview conectado a producción mientras falte la migración. Un rollback de frontend puede conservar estas columnas y el RPC aditivos; no borrar fichas ni revertir datos.
+- `app/page.tsx` cambia únicamente import de tipos y elección del RPC dentro de `saveSupply`, conforme a la autorización específica. FIN-01A, perfiles, agentes y ejecutores compartidos intactos. No incluye edición de fichas, compras mixtas, correcciones financieras ni conversiones multimoneda; no anunciar esos pendientes como terminados.
+
 ## INV-03 · Selector de unidades (2026-10-20)
 
 - Implementado en `feat/supply-unit-selector`: al crear un insumo se elige unidad/pieza, metro, gramo, kilogramo, mililitro o litro; «Otra unidad» conserva el ingreso de unidades especiales y rechaza texto vacío o solo espacios.

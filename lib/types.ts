@@ -38,6 +38,48 @@ export type FilamentRoll = {
   last_update_request_id?: string | null;
 };
 
+export type FilamentPrintProfileValues = {
+  roll_id: string;
+  printer_id: string;
+  name: string;
+  slicer: string | null;
+  nozzle_diameter_mm: number | null;
+  nozzle_temperature_c: number | null;
+  bed_temperature_c: number | null;
+  flow_ratio: number | null;
+  notes: string | null;
+};
+
+// Each edit appends a revision; profile_id identifies the configuration across edits.
+export type FilamentPrintProfile = FilamentPrintProfileValues & {
+  id: string;
+  user_id: string;
+  profile_id: string;
+  version: number;
+  request_id: string;
+  printer_name: string;
+  created_at: string;
+};
+
+export type InventoryValueRow = {
+  asset_type: "filament" | "supply";
+  id: string;
+  name: string;
+  quantity: number;
+  original_currency: string;
+  remaining_original_value: number | null;
+  remaining_crc_value: number | null;
+  remaining_usd_value: number | null;
+  issue: string | null;
+};
+export type InventoryValueSummary = {
+  user_id: string;
+  as_of: string;
+  rows: InventoryValueRow[];
+  pending_rates: Array<Pick<HistoricalFxSnapshot, "acquisition_date" | "source_currency">>;
+  missing_supply_dates: Array<{ movement_id: string; supply_name: string; quantity: number; unit: string; recorded_at: string }>;
+};
+
 export type Supplier = {
   id: string;
   name: string;
@@ -376,6 +418,56 @@ export type InventoryBalanceRow = {
   nfc_tag_id: string | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type HistoricalFxSnapshot = {
+  id: string;
+  user_id: string;
+  request_id: string;
+  acquisition_date: string;
+  source: "BCCR";
+  source_currency: "CRC" | "USD" | "EUR";
+  crc_per_usd: number;
+  usd_per_eur: number | null;
+  source_to_crc_rate: number;
+  source_to_usd_rate: number;
+  indicator_318: 318;
+  indicator_318_effective_date: string;
+  indicator_318_raw_value: number;
+  indicator_333: 333 | null;
+  indicator_333_effective_date: string | null;
+  indicator_333_raw_value: number | null;
+  created_at: string;
+};
+
+export type FilamentInventoryValuation = {
+  roll_id: string;
+  user_id: string;
+  purchase_history_id: string | null;
+  order_id: string | null;
+  status: RollStatus;
+  initial_weight_g: number;
+  available_weight_g: number;
+  acquisition_date: string | null;
+  original_currency: string;
+  historical_consumable_cost: number | null;
+  cost_basis_source: "purchase_order_landed" | "legacy_filament_cost" | "corrected_order_mismatch";
+  cost_confidence: CostConfidence | null;
+  remaining_original_value: number | null;
+  remaining_crc_value: number | null;
+  remaining_usd_value: number | null;
+  fx_status: "complete" | "complete_zero" | "excluded_archived" | "incomplete";
+  incompleteness_reason: "missing_cost" | "missing_acquisition_date" | "unsupported_currency" | "missing_fx_snapshot" | "corrected_order_mismatch" | null;
+  fx_snapshot_id: string | null;
+  fx_source: "BCCR" | null;
+  source_to_crc_rate: number | null;
+  source_to_usd_rate: number | null;
+  indicator_318: 318 | null;
+  indicator_318_effective_date: string | null;
+  indicator_318_raw_value: number | null;
+  indicator_333: 333 | null;
+  indicator_333_effective_date: string | null;
+  indicator_333_raw_value: number | null;
 };
 
 export type RollDraft = Omit<

@@ -1,0 +1,21 @@
+.panel { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px 16px; border: 1px solid var(--proper-line); border-radius: 12px; padding: 14px; margin: 12px 0; background: var(--proper-paper); min-width: 0; }
+.panel header { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+.panel header svg { color: var(--proper-green); flex-shrink: 0; }
+.panel h2 { margin: 0 0 3px; font-size: 1rem; }
+.help { grid-column: 1 / -1; margin: 0; color: var(--proper-muted); font-size: .75rem; line-height: 1.45; }
+.cards { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; min-width: 0; }
+.cards article { border-left: 1px solid var(--proper-line); padding: 0 10px; min-width: 0; overflow-wrap: anywhere; }
+.currency { display: block; font-weight: 750; color: var(--proper-green); font-size: .75rem; }
+.amount { display: block; margin: 5px 0 3px; font-size: clamp(1.05rem,1.8vw,1.4rem); font-variant-numeric: tabular-nums; }
+.cards article > span:last-of-type { font-size: .72rem; color: var(--proper-muted); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--proper-line); border-radius: 8px; background: var(--proper-paper); color: var(--proper-ink); font-size: .75rem; font-weight: 700; cursor: pointer; }
+.actions button:first-child { background: var(--proper-green); color: var(--proper-paper); border-color: var(--proper-green); }
+.actions button:disabled { opacity: .55; cursor: not-allowed; }
+.actions button:focus-visible { outline: 2px solid var(--proper-green); outline-offset: 3px; }
+.breakdown { margin-top: 20px; }
+.breakdown article { padding: 14px 0; border-bottom: 1px solid var(--proper-line); overflow-wrap: anywhere; }
+.breakdown small { display: block; color: var(--proper-muted); font-size: .78rem; }
+.breakdown p { margin: 6px 0; font-variant-numeric: tabular-nums; }
+@media(min-width:1200px) { .panel { grid-template-columns: minmax(150px,1fr) minmax(270px,1.3fr) auto; } .panel header { grid-column: auto; } }
+@media(max-width:700px) { .panel { grid-template-columns: minmax(0,1fr); padding: 12px; } .cards { gap: 8px; } .cards article { padding: 0 8px; } .actions button { flex: 1 1 auto; } }

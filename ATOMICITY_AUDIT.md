@@ -1,5 +1,17 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
+## Saldo conjunto de filamentos e insumos · 2026-10-25
+
+`inventory_value_summary()` lee ambos saldos en una misma instantánea STABLE/invoker, con RLS por propietario. Filamentos reutiliza FIN-01A; insumos convierte cada entrada a su fecha de compra y descuenta el promedio histórico al consumir. Un ciclo agotado reinicia la valoración de la reposición. No escribe ni consulta BCCR al abrir; datos faltantes u orden cronológico ambiguo se muestran como parciales, sin cero ficticio ni tasa actual de reemplazo. Costos y consumos históricos quedan intactos.
+
+`complete_supply_purchase_date` agrega una fecha ausente sin editar el movimiento, con bloqueo por solicitud/entrada, comparación del reintento y permisos append-only. Las solicitudes de tasas solo aceptan pendientes propios; snapshots permanecen inmutables. Guardado de fecha con clave persistida en la pestaña, confirmación de dueño/solicitud/entrada/fecha, espera máxima, doble envío y cierre bloqueados durante operación. Pruebas y límites en `docs/INVENTORY_VALUE_SUMMARY.md`; evidencia de publicación en su PR. No se modificaron datos reales de inventario durante los ensayos.
+
+## Perfiles de impresión · 2026-10-24
+
+`save_filament_print_profile` agrega una revisión por operación, con clave única de usuario/solicitud y bloqueo transaccional por perfil. Reintentos idénticos devuelven la revisión original incluso después de una edición posterior; contenido cambiado se rechaza. La versión esperada evita perder ediciones concurrentes. La tabla es append-only; trigger y RLS validan dueño del rollo e impresora, y la vista actual es invoker. El historial y exportación conservan cada revisión; no cambian inventario físico, compras ni costos productivos.
+
+El modal conserva el intento en la pestaña antes del envío, bloquea doble envío/cierre durante la operación y congela valores tras errores inciertos. Solo confirma una respuesta que coincide con usuario, solicitud, perfil, versión y valores; las esperas de sesión/red vencen en 30 segundos. Demo/local no simula persistencia. Pruebas SQL aisladas: éxito, rechazo, replay original, payload cambiado, permisos, RLS, revisión obsoleta, impresoras inactivas, exportación y rollback. Pruebas de navegador con proveedor simulado a 320/390/1280 px: respuesta perdida y recarga sin duplicados, edición/historial y estados ocupados. Publicación y migración remota se registran en el PR; no se han creado datos de prueba en producción.
+
 ## Insumos + proyectos · 2026-09-29
 
 Implementado en la migración aditiva `20260928030951_supply_stock_projects.sql` (publicación por confirmar en PR). Existencias derivadas de movimientos inmutables; entradas/ajustes reintentables con comparación de payload, saldo no negativo y RLS por usuario. Los costos de salida usan promedio ponderado por insumo/moneda. La producción bloquea los insumos en orden estable y sus triggers descuentan dentro de la misma transacción que filamentos/costos, incluso para versiones anteriores del RPC. Crear receta no consume. Componentes antiguos/manuales no cambian; históricos no se recalculan. Exportación incluye catálogo y movimientos.
@@ -41,7 +53,7 @@ Ejemplo: al agregar un rollo con proveedor y precio, el resultado correcto es qu
 | Cerrar corrida, congelar costos y descontar varios rollos | Corrección aplicada y probada | Bajo | Se eliminó la segunda resta en `complete_production_run`; el trigger conserva el descuento único. Reintentos y rollback probados en PostgreSQL 17 local. No se recalculan saldos históricos. |
 | Derivar estado del rollo | Regla central en base de datos | Bajo | `Nuevo`, `Abierto`, `Bajo` y `Agotado` se recalculan desde pesos y umbral; `Archivado` continúa siendo explícito. |
 | Cargar dashboard desde varias tablas | Lecturas separadas | Bajo hoy | Mantener estas lecturas solo para la interfaz operativa. |
-| Reporte de saldo financiero | Vista consistente con RLS | Bajo | Mantener `filament_balance_report` como fuente única; no sumar CRC y USD entre sí. |
+| Reporte de saldo financiero | Vistas consistentes con RLS | Bajo | `filament_balance_report` conserva originales; `filament_inventory_valuation` usa snapshots BCCR inmutables para CRC/USD sin sumar monedas directamente. |
 
 La revisión de producción no encontró compras huérfanas, rollos con precio sin historial esperado ni spools en uso sin su rollo correspondiente. La primera corrección atómica fue aplicada sin modificar los registros reales existentes y verificada con operaciones temporales dentro de una transacción revertida.
 
@@ -50,6 +62,20 @@ Las órdenes de compra se agregaron de forma aditiva sobre `purchase_history`: l
 Bloque local del 11 de septiembre: una línea nueva equivale a un rollo físico con peso inicial completo. No se escribe inventario al agregar/quitar líneas del borrador. Precio de producto y costo del spool se conservan en su compra; envío y otros cargos se congelan en las partidas de la orden según el modelo existente, sin reescribir costos históricos. No se crea ni asigna automáticamente un spool físico. Validación SQL: falla en segundo filamento/pago/reparto revierte todo, compras ya agrupadas y de otra cuenta se rechazan, reintento no duplica y conserva consumo posterior. El formulario bloquea todos los campos durante el guardado y conserva el identificador de operación hasta confirmar; errores y éxito quedan dentro del modal. Producción aún no modificada.
 
 El pago real vive en una tabla inmutable separada del monto original. Cada registro congela moneda pagada, tipo de cambio, fecha, clase y fuente; cambiar la moneda base del perfil solo altera la presentación futura y nunca reescribe una compra. La conversión calculada se muestra como referencia, mientras el monto realmente pagado conserva prioridad.
+
+FIN-01A separa el tipo de cambio de pago de la valoración estándar del inventario. El servidor consulta BCCR solo cuando falta el snapshot exacto de fecha/moneda y guarda indicadores 318/333, valores crudos, fechas efectivas y tasas derivadas en `historical_fx_snapshots`. La tabla es append-only, su RPC solo es ejecutable por `service_role` y los usuarios leen únicamente sus snapshots mediante RLS. `filament_inventory_valuation` usa costo landed para partidas de orden, costo histórico del rollo para legado, excluye archivados e insumos y nunca consulta una tasa actual como reemplazo.
+
+Si una corrección append-only cambia fecha, moneda o costo consumible respecto de una partida de orden ya congelada, la valoración reporta `corrected_order_mismatch`: no combina el costo corregido con cargos históricos ni reutiliza la fecha o moneda obsoletas de la orden.
+
+FIN-01A publicado el 22 de octubre mediante PR #33, commit `25e70c1`, Vercel Production `6RuxXMWYSoLq2qhKRvCjqXL2CzEg`. La migración `20260930120000_fin01a_historical_fx.sql` quedó registrada en producción como `20261022164723` (`fin01a_historical_fx`); no reaplicarla por la diferencia de timestamp. Se verificaron RLS, vista/RPC invoker y permisos append-only, incluidos los de `service_role`, después de aplicar. Pasaron regresiones SQL aisladas, build y smoke público; el endpoint rechaza consultas sin sesión. No se cambiaron compras ni inventario. Sigue pendiente la primera consulta BCCR autenticada en producción; configurar el token no prueba su funcionamiento.
+
+FIN-01B · primer tramo publicado en PR #48, commit `43723e7`, Vercel Production `5dEoKhyABSX4v8LU7omsmBChNDcJ`: Saldo de filamentos lee la vista de valoración mediante el cliente autenticado, sin crear snapshots ni modificar datos al abrir/exportar. Presenta originales y valores históricos CRC/USD separados, exporta procedencia y motivos de incompletitud, excluye archivados de los subtotales históricos y nunca reemplaza una tasa faltante por cero. Los filtros se aplican también a subtotales y CSV. Saldo y valoración son lecturas separadas, no una instantánea transaccional conjunta: si cambió usuario, estado o peso, se omite la valoración de esa fila. Las correcciones de costo concurrentes sin cambio físico siguen requiriendo reabrir el reporte; no se promete una instantánea conjunta. El modo local/demo no consulta ni fabrica tasas. `ROADMAP.md` se conserva sin editar por solapamiento con PR #45.
+
+Segundo tramo · 23 de octubre, en rama: consulta explícita de una fecha/moneda pendiente desde el reporte, deduplicada según los filtros, mediante el endpoint autenticado existente. Se informa que el snapshot beneficia a todos los rollos de esa fecha/moneda del usuario. No se modifica schema, backend, compras ni costos originales; no hay consultas automáticas o masivas. Se bloquea doble envío/cierre durante la operación, con límite de espera y cancelación al desmontar/cambiar de contexto. La unicidad existente permite reintentar resultados inciertos sin duplicar snapshots. Solo se muestra éxito tras confirmación válida y recarga; si la tasa se confirma pero falla la lectura, se ofrece reintentar únicamente la lectura sin afirmar que la pantalla está actualizada. Se reutiliza ModalFrame para bloqueo, foco y teclado. Pendientes: publicación de este tramo, consulta real autenticada BCCR en producción e integración del dashboard.
+
+Verificación del primer tramo: 12 pruebas unitarias (BCCR + presentación/lectura), TypeScript, build y `git diff --check` correctos. Prueba de navegador con respuestas simuladas y tráfico externo bloqueado en 320/390/1280 px: subtotales parciales, filtros, CSV, error/reintento, ausencia de escrituras y de desbordamiento del modal; modo local sin consultas FX. No sustituye una prueba autenticada real contra producción. Se corrigió únicamente el padding del reporte, cuyo encabezado sobresalía a 320 px.
+
+Verificación del segundo tramo: 16 pruebas unitarias, TypeScript, build y diff check correctos. Browser aislado en 320/390/1280 px: ninguna consulta FX antes del clic, filtros, POST por fecha/moneda, bloqueo en curso, fallo/reintento, respuesta confirmada con recarga fallida y recuperación solo de lectura, foco/teclado y subtotales actualizados. Local/demo sin botón ni consultas FX. Se ampliaron las suites existentes; no se consultó BCCR ni se escribieron snapshots reales durante la prueba. Tres builds: inicial y dos repeticiones por ajustes de foco y legibilidad móvil detectados en la verificación.
 
 Desde el 29 de agosto, la base también valida la relación rollo-spool al confirmar cada transacción. Las funciones pueden cambiar ambas tablas juntas, pero una escritura parcial se rechaza. Un índice único impide reutilizar el mismo spool físico en otra ficha, incluso si una de las fichas está archivada; además, el cliente autenticado ya no puede borrar directamente rollos o spools.
 
@@ -146,7 +172,7 @@ Mensajes recomendados:
 1. Agregar procedencia del HEX.
 2. [Completado] Configurar CRC como moneda base inicial del perfil.
 3. Derivar estados por gramos y porcentaje.
-4. [Parcial] El reporte de saldo ya usa una vista consistente, conserva monedas originales y exporta CSV; falta agregar conversiones históricas cuando exista moneda base.
+4. [Parcial] FIN-01A ya expone valoración histórica de filamento en CRC/USD con snapshots BCCR; falta integrar esta fuente en reporte y dashboard.
 
 ## Licencias y bienvenida de probadores
 

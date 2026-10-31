@@ -19,18 +19,21 @@ import {
   ScanLine,
   Search,
   ShoppingCart,
+  SlidersHorizontal,
   Sparkles,
   UserRound,
   Weight,
   X
 } from "lucide-react";
 import { InventoryReportModal } from "@/components/inventory-report-modal";
+import { InventoryValueCards, InventoryValueDetails, useInventoryValueSummary } from "@/components/inventory-value-summary";
+import { FilamentPrintProfilesModal } from "@/components/filament-print-profiles-modal";
 import { AddActionsModal } from "@/components/add-actions-modal";
 import { ModalFrame } from "@/components/modal-frame";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { AppNavigation, type WorkspaceSection } from "@/components/app-navigation";
 import { SuppliesModal } from "@/components/supplies-modal";
-import { normalizeSupply, type Supply, type SupplyMovement, type SupplyValues } from "@/lib/supplies";
+import { normalizeSupply, type Supply, type SupplyMovement, type SupplySaveValues } from "@/lib/supplies";
 import { WorkspaceDashboard, ProductionOverview } from "@/components/workspace-dashboard";
 import { ProperSignature, ProperWordmark } from "@/components/proper-brand";
 import { brand } from "@/lib/brand";
@@ -730,10 +733,12 @@ export default function Home() {
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [scanActionRollId, setScanActionRollId] = useState("");
   const [editingRollId, setEditingRollId] = useState("");
+  const [printProfileRollId, setPrintProfileRollId] = useState("");
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
   const [missingPurchaseRollId, setMissingPurchaseRollId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showValueDetails, setShowValueDetails] = useState(false);
   const [showPurchaseOrders, setShowPurchaseOrders] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [reportRows, setReportRows] = useState<InventoryBalanceRow[]>([]);
@@ -1178,14 +1183,21 @@ export default function Home() {
     if (!usingSupabase && dataMode === "local") saveLocal(LOCAL_RUN_COSTS_KEY, productionRunCosts);
   }, [dataMode, productionRunCosts, usingSupabase]);
 
+  const printProfileRoll = rolls.find(roll => roll.id === printProfileRollId);
+  const hasPrintProfile = Boolean(printProfileRoll);
+  const inventoryValue = useInventoryValueSummary(rolls, supplies, dataMode, signedInUserId);
+  const hasValueDetails = showValueDetails && dataMode === "authenticated";
+
   useEffect(() => {
-    document.body.style.overflow = showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
+    document.body.style.overflow = hasValueDetails || hasPrintProfile || showAdd || showAddActions || showQuickWeigh || showQrScanner || Boolean(scanActionRollId)
       || showSpools || showReport || showPurchaseOrders || showProjects || showSupplies || showProfile || showWorkspaceMenu
       || Boolean(editingRollId) || Boolean(correctingPurchaseId) || Boolean(missingPurchaseRollId) ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [
+    hasPrintProfile,
+    hasValueDetails,
     correctingPurchaseId,
     editingRollId,
     missingPurchaseRollId,
@@ -1376,20 +1388,15 @@ export default function Home() {
     const totalWeight = rolls.reduce((sum, roll) => sum + Number(roll.available_weight_g), 0);
     const lowRolls = rolls.filter(shouldReorderRoll);
     const materials = new Set(rolls.map((roll) => roll.material));
-    const inventoryCost = rolls.reduce((sum, roll) => {
-      if (roll.currency !== userProfile.base_currency || roll.filament_cost_amount == null || !roll.initial_weight_g) return sum;
-      return sum + (Number(roll.available_weight_g) / Number(roll.initial_weight_g)) * Number(roll.filament_cost_amount);
-    }, 0);
 
     return {
       rollCount: rolls.length,
       totalWeight,
       lowCount: lowRolls.length,
       materialCount: materials.size,
-      manualOpeningBalanceCount: manualOpeningBalanceRollIds.size,
-      inventoryCost
+      manualOpeningBalanceCount: manualOpeningBalanceRollIds.size
     };
-  }, [manualOpeningBalanceRollIds.size, rolls, userProfile.base_currency]);
+  }, [manualOpeningBalanceRollIds.size, rolls]);
 
   const filteredRolls = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
@@ -2092,11 +2099,11 @@ export default function Home() {
     }
   }
 
-  async function saveSupply(values: SupplyValues, requestId: string): Promise<{error: string; uncertain: boolean}> {
+  async function saveSupply(values: SupplySaveValues, requestId: string): Promise<{error: string; uncertain: boolean}> {
     if (!usingSupabase || !supabase || dataMode !== "authenticated") return {error:"Iniciá sesión para guardar insumos.",uncertain:false};
     try {
-      const {data,error}=await supabase.rpc("record_supply_movement",{p_request_id:requestId,p_values:values});
-      if(error || !data) return {error:`No se confirmó el movimiento: ${error?.message ?? "respuesta vacía"}`,uncertain:!error?.code || !/^(22|23|P0001)/.test(error.code)};
+      const {data,error}=await supabase.rpc(values.kind === "catalog" ? "create_supply" : "record_supply_movement",{p_request_id:requestId,p_values:values});
+      if(error || !data) return {error:`No se confirmó ${values.kind === "catalog" ? "la ficha" : "el movimiento"}: ${error?.message ?? "respuesta vacía"}`,uncertain:!error?.code || !/^(22|23|P0001)/.test(error.code)};
       const result=data as {supply:Supply;movements:SupplyMovement[]};
       const saved=normalizeSupply(result.supply);
       setSupplies(current=>[saved,...current.filter(s=>s.id!==saved.id)]);
@@ -3516,7 +3523,8 @@ export default function Home() {
         <AppNavigation active={workspaceSection} onSelect={navigateWorkspace} />
       </aside>
       <main className="workspace-content" data-view={workspaceView}>
-      {workspaceView === "home" && <WorkspaceDashboard displayName={userProfile.display_name || ""} rolls={rolls} projects={projects} runs={productionRuns} orders={purchaseOrders} onNavigate={navigateWorkspace} />}
+      {workspaceView === "home" && <WorkspaceDashboard displayName={userProfile.display_name || ""} rolls={rolls} projects={projects} runs={productionRuns} orders={purchaseOrders} onNavigate={navigateWorkspace}
+        inventoryValue={<InventoryValueCards {...inventoryValue} mode={dataMode} onRefresh={inventoryValue.refresh} onDetails={() => setShowValueDetails(true)} />} />}
       {workspaceView === "production" && <ProductionOverview runs={productionRuns} onProjects={() => setShowProjects(true)} />}
       <section className="hero">
         <div>
@@ -3534,6 +3542,7 @@ export default function Home() {
         </div>
       </section>
 
+      {workspaceView === "inventory" && <InventoryValueCards {...inventoryValue} mode={dataMode} onRefresh={inventoryValue.refresh} onDetails={() => setShowValueDetails(true)} />}
       <section className="metrics" aria-label="Resumen">
         <article>
           <PackagePlus size={18} aria-hidden="true" />
@@ -3564,11 +3573,6 @@ export default function Home() {
           <PackagePlus size={18} aria-hidden="true" />
           <strong>{emptySpools.length}</strong>
           <span>spools vacíos</span>
-        </article>
-        <article>
-          <Weight size={18} aria-hidden="true" />
-          <strong>{formatMoney(userProfile.base_currency, dashboard.inventoryCost)}</strong>
-          <span>inventario en {userProfile.base_currency}</span>
         </article>
       </section>
 
@@ -4122,6 +4126,12 @@ export default function Home() {
         </div>
       )}
 
+      {printProfileRoll && (
+        <FilamentPrintProfilesModal key={`${signedInUserId}:${printProfileRoll.id}`} roll={printProfileRoll}
+          printers={printers} userId={signedInUserId} synced={usingSupabase && dataMode === "authenticated"}
+          onClose={() => setPrintProfileRollId("")} />
+      )}
+
       {editingRoll && (
         <RollEditModal
           roll={editingRoll}
@@ -4384,13 +4394,16 @@ export default function Home() {
         />
       )}
 
+      {hasValueDetails && <InventoryValueDetails key={signedInUserId} {...inventoryValue} userId={signedInUserId}
+        onRefresh={inventoryValue.refresh} onClose={() => setShowValueDetails(false)} />}
+
       {showReport && (
         <InventoryReportModal
           rows={reportRows}
           mode={dataMode}
           isLoading={isLoadingReport}
           error={reportError}
-          onClose={() => setShowReport(false)}
+          onClose={() => { setShowReport(false); inventoryValue.refresh(); }}
         />
       )}
 
@@ -4551,30 +4564,34 @@ export default function Home() {
 
             <div className="detail-actions">
               <button
-                className="secondary-action edit-roll-action"
+                className="secondary-action"
                 type="button"
                 onClick={() => setEditingRollId(selectedRoll.id)}
               >
                 <Pencil size={16} aria-hidden="true" />
-                Editar filamento
+                <span>Editar filamento</span>
+              </button>
+              <button className="secondary-action" type="button" onClick={() => setPrintProfileRollId(selectedRoll.id)}>
+                <SlidersHorizontal size={16} aria-hidden="true" />
+                <span>Perfiles de impresión</span>
               </button>
               {selectedRollPurchase ? (
                 <button
-                  className="secondary-action edit-roll-action"
+                  className="secondary-action"
                   type="button"
                   onClick={() => setCorrectingPurchaseId(selectedRollPurchase.original.id)}
                 >
                   <ReceiptText size={16} aria-hidden="true" />
-                  Corregir compra
+                  <span>Corregir compra</span>
                 </button>
               ) : (
                 <button
-                  className="secondary-action edit-roll-action missing-purchase-action"
+                  className="secondary-action missing-purchase-action"
                   type="button"
                   onClick={() => setMissingPurchaseRollId(selectedRoll.id)}
                 >
                   <AlertTriangle size={16} aria-hidden="true" />
-                  Registrar compra faltante
+                  <span>Registrar compra faltante</span>
                 </button>
               )}
             </div>
