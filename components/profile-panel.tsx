@@ -163,7 +163,7 @@ export function ProfilePanel({ language = "es", initialView = "home", email, use
           </button>
         </nav>
 
-        <AccountCommunity key={userId || mode} userId={userId} mode={mode} localData={localData} onBusyChange={setCommunityBusy} view={view} onNavigate={navigate} />
+        <AccountCommunity language={language} key={userId || mode} userId={userId} mode={mode} localData={localData} onBusyChange={setCommunityBusy} view={view} onNavigate={navigate} />
 
         <nav className="profile-menu profile-settings-menu" aria-label={t("profile.settingsNav")} hidden={view !== "home"}>
           <button type="button" disabled={blocked} onClick={() => navigate("printers")}><Printer size={19} /><span><strong>{t("printers")}</strong><small>{t("profile.printersHelp")}</small></span><ChevronRight size={18} /></button>

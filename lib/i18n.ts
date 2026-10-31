@@ -11,6 +11,19 @@ export function languageLocale(language: AppLanguage) {
 }
 
 const spanish = {
+  "account.license": "Licencia personal", "account.loading": "Consultando membresía…", "account.founder": "Probador fundador",
+  "account.early": "Acceso anticipado", "account.lifetime": "Gratis de por vida · sin vencimiento", "account.personal": "Cuenta personal", "account.local": "Modo local · sin membresía vinculada",
+  "account.terms": "Qué incluye mi membresía", "account.termsLanguage": "Los términos de membresía se muestran en su redacción original en español.",
+  "account.loadError": "No pudimos cargar la membresía y los aportes. Revisá tu conexión y reintentá.", "account.retry": "Reintentar carga",
+  "account.operationError": "No pudimos confirmar la operación. Podés reintentar; conservamos lo que escribiste.", "account.originalMessage": "Mensaje original:",
+  "account.options": "Opciones de tu espacio", "account.feedbackHelp": "Ideas y reportes de errores", "account.dataHelp": "Datos personales y respaldo",
+  "account.contribution": "Tu aporte", "account.signInFeedback": "Iniciá sesión para enviar ideas y errores al equipo.",
+  "account.kind": "Tipo de aporte", "account.idea": "Idea", "account.bug": "Error", "account.title": "Título", "account.bugDetails": "Qué pasó y qué esperabas", "account.ideaDetails": "Contanos tu idea",
+  "account.sending": "Enviando…", "account.send": "Enviar aporte", "account.ownFeedback": "Mis aportes", "account.noFeedback": "Todavía no has enviado aportes.",
+  "account.receivedNotice": "Aporte recibido. Podés ver su estado aquí.", "account.received": "Recibido", "account.reviewing": "En revisión", "account.planned": "Planeado", "account.resolved": "Resuelto", "account.statusUnavailable": "Estado no disponible", "account.reply": "Respuesta:",
+  "account.syncedData": "Datos de tu cuenta sincronizada.", "account.demoData": "Datos de demostración. No son un inventario sincronizado.", "account.localData": "Datos locales de este navegador.",
+  "account.exportHelp": "El respaldo JSON incluye inventario, compras, consumos, pesajes, proyectos y perfil. Conserva referencias a fotos y archivos; no incluye los archivos en sí.",
+  "account.preparing": "Preparando…", "account.download": "Descargar mis datos", "account.exportReady": "Respaldo preparado para descargar.", "account.restoreHelp": "La restauración automática de este respaldo aún no está disponible.", "account.editProfile": "Editar perfil y facturación",
   "profile.title": "Perfil", "profile.feedback": "Compartir una idea", "profile.data": "Mis datos", "profile.admin": "Grupo de pruebas",
   "profile.preferences": "Moneda y facturación", "profile.production": "Tarifas de impresión", "profile.space": "Tu espacio",
   "profile.back": "Volver a Tu espacio", "profile.close": "Cerrar perfil", "profile.local": "Modo local",
@@ -63,6 +76,19 @@ const spanish = {
 export type MessageKey = keyof typeof spanish;
 
 const english: Record<MessageKey, string> = {
+  "account.license": "Personal license", "account.loading": "Loading membership…", "account.founder": "Founding tester",
+  "account.early": "Early access", "account.lifetime": "Free for life · no expiry", "account.personal": "Personal account", "account.local": "Local mode · no linked membership",
+  "account.terms": "What my membership includes", "account.termsLanguage": "Membership terms are shown in their original Spanish wording.",
+  "account.loadError": "We could not load your membership and feedback. Check your connection and try again.", "account.retry": "Retry loading",
+  "account.operationError": "We could not confirm the operation. You can retry; we kept what you entered.", "account.originalMessage": "Original message:",
+  "account.options": "Your space options", "account.feedbackHelp": "Ideas and bug reports", "account.dataHelp": "Personal data and backup",
+  "account.contribution": "Your feedback", "account.signInFeedback": "Sign in to send ideas and bug reports to the team.",
+  "account.kind": "Feedback type", "account.idea": "Idea", "account.bug": "Bug", "account.title": "Title", "account.bugDetails": "What happened and what you expected", "account.ideaDetails": "Tell us your idea",
+  "account.sending": "Sending…", "account.send": "Send feedback", "account.ownFeedback": "My feedback", "account.noFeedback": "You have not sent any feedback yet.",
+  "account.receivedNotice": "Feedback received. You can track its status here.", "account.received": "Received", "account.reviewing": "Under review", "account.planned": "Planned", "account.resolved": "Resolved", "account.statusUnavailable": "Status unavailable", "account.reply": "Reply:",
+  "account.syncedData": "Data from your synced account.", "account.demoData": "Demonstration data. This is not a synced inventory.", "account.localData": "Local data from this browser.",
+  "account.exportHelp": "The JSON backup includes inventory, purchases, consumption, weigh-ins, projects and profile. It keeps references to photos and files, but does not include the files themselves.",
+  "account.preparing": "Preparing…", "account.download": "Download my data", "account.exportReady": "Backup prepared for download.", "account.restoreHelp": "Automatic restoration of this backup is not available yet.", "account.editProfile": "Edit profile and billing",
   "profile.title": "Profile", "profile.feedback": "Share an idea", "profile.data": "My data", "profile.admin": "Test group",
   "profile.preferences": "Currency and billing", "profile.production": "Printing rates", "profile.space": "Your space",
   "profile.back": "Back to Your space", "profile.close": "Close profile", "profile.local": "Local mode",
