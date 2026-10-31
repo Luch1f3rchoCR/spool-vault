@@ -1,7 +1,7 @@
 // Pure language/presentation tests. No account, network or persistence.
 const assert = require('node:assert/strict');
 const {test} = require('node:test');
-const {appLanguages, resolveLanguage, messages, translate, formatNumber, formatMoney, currencyLabel, formatExchangeRate} = require('../lib/i18n.ts');
+const {appLanguages, resolveLanguage, messages, translate, formatNumber, formatMoney, currencyLabel, formatExchangeRate, formatDate} = require('../lib/i18n.ts');
 const normalize = value => value.replace(/\s+/g, ' ');
 const parameters = value => Array.from(value.matchAll(/\{(\w+)\}/g), match => match[1]).sort();
 
@@ -71,4 +71,38 @@ test('exchange-rate text identifies its direction and does not turn a small posi
 test('missing/invalid monetary data is rejected rather than presented as zero', () => {
   for (const value of [null, undefined, NaN, Infinity]) assert.throws(() => formatMoney(value, 'USD', 'en'), /finite number/);
   for (const currency of ['', '₡', 'usd', 'USD<script>']) assert.throws(() => formatMoney(10, currency, 'en'), /ISO currency/);
+});
+
+
+test('workspace labels, empty states and singular/plural copy exist in both languages', () => {
+  assert.equal(translate('en', 'nav.inventory'), 'Inventory');
+  assert.equal(translate('en', 'nav.primary'), 'Main navigation');
+  assert.equal(translate('en', 'dashboard.helloName', {name:'Lucho'}), 'Hello, Lucho');
+  assert.equal(translate('es', 'dashboard.rollOne'), 'rollo activo');
+  assert.equal(translate('en', 'dashboard.rollMany'), 'active rolls');
+  assert.equal(translate('en', 'production.unitOne', {quantity:1}), '1 unit');
+  assert.equal(translate('en', 'production.unitMany', {quantity:2}), '2 units');
+  assert.match(translate('en', 'production.help'), /does not send a job/);
+  assert.match(translate('en', 'dashboard.empty'), /Your activity/);
+});
+
+test('calendar dates keep their day even for a viewer west of UTC', () => {
+  for (const language of appLanguages) {
+    const value = formatDate('2026-10-30', language, {day:'numeric',month:'long',timeZone:'America/Costa_Rica'});
+    assert.match(value, /30/);
+    assert.doesNotMatch(value, /29/);
+  }
+});
+
+test('timestamps keep viewer time zone semantics independently of language', () => {
+  const instant = '2026-10-30T02:00:00Z';
+  assert.match(formatDate(instant, 'en', {day:'numeric',month:'short',timeZone:'America/Costa_Rica'}), /29/);
+  assert.match(formatDate(instant, 'en', {day:'numeric',month:'short',timeZone:'UTC'}), /30/);
+});
+
+test('invalid historical dates remain missing rather than silently becoming another date', () => {
+  for (const value of ['', 'bad date', '2026-02-30', '2026-13-01', '2026-02-30T10:00:00Z']) {
+    assert.equal(formatDate(value, 'en'), null);
+  }
+  assert.ok(formatDate('2024-02-29', 'es'));
 });

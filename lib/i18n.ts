@@ -11,6 +11,13 @@ export function languageLocale(language: AppLanguage) {
 }
 
 const spanish = {
+  "nav.workshop": "Tu taller", "nav.organization": "Organización", "nav.tools": "Herramientas", "nav.menu": "Menú del taller", "nav.primary": "Navegación principal",
+  "nav.home": "Inicio", "nav.inventory": "Inventario", "nav.supplies": "Insumos", "nav.purchases": "Compras", "nav.production": "Producción", "nav.spools": "Spools", "nav.costs": "Costos", "nav.reports": "Reportes", "nav.settings": "Configuración", "nav.scan": "Escanear QR", "nav.weigh": "Pesar filamento", "nav.more": "Más", "nav.pendingOrders": "Pedidos: próximo módulo.",
+  "dashboard.eyebrow": "Tu taller, en orden", "dashboard.hello": "Hola", "dashboard.helloName": "Hola, {name}", "dashboard.description": "Todo lo importante de tu taller, en un solo lugar.",
+  "dashboard.purchase": "Compra registrada", "dashboard.project": "Proyecto guardado", "dashboard.print": "Impresión registrada", "dashboard.filament": "Filamento agregado",
+  "dashboard.rollOne": "rollo activo", "dashboard.rollMany": "rollos activos", "dashboard.recipeOne": "receta guardada", "dashboard.recipeMany": "recetas guardadas", "dashboard.printOne": "impresión registrada", "dashboard.printMany": "impresiones registradas", "dashboard.orderOne": "orden registrada", "dashboard.orderMany": "órdenes registradas",
+  "dashboard.activity": "Actividad reciente", "dashboard.latest": "Últimos registros", "dashboard.empty": "Tu actividad aparecerá acá cuando registres compras, filamentos, proyectos o impresiones.",
+  "production.description": "Impresiones registradas y resultados reales.", "production.record": "Registrar impresión", "production.help": "Elegí un proyecto para registrar una impresión realizada. Esto no envía trabajos a una impresora.", "production.completed": "Exitosa", "production.partial": "Parcial", "production.failed": "Fallida", "production.unitOne": "{quantity} unidad", "production.unitMany": "{quantity} unidades", "production.duration": "{minutes} min", "production.empty": "Todavía no hay impresiones registradas. Tus recetas se conservan en Proyectos.", "dateUnavailable": "Fecha no disponible",
   back: "Volver", projects: "Proyectos", equipment: "Equipo", edit: "Editar",
   printers: "Mis impresoras", editPrinter: "Editar impresora", newPrinter: "Nueva impresora",
   addPrinter: "Agregar impresora", savePrinter: "Guardar impresora", savingPrinter: "Guardando impresora…",
@@ -40,6 +47,13 @@ const spanish = {
 export type MessageKey = keyof typeof spanish;
 
 const english: Record<MessageKey, string> = {
+  "nav.workshop": "Your workshop", "nav.organization": "Organization", "nav.tools": "Tools", "nav.menu": "Workshop menu", "nav.primary": "Main navigation",
+  "nav.home": "Home", "nav.inventory": "Inventory", "nav.supplies": "Supplies", "nav.purchases": "Purchases", "nav.production": "Production", "nav.spools": "Spools", "nav.costs": "Costs", "nav.reports": "Reports", "nav.settings": "Settings", "nav.scan": "Scan QR", "nav.weigh": "Weigh filament", "nav.more": "More", "nav.pendingOrders": "Orders: coming in a future module.",
+  "dashboard.eyebrow": "Your workshop, in order", "dashboard.hello": "Hello", "dashboard.helloName": "Hello, {name}", "dashboard.description": "Everything that matters in your workshop, in one place.",
+  "dashboard.purchase": "Purchase recorded", "dashboard.project": "Project saved", "dashboard.print": "Print recorded", "dashboard.filament": "Filament added",
+  "dashboard.rollOne": "active roll", "dashboard.rollMany": "active rolls", "dashboard.recipeOne": "saved recipe", "dashboard.recipeMany": "saved recipes", "dashboard.printOne": "recorded print", "dashboard.printMany": "recorded prints", "dashboard.orderOne": "recorded order", "dashboard.orderMany": "recorded orders",
+  "dashboard.activity": "Recent activity", "dashboard.latest": "Latest records", "dashboard.empty": "Your activity will appear here when you record purchases, filaments, projects or prints.",
+  "production.description": "Recorded prints and actual results.", "production.record": "Record print", "production.help": "Choose a project to record a completed print. This does not send a job to a printer.", "production.completed": "Successful", "production.partial": "Partial", "production.failed": "Failed", "production.unitOne": "{quantity} unit", "production.unitMany": "{quantity} units", "production.duration": "{minutes} min", "production.empty": "No prints recorded yet. Your recipes are kept in Projects.", "dateUnavailable": "Date unavailable",
   back: "Back", projects: "Projects", equipment: "Equipment", edit: "Edit",
   printers: "My printers", editPrinter: "Edit printer", newPrinter: "New printer",
   addPrinter: "Add printer", savePrinter: "Save printer", savingPrinter: "Saving printer…",
@@ -106,4 +120,17 @@ export function formatExchangeRate(rate: number, from: string, to: string, langu
   assertCurrency(from); assertCurrency(to);
   if (!Number.isFinite(rate) || rate <= 0) throw new RangeError("A positive finite exchange rate is required");
   return `1 ${from} = ${formatNumber(rate, language, { maximumSignificantDigits: 12 })} ${to}`;
+}
+
+// Calendar dates retain their written day; timestamps retain the viewer's time zone.
+// Invalid legacy/local data is left unvalued for the caller to label, never normalized to another day.
+export function formatDate(value: string, language: AppLanguage, options: Intl.DateTimeFormatOptions = {}) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}(?:$|T)/.test(value)) return null;
+  const calendarOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const writtenDate = value.slice(0, 10);
+  const calendar = new Date(`${writtenDate}T00:00:00Z`);
+  if (!Number.isFinite(calendar.getTime()) || calendar.toISOString().slice(0, 10) !== writtenDate) return null;
+  const date = calendarOnly ? calendar : new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return new Intl.DateTimeFormat(languageLocale(language), calendarOnly ? { ...options, timeZone: "UTC" } : options).format(date);
 }

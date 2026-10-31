@@ -13,7 +13,7 @@ La persona puede elegir el idioma de la interfaz y conservar su elección. Cambi
 - [ ] Definir comportamiento inicial, fallback y persistencia para cuenta autenticada y modo local/demo, conservando la interfaz española durante la transición.
 - [ ] Reutilizar Perfil / Configuración para la elección de idioma, sin duplicar preferencias ni asociar automáticamente una moneda al idioma.
 - [x] Preparar catálogo tipado español/inglés y formatos comunes con moneda ISO explícita; comprobaciones de integridad y parámetros.
-- [ ] Migrar los módulos restantes; conservar marca, navegación y contratos de formularios. Impresoras es el primer componente preparado en ambos idiomas, sin selector global todavía.
+- [ ] Migrar los módulos restantes; conservar marca, navegación y contratos de formularios. Impresoras, navegación, Inicio y resumen de Producción están preparados en ambos idiomas, sin selector global todavía.
 - [ ] Incluir etiquetas, botones, ayudas, estados vacíos, confirmaciones, progreso, errores y textos de accesibilidad. Mantener códigos de error identificables sin exponer detalles internos.
 - [ ] Adaptar fechas, números, cantidades y presentación de importes. Preservar monedas, unidades y significado de fechas/horas; cambiar idioma no convierte dinero.
 - [ ] Verificar la entrada de decimales según la presentación elegida, sin reinterpretar o reescribir valores históricos, fechas de compra o cantidades guardadas.
@@ -42,3 +42,14 @@ Verificación: ocho pruebas unitarias en `tests/i18n.test.cjs` (catálogos compl
 Scripts temporales: `/private/tmp/proper-printer-i18n-smoke.cjs` y `/private/tmp/proper-printer-i18n-regression.cjs`; evidencia `/private/tmp/proper-printer-{es,en}-{320,390,1280}.png`. La captura inglesa es una prueba aislada del componente, no una app ya traducida. El bloque se entrega en PR borrador para revisión, sin merge o publicación automática.
 
 Siguiente integración: preferencia de idioma de cuenta/local y estado común; completar navegación, módulos, ayudas, resultados y errores antes de ofrecer inglés al usuario. El fundador autorizó expresamente tocar `app/page.tsx` y `components/account-community.tsx` para idiomas el 30 de octubre, conservando los cambios de enlaces y sin fusionar PR #55. Esta primera entrega no toca esos archivos, esquema, Supabase, agentes o documentación reservada por Marketing.
+
+
+## Continuación del mismo PR #62 · navegación e Inicio
+
+Se prepararon `AppNavigation`, `MobileNavigation`, `WorkspaceDashboard` y `ProductionOverview` para recibir el idioma, conservando español por defecto, los identificadores de secciones, destinos y callbacks. Incluye menús/etiquetas accesibles, saludo, tarjetas, actividad, estados vacíos, estados de impresión y singular/plural. Los nombres de personas, proveedores, proyectos y colores del usuario no se traducen. Sin cambios de CSS, marca o arquitectura de navegación.
+
+`formatDate` distingue día calendario de instante: un `YYYY-MM-DD` conserva el día escrito, mientras un timestamp respeta la zona horaria del visor. Las fechas inválidas permanecen sin valor y se etiquetan en el idioma del módulo; no se normalizan o reescriben registros. Solo cambia presentación, no ordenación, cálculos o persistencia.
+
+Verificación de este tramo: 12 pruebas unitarias acumuladas, TypeScript, diff y una compilación completa. Fixture con componentes reales en español/inglés × 320/390/1280 px, usando fuentes del build: etiquetas, estados vacíos/plurales, teclado/destinos, nombres conservados, día calendario y ausencia de mutación/desbordamiento. Regresión existente `tests/add-purchase-navigation.browser.cjs` aprobada sobre el build final en 320/390/1280 px. Tráfico externo bloqueado, datos ficticios y sin escrituras reales ni errores de página. Script temporal `/private/tmp/proper-workspace-i18n-smoke.cjs`, evidencia `/private/tmp/proper-workspace-{es,en}-{320,390,1280}.png`.
+
+Límites: no se ofrece todavía selector o preferencia persistida; los llamadores de la app siguen usando español por defecto. El contenido financiero que llega como `inventoryValue`, encabezados externos, modales, mensajes de guardado/servidor y módulos restantes deben integrar sus propias traducciones antes de habilitar inglés global. No confundir la captura aislada de componentes con una app ya traducida. Este avance se respalda en el mismo PR #62; no crea otro PR ni publica cambios automáticamente. La integración específica de `app/page.tsx`/`account-community.tsx` ya está autorizada y continúa pendiente, preservando PR #55.
