@@ -6,7 +6,7 @@ Queremos preparar el diseño físico de un accesorio opcional para Proper: una b
 
 El fundador propone desarrollar la carcasa y experiencia física en WayForge; la programación del ESP32 y la integración con Proper se mantienen en Desarrollo de Proper. Esta es una propuesta de colaboración, no un producto ya operativo ni un encargo enviado automáticamente.
 
-El fundador ya tiene un ESP32 y stickers. Faltan el modelo de placa, la identificación de stickers y la elección del módulo lector. No fijar dimensiones, taladros, pines, alimentación, cableado o una compra hasta disponer de las piezas y medidas verificadas.
+El fundador confirmó que ya tiene un ESP32, un lector **RFID-RC522** y stickers. Se probará primero ese lector; faltan la variante/pinout del ESP32 y la identificación de los stickers. «XX5R69» es el código que informó, no un modelo confirmado. No fijar dimensiones, taladros, pines, alimentación, cableado o una compra hasta disponer de las piezas y medidas verificadas.
 
 Buscamos una pieza sobria y fácil de usar en un taller maker, con zona de lectura evidente, acceso al conector, montaje estable y posibilidad de mantenimiento. Se pueden explorar conceptos iniciales; el alcance y la fiabilidad de lectura deben comprobarse con la carcasa real antes de aprobar geometría final. No cubrir la antena con piezas/metales sin validar su efecto en las pruebas.
 

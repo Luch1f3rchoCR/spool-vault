@@ -7,7 +7,7 @@ Fecha: 2026-10-30. Idea del fundador: accesorio opcional con lector NFC + ESP32,
 - Proper ya escribe y lee etiquetas NDEF mediante Web NFC donde el navegador/dispositivo lo permite: `writeNfcTag`, `scanNfcTag`, `payloadForRoll` en `app/page.tsx`.
 - Las etiquetas actuales identifican el registro del rollo con una URL `/?roll=<id>` y pueden conservar un payload QR anterior. No confundir el rollo/lote con un spool físico reutilizable.
 - No existe todavía firmware para el lector externo, conexión ESP32, producto físico probado o compatibilidad universal. NFC del teléfono y lector externo son dos vías distintas.
-- El fundador tiene un ESP32 y stickers; cree no tener el módulo lector. Falta confirmar variante de placa y tipo/capacidad de stickers. No se compraron componentes.
+- Actualización del fundador: dispone de un lector marcado **RFID-RC522**, un ESP32 y stickers. El código informado para el ESP32 es «XX5R69»; no basta para identificar la variante/pinout. Tipo y capacidad de stickers desconocidos. La compatibilidad del montaje todavía no se ha probado; no se compraron componentes.
 - El proyecto de destino indicado existe como «WayForge | Marca & Productos.». Este documento prepara el traspaso físico; no implica que se haya enviado o aceptado allí, ni define una relación comercial/de marca.
 
 ## Propuesta de prototipo
@@ -42,15 +42,16 @@ El ESP32-S3 dispone de USB Serial/JTAG; otras placas pueden necesitar un puente 
 
 1. Identificar la variante del ESP32 y su interfaz USB, además de alimentación/niveles de la placa.
 2. Identificar los stickers: familia, NDEF, memoria y si están bloqueados. NTAG213/215/216 son Type 2, pero no se asume que los stickers existentes sean de esa familia.
-3. Elegir un módulo lector con soporte NDEF/etiquetas reales y documentación del fabricante, interfaz compatible y disponibilidad para pruebas. Lector de UID solamente no cubre el flujo existente.
+3. Probar primero el RC522 existente. El chip MFRC522 admite ISO/IEC 14443 A/MIFARE y NTAG según NXP; eso hace viable evaluar etiquetas compatibles, sin confirmar todavía estos stickers o la calidad del módulo. Detectar UID es solo diagnóstico: hay que leer y decodificar NDEF para cubrir el flujo existente. No cambiar de lector antes de esa prueba.
 4. Comprobar versiones de librería/SDK, licencias de distribución y vida comercial del componente antes de cerrar el BOM vendible.
-5. PN532 es candidato de laboratorio, no BOM aprobado: NXP lo marca como no recomendado para diseños nuevos y propone PN7160. Esto no decide automáticamente el módulo final; comparar costo, disponibilidad y esfuerzo de firmware con la placa real.
+5. No pedir otro lector todavía: se prioriza el RC522 que ya tiene el fundador. PN532 no es un BOM alternativo aprobado; NXP lo marca como no recomendado para diseños nuevos y propone PN7160. La electrónica del producto vendible se evalúa después del prototipo y la revisión de suministro/soporte.
 6. Medir tamaño NDEF. El escritor actual emite URL + texto; en el caso por defecto puede duplicar la URL. Una URL del dominio público con UUID ocupa 77 bytes antes de codificación NDEF; dos copias son 154 bytes antes de compresión URI/cabeceras. No asumir que cualquier sticker admite ese mensaje. NTAG213 tiene 144 bytes de memoria de usuario. Medir el mensaje codificado y decidir una representación compatible sin romper etiquetas históricas.
 
 ## Checklist de avance
 
-- [ ] Confirmar modelo ESP32 y stickers; verificar si ya hay lector.
-- [ ] Elegir módulo y preparar lista concreta de compra para aprobación del fundador; todavía no comprar o congelar el diseño.
+- [x] Confirmar disponibilidad de lector: el fundador tiene un RFID-RC522.
+- [ ] Identificar variante/pinout del ESP32 y tipo/capacidad de stickers; falta una identificación legible de la placa. «XX5R69» se conserva como dato informado, no como modelo confirmado.
+- [ ] Probar el RC522 existente y preparar solo la lista de faltantes que resulte necesaria; todavía no comprar otro módulo o congelar el diseño.
 - [ ] Prueba de banco: alimentación/interfaz, detectar tag y leer su NDEF completo.
 - [ ] Fijar formato compatible de etiquetas y contrato versionado ESP32 ↔ app.
 - [ ] Programar firmware de lectura con repetición/desconexión/errores controlados.
@@ -72,3 +73,6 @@ No se desarrolla o anuncia hardware funcional, no se flashea la placa, no se cam
 - [Espressif · USB Serial/JTAG en ESP32-S3](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/usb-serial-jtag-console.html): depende del chip y placa concretos.
 - [NXP · PN532](https://www.nxp.com/products/rfid-nfc/nfc-hf/nfc-readers/nfc-integrated-solution:PN5321A3HN): estado no recomendado para diseños nuevos.
 - [NXP · NTAG213/215/216](https://www.nxp.com/products/NTAG213_215_216): estándares y memoria de usuario.
+
+- [NXP · MFRC522, ficha técnica](https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf): ISO/IEC 14443 A/MIFARE y NTAG; características eléctricas del chip.
+- [Biblioteca MFRC522 · repositorio del mantenedor](https://github.com/miguelbalboa/rfid): acceso SPI y ejemplos de diagnóstico/lectura; revisar compatibilidad y versión antes de elegir firmware.
