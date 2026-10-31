@@ -1,9 +1,9 @@
 # DEC-2026-09-28 · Dirección visual social de Proper
 
-**Estado:** ACCEPTED  
-**Fecha:** 2026-09-28  
-**Frente:** Marketing / aplicación social de marca  
-**Aprobador:** fundador  
+**Estado:** ACCEPTED\
+**Fecha:** 2026-09-28\
+**Frente:** Marketing / aplicación social de marca\
+**Aprobador:** fundador\
 **Revisión administrativa:** 2026-10-21
 
 ## Contexto

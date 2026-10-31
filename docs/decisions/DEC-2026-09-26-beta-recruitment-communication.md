@@ -1,9 +1,9 @@
 # DEC-2026-09-26 · Comunicación y reclutamiento del beta inicial
 
-**Estado:** ACCEPTED  
-**Fecha:** 2026-09-26  
-**Frente:** Marketing y lanzamiento, coordinado con Clientes/Piloto  
-**Aprobador:** fundador  
+**Estado:** ACCEPTED\
+**Fecha:** 2026-09-26\
+**Frente:** Marketing y lanzamiento, coordinado con Clientes/Piloto\
+**Aprobador:** fundador\
 **Revisión administrativa:** 2026-10-21
 
 ## Contexto

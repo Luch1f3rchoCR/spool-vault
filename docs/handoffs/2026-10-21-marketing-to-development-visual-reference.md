@@ -1,6 +1,6 @@
 # Handoff · Marketing → Producto/Desarrollo · referencia visual social
 
-**Fecha:** 2026-10-21  
+**Fecha:** 2026-10-21\
 **Estado:** REFERENCE ONLY — NO IMPLEMENTATION AUTHORIZED
 
 ## Origen

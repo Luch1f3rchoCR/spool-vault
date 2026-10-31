@@ -1,9 +1,9 @@
 # DEC-2026-09-26 · Presencia social y namespace digital de Proper
 
-**Estado:** ACCEPTED  
-**Fecha:** 2026-09-26  
-**Frente:** Marketing y lanzamiento  
-**Aprobador:** fundador  
+**Estado:** ACCEPTED\
+**Fecha:** 2026-09-26\
+**Frente:** Marketing y lanzamiento\
+**Aprobador:** fundador\
 **Revisión administrativa:** 2026-10-21
 
 ## Contexto
