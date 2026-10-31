@@ -13,14 +13,15 @@ import {
   WalletCards,
   X
 } from "lucide-react";
+import { currencyLabel, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import type { PrinterProfile, UserProfile } from "@/lib/types";
 import { PrinterManager, type PrinterValues } from "@/components/printer-manager";
 import { AccountCommunity } from "@/components/account-community";
 
 export type ProfileView = "home" | "feedback" | "data" | "admin" | "preferences" | "production" | "printers";
-const viewTitles: Record<ProfileView, string> = {
-  home: "Perfil", feedback: "Compartir una idea", data: "Mis datos",
-  admin: "Grupo de pruebas", preferences: "Moneda y facturación", production: "Tarifas de impresión", printers: "Mis impresoras"
+const viewTitles: Record<ProfileView, MessageKey> = {
+  home: "profile.title", feedback: "profile.feedback", data: "profile.data",
+  admin: "profile.admin", preferences: "profile.preferences", production: "profile.production", printers: "printers"
 };
 
 export type ProfileValues = {
@@ -38,6 +39,7 @@ export type ProfileValues = {
 };
 
 type ProfilePanelProps = {
+  language?: AppLanguage;
   initialView?: ProfileView;
   email: string;
   userId: string;
@@ -54,7 +56,8 @@ type ProfilePanelProps = {
   onSignOut: () => void;
 };
 
-export function ProfilePanel({ initialView = "home", email, userId, mode, localData, profile, isSaving, printers, isSavingPrinter, printerStatusMessage, onSavePrinter, onClose, onSave, onSignOut }: ProfilePanelProps) {
+export function ProfilePanel({ language = "es", initialView = "home", email, userId, mode, localData, profile, isSaving, printers, isSavingPrinter, printerStatusMessage, onSavePrinter, onClose, onSave, onSignOut }: ProfilePanelProps) {
+  const t = (key: MessageKey, values: Record<string, string | number> = {}) => translate(language, key, values);
   const [communityBusy, setCommunityBusy] = useState(false);
   const [view, setView] = useState<ProfileView>(initialView);
   const [saved, setSaved] = useState(false);
@@ -108,7 +111,7 @@ export function ProfilePanel({ initialView = "home", email, userId, mode, localD
         if (event.target === event.currentTarget && !blocked) onClose();
       }}
     >
-      <section ref={panelRef} className="panel modal-panel profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title"
+      <section ref={panelRef} className="panel modal-panel profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title" lang={language}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.preventDefault();
@@ -129,12 +132,12 @@ export function ProfilePanel({ initialView = "home", email, userId, mode, localD
           }
         }}>
         <div className="modal-head profile-head">
-          {view !== "home" && <button className="modal-close profile-back" type="button" onClick={() => navigate("home")} disabled={blocked} aria-label="Volver a Tu espacio" title="Volver a Tu espacio"><ArrowLeft size={20} aria-hidden="true" /></button>}
+          {view !== "home" && <button className="modal-close profile-back" type="button" onClick={() => navigate("home")} disabled={blocked} aria-label={t("profile.back")} title={t("profile.back")}><ArrowLeft size={20} aria-hidden="true" /></button>}
           <div>
-            <p className="eyebrow">Tu espacio</p>
-            <h2 id="profile-title" ref={headingRef} tabIndex={-1}>{viewTitles[view]}</h2>
+            <p className="eyebrow">{t("profile.space")}</p>
+            <h2 id="profile-title" ref={headingRef} tabIndex={-1}>{t(viewTitles[view])}</h2>
           </div>
-          <button className="modal-close" type="button" onClick={onClose} disabled={blocked} aria-label="Cerrar perfil">
+          <button className="modal-close" type="button" onClick={onClose} disabled={blocked} aria-label={t("profile.close")}>
             <X size={20} aria-hidden="true" />
           </button>
         </div>
@@ -143,18 +146,18 @@ export function ProfilePanel({ initialView = "home", email, userId, mode, localD
         <div className="profile-identity" hidden={view !== "home"}>
           <span className="profile-avatar"><UserRound size={24} aria-hidden="true" /></span>
           <div>
-            <strong>{profile.display_name || email || "Modo local"}</strong>
-            <span>{email ? `${email} · cuenta sincronizada` : "Iniciá sesión para sincronizar tu cuenta"}</span>
+            <strong>{profile.display_name || email || t("profile.local")}</strong>
+            <span>{email ? t("profile.synced", { email }) : t("profile.signIn")}</span>
           </div>
         </div>
 
-        <nav className="profile-menu" aria-label="Moneda de tu espacio" hidden={view !== "home"}>
+        <nav className="profile-menu" aria-label={t("profile.currencyNav")} hidden={view !== "home"}>
           <button type="button" disabled={blocked} onClick={() => navigate("preferences")}>
             <WalletCards size={19} aria-hidden="true" />
             <span>
-              <strong>Moneda y facturación</strong>
-              <small>Moneda base guardada: {profile.base_currency || "CRC"} · Cambiar preferencias</small>
-              {values.base_currency !== (profile.base_currency || "CRC") && <small>Cambio de moneda sin guardar</small>}
+              <strong>{t("profile.preferences")}</strong>
+              <small>{t("profile.savedCurrency", { currency: profile.base_currency || "CRC" })}</small>
+              {values.base_currency !== (profile.base_currency || "CRC") && <small>{t("profile.unsavedCurrency")}</small>}
             </span>
             <ChevronRight size={18} aria-hidden="true" />
           </button>
@@ -162,58 +165,58 @@ export function ProfilePanel({ initialView = "home", email, userId, mode, localD
 
         <AccountCommunity key={userId || mode} userId={userId} mode={mode} localData={localData} onBusyChange={setCommunityBusy} view={view} onNavigate={navigate} />
 
-        <nav className="profile-menu profile-settings-menu" aria-label="Preferencias de tu espacio" hidden={view !== "home"}>
-          <button type="button" disabled={blocked} onClick={() => navigate("printers")}><Printer size={19} /><span><strong>Mis impresoras</strong><small>Equipo, ubicación y tarifas por máquina</small></span><ChevronRight size={18} /></button>
-          <button type="button" disabled={blocked} onClick={() => navigate("production")}><CreditCard size={19} /><span><strong>Tarifas de impresión</strong><small>Electricidad, máquina y mano de obra</small></span><ChevronRight size={18} /></button>
+        <nav className="profile-menu profile-settings-menu" aria-label={t("profile.settingsNav")} hidden={view !== "home"}>
+          <button type="button" disabled={blocked} onClick={() => navigate("printers")}><Printer size={19} /><span><strong>{t("printers")}</strong><small>{t("profile.printersHelp")}</small></span><ChevronRight size={18} /></button>
+          <button type="button" disabled={blocked} onClick={() => navigate("production")}><CreditCard size={19} /><span><strong>{t("profile.production")}</strong><small>{t("profile.productionHelp")}</small></span><ChevronRight size={18} /></button>
         </nav>
-        {saved && <p className="account-notice" role="status">Cambios guardados.</p>}
+        {saved && <p className="account-notice" role="status">{t("profile.saved")}</p>}
         <div hidden={view !== "printers"}>
           <p className="account-notice" role="status">{printerStatusMessage}</p>
-          <PrinterManager printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => navigate("home")} onSave={onSavePrinter} backLabel="Tu espacio" />
+          <PrinterManager language={language} printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => navigate("home")} onSave={onSavePrinter} backLabel={t("profile.space")} />
         </div>
 
         <form className="profile-preferences" onSubmit={submit} onChange={() => setSaved(false)} aria-busy={isSaving} hidden={view !== "preferences"}>
           <div className="profile-section-head">
             <span><WalletCards size={19} aria-hidden="true" /></span>
-            <div><p className="eyebrow">Preferencias financieras</p><h3>Moneda y facturación</h3></div>
+            <div><p className="eyebrow">{t("profile.financial")}</p><h3>{t("profile.preferences")}</h3></div>
           </div>
-          <p className="form-help" id="profile-currency-help">La moneda base es la preferencia para tus resúmenes. No convierte compras ni reescribe precios o tipos de cambio históricos. La moneda de costos se configura por separado en Tarifas de impresión.</p>
+          <p className="form-help" id="profile-currency-help">{t("profile.currencyHelp")}</p>
           <div className="form-grid profile-form-grid">
-            <label>Moneda base<select aria-describedby="profile-currency-help" value={values.base_currency} disabled={isSaving} onChange={(event) => setValues({ ...values, base_currency: event.target.value })}><option value="CRC">CRC · Colón costarricense</option><option value="USD">USD · Dólar estadounidense</option><option value="EUR">EUR · Euro</option></select></label>
-            <label>Nombre para mostrar<input maxLength={120} value={values.display_name} disabled={isSaving} onChange={(event) => setValues({ ...values, display_name: event.target.value })} /></label>
-            <label>Nombre de facturación<input maxLength={160} value={values.billing_name} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_name: event.target.value })} /></label>
-            <label>Identificación fiscal<input maxLength={80} value={values.billing_tax_id} disabled={isSaving} placeholder="Cédula física o jurídica" onChange={(event) => setValues({ ...values, billing_tax_id: event.target.value })} /></label>
-            <label className="wide">Correo de facturación<input type="email" maxLength={254} value={values.billing_email} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_email: event.target.value })} /></label>
-            <label className="wide">Dirección de facturación<textarea maxLength={500} value={values.billing_address} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_address: event.target.value })} /></label>
+            <label>{t("profile.baseCurrency")}<select aria-describedby="profile-currency-help" value={values.base_currency} disabled={isSaving} onChange={(event) => setValues({ ...values, base_currency: event.target.value })}><option value="CRC">{currencyLabel("CRC", language)}</option><option value="USD">{currencyLabel("USD", language)}</option><option value="EUR">{currencyLabel("EUR", language)}</option></select></label>
+            <label>{t("profile.displayName")}<input maxLength={120} value={values.display_name} disabled={isSaving} onChange={(event) => setValues({ ...values, display_name: event.target.value })} /></label>
+            <label>{t("profile.billingName")}<input maxLength={160} value={values.billing_name} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_name: event.target.value })} /></label>
+            <label>{t("profile.taxId")}<input maxLength={80} value={values.billing_tax_id} disabled={isSaving} placeholder={t("profile.taxIdPlaceholder")} onChange={(event) => setValues({ ...values, billing_tax_id: event.target.value })} /></label>
+            <label className="wide">{t("profile.billingEmail")}<input type="email" maxLength={254} value={values.billing_email} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_email: event.target.value })} /></label>
+            <label className="wide">{t("profile.billingAddress")}<textarea maxLength={500} value={values.billing_address} disabled={isSaving} onChange={(event) => setValues({ ...values, billing_address: event.target.value })} /></label>
           </div>
-          <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando perfil…" : "Guardar preferencias"}</button>
+          <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? t("profile.saving") : t("profile.savePreferences")}</button>
         </form>
 
         <form className="profile-preferences production-settings" onSubmit={submit} onChange={() => setSaved(false)} aria-busy={isSaving} hidden={view !== "production"}>
           <div className="profile-section-head">
             <span><CreditCard size={19} aria-hidden="true" /></span>
-            <div><p className="eyebrow">Producción</p><h3>Tarifas para calcular impresiones</h3></div>
+            <div><p className="eyebrow">{t("nav.production")}</p><h3>{t("profile.ratesTitle")}</h3></div>
           </div>
-          <p className="form-help">Son valores predeterminados. Cada corrida guarda una copia y nunca cambia aunque después modifiqués estas tarifas.</p>
+          <p className="form-help">{t("profile.ratesHelp")}</p>
           <div className="form-grid profile-form-grid">
-            <label>Moneda de costos<select value={values.production_cost_currency} disabled={isSaving} onChange={(event) => setValues({ ...values, production_cost_currency: event.target.value })}><option value="CRC">CRC · Colón costarricense</option><option value="USD">USD · Dólar estadounidense</option><option value="EUR">EUR · Euro</option></select></label>
-            <label>Electricidad por kWh<input type="number" min="0" step="0.01" value={values.electricity_price_per_kwh} disabled={isSaving} placeholder="Ej. 95" onChange={(event) => setValues({ ...values, electricity_price_per_kwh: event.target.value })} /></label>
-            <label>Potencia promedio de impresora (W)<input type="number" min="0.01" step="0.01" value={values.printer_average_power_w} disabled={isSaving} placeholder="Ej. 120" onChange={(event) => setValues({ ...values, printer_average_power_w: event.target.value })} /></label>
-            <label>Costo de máquina por hora<input type="number" min="0" step="0.01" value={values.machine_cost_per_hour} disabled={isSaving} placeholder="0" onChange={(event) => setValues({ ...values, machine_cost_per_hour: event.target.value })} /></label>
-            <label>Costo de mano de obra por hora<input type="number" min="0" step="0.01" value={values.labor_cost_per_hour} disabled={isSaving} placeholder="0" onChange={(event) => setValues({ ...values, labor_cost_per_hour: event.target.value })} /></label>
+            <label>{t("profile.costCurrency")}<select value={values.production_cost_currency} disabled={isSaving} onChange={(event) => setValues({ ...values, production_cost_currency: event.target.value })}><option value="CRC">{currencyLabel("CRC", language)}</option><option value="USD">{currencyLabel("USD", language)}</option><option value="EUR">{currencyLabel("EUR", language)}</option></select></label>
+            <label>{t("profile.electricity")}<input type="number" min="0" step="0.01" value={values.electricity_price_per_kwh} disabled={isSaving} placeholder={t("profile.electricityExample")} onChange={(event) => setValues({ ...values, electricity_price_per_kwh: event.target.value })} /></label>
+            <label>{t("profile.power")}<input type="number" min="0.01" step="0.01" value={values.printer_average_power_w} disabled={isSaving} placeholder={t("profile.powerExample")} onChange={(event) => setValues({ ...values, printer_average_power_w: event.target.value })} /></label>
+            <label>{t("machineRate")}<input type="number" min="0" step="0.01" value={values.machine_cost_per_hour} disabled={isSaving} placeholder="0" onChange={(event) => setValues({ ...values, machine_cost_per_hour: event.target.value })} /></label>
+            <label>{t("profile.labor")}<input type="number" min="0" step="0.01" value={values.labor_cost_per_hour} disabled={isSaving} placeholder="0" onChange={(event) => setValues({ ...values, labor_cost_per_hour: event.target.value })} /></label>
           </div>
-          <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando tarifas…" : "Guardar tarifas"}</button>
+          <button className="primary-action" type="submit" disabled={isSaving}><Save size={18} aria-hidden="true" />{isSaving ? t("profile.savingRates") : t("profile.saveRates")}</button>
         </form>
 
         <div className="profile-security" hidden={view !== "preferences"}>
             <ShieldCheck size={18} aria-hidden="true" />
-            <span>Proper nunca guardará números de tarjeta.</span>
+            <span>{t("profile.security")}</span>
         </div>
 
         {email && view === "home" && (
           <button className="profile-signout" type="button" onClick={onSignOut} disabled={isSaving || communityBusy}>
             <LogOut size={18} aria-hidden="true" />
-            Cerrar sesión
+            {t("profile.signOut")}
           </button>
         )}
         </div>
