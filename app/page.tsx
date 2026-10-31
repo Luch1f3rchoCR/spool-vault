@@ -4051,7 +4051,7 @@ export default function Home() {
                   <input
                     value={manualQrPayload}
                     onChange={(event) => setManualQrPayload(event.target.value)}
-                    placeholder="https://spool-vault.vercel.app/?roll=..."
+                    placeholder="https://properformakers.vercel.app/?roll=..."
                     inputMode="url"
                   />
                 </label>

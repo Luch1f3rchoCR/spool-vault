@@ -5,7 +5,7 @@
 - Servicio de envío automático: Resend. El propietario confirmó la creación de la cuenta el 7 de septiembre de 2026.
 - Dominio: `stonecollective.dev`, registrado en GoDaddy.
 - Remitente: `Spool Vault <hello@stonecollective.dev>`.
-- La aplicación continúa en `https://spool-vault.vercel.app/`. No se requiere contratar hosting web para configurar el correo.
+- URL nueva: `https://properformakers.vercel.app/`; el dominio anterior sigue activo. Auth ya permite ambos. PR #55 actualiza los enlaces para nuevas bienvenidas. El fundador confirmó recepción, apertura del enlace y acceso a su inventario; logout/reingreso aún sin comprobar. No se requiere contratar hosting web para configurar el correo.
 - Se verificará el dominio raíz para usar exactamente `hello@stonecollective.dev`. La propuesta anterior `hello@correo.stonecollective.dev` no es el remitente elegido.
 - Primero se habilita envío. Recibir respuestas en `hello` mediante buzón o reenvío es una tarea separada.
 
