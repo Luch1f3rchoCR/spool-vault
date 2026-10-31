@@ -221,7 +221,7 @@ export function AccountCommunity({ userId, mode, localData, onBusyChange, view, 
   }, [busy, error, inviteResult, view]);
   const ownFeedback = feedback.filter((item) => item.user_id === userId);
 
-  return <div className="account-community" aria-busy={busy} hidden={view === "preferences" || view === "production" || view === "printers"}>
+  return <div className="account-community" lang="es" aria-busy={busy} hidden={view === "preferences" || view === "production" || view === "printers"}>
     <div className="membership-card" hidden={view !== "home"}>
       <div className="membership-copy"><span className="membership-icon"><CreditCard size={20} aria-hidden="true" /></span><div>
         <p className="eyebrow">Licencia personal</p>
