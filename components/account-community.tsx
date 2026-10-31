@@ -14,8 +14,10 @@ type Membership = {
   country?: string; printers?: string; platform?: string; experience?: string; testing_focus?: string;
 };
 type Delivery = { membership_id: string; status: "pending" | "sending" | "accepted" | "uncertain" | "review_required"; first_attempt_at: string | null; accepted_at: string | null };
-const deliveryLabels = { pending: "Bienvenida pendiente", sending: "Envío por confirmar", accepted: "Bienvenida aceptada para envío", uncertain: "Envío sin confirmar", review_required: "Correo pendiente de revisión" };
-class AccountActionError extends Error {}
+const deliveryLabels = { pending: "admin.deliveryPending", sending: "admin.deliverySending", accepted: "admin.deliveryAccepted", uncertain: "admin.deliveryUncertain", review_required: "admin.deliveryReview" } as const;
+class AccountActionError extends Error {
+  constructor(readonly displayMessage: AccountMessage) { super("Account action could not be confirmed"); }
+}
 type Feedback = {
   id: string; user_id: string; kind: "idea" | "bug"; title: string; details: string;
   status: "received" | "reviewing" | "planned" | "resolved";
@@ -31,7 +33,7 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
   localData: Record<string, unknown>; onBusyChange: (busy: boolean) => void;
   view: ProfileView; onNavigate: (view: ProfileView) => void;
 }) {
-  const t = (key: MessageKey) => translate(language, key);
+  const t = (key: MessageKey, values: Record<string, string | number> = {}) => translate(language, key, values);
   const showMessage = (message: AccountMessage) => "key" in message ? t(message.key) : <>
     {language === "en" && <>{t("account.originalMessage")} </>}
     <span lang="">{message.original}</span>
@@ -57,7 +59,7 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
   const [mailConfigured, setMailConfigured] = useState(false);
   const [sendOnSave, setSendOnSave] = useState(true);
   const [inviteReady, setInviteReady] = useState(false);
-  const [inviteResult, setInviteResult] = useState<{ id: string; message: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ id: string; message: AccountMessage } | null>(null);
   const inviteResultRef = useRef<HTMLElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const [requestId, setRequestId] = useState("");
@@ -132,7 +134,7 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
     try { await action(); }
     catch (cause) {
       const message = cause && typeof cause === "object" && "message" in cause ? String(cause.message) : "";
-      setError(cause instanceof AccountActionError || message.startsWith("Llegaste al limite") ? { original: message } : { key: "account.operationError" });
+      setError(cause instanceof AccountActionError ? cause.displayMessage : message.startsWith("Llegaste al limite") ? { original: message } : { key: "account.operationError" });
     } finally { pending.current = false; setBusy(false); }
   }
 
@@ -166,11 +168,9 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
       setMembers((current) => [data, ...current.filter((item) => item.id !== data.id)]);
       setInviteReady(!data.cancelled_at);
       if (data.cancelled_at) {
-        throw new AccountActionError("Este correo tiene una invitación cancelada. No se envió una bienvenida.");
+        throw new AccountActionError({ key: "admin.cancelledError" });
       }
-      let message = data.activated_at
-        ? "Esta persona ya tiene su membresía activa."
-        : "Invitación guardada. No se envió un correo; podés compartir la bienvenida desde esta ficha.";
+      let message: AccountMessage = { key: data.activated_at ? "admin.alreadyActive" : "admin.reserved" };
       if (mailConfigured && sendOnSave) message = await sendWelcome(data.id);
       // Only clear the draft after the requested reservation/send is confirmed.
       // An uncertain send keeps the entered values and the saved membership.
@@ -180,21 +180,21 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
     });
   }
 
-  async function sendWelcome(id: string) {
+  async function sendWelcome(id: string): Promise<AccountMessage> {
     const session = await getSupabaseClient()!.auth.getSession();
-    if (!session.data.session) throw new AccountActionError("Iniciá sesión para enviar la bienvenida.");
+    if (!session.data.session) throw new AccountActionError({ key: "admin.signInWelcome" });
     let response: Response;
     try {
       response = await fetch("/api/admin/tester-welcome", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.data.session.access_token}` },
         body: JSON.stringify({ membership_id: id }), signal: AbortSignal.timeout(25000)
       });
-    } catch { throw new AccountActionError("La licencia está guardada. No pudimos confirmar el correo; revisá su estado antes de reintentar."); }
+    } catch { throw new AccountActionError({ key: "admin.uncertainError" }); }
     const result = await response.json();
     await load();
-    if (!response.ok || result.status !== "accepted") throw new AccountActionError(result.error || "La invitación está guardada, pero no pudimos confirmar el envío de la bienvenida.");
-    const message = result.already_sent ? "Esta bienvenida ya fue aceptada para envío. No se envió otra." : "Invitación guardada y bienvenida aceptada por el servicio de correo. La entrega al destinatario aún no está confirmada.";
-    setNotice({ original: message });
+    if (!response.ok || result.status !== "accepted") throw new AccountActionError(result.error ? { original: String(result.error) } : { key: "admin.unconfirmedError" });
+    const message: AccountMessage = { key: result.already_sent ? "admin.alreadySent" : "admin.accepted" };
+    setNotice(message);
     return message;
   }
 
@@ -227,6 +227,9 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
     target?.focus({ preventScroll: true });
     target?.scrollIntoView({ block: "start", behavior: "instant" });
   }, [busy, error, inviteResult, view]);
+  function deliveryLabel(status: Delivery["status"] = "pending") {
+    return t(Object.hasOwn(deliveryLabels, status) ? deliveryLabels[status] : "account.statusUnavailable");
+  }
   const ownFeedback = feedback.filter((item) => item.user_id === userId);
 
   return <div className="account-community" lang={language} aria-busy={busy} hidden={view === "preferences" || view === "production" || view === "printers"}>
@@ -243,7 +246,7 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
     <nav className="profile-menu" aria-label={t("account.options")} hidden={view !== "home"}>
       <button type="button" onClick={() => onNavigate("feedback")} disabled={busy}><Lightbulb size={19} /><span><strong>{t("profile.feedback")}</strong><small>{t("account.feedbackHelp")}</small></span><ChevronRight size={18} /></button>
       <button type="button" onClick={() => onNavigate("data")} disabled={busy}><Download size={19} /><span><strong>{t("profile.data")}</strong><small>{t("account.dataHelp")}</small></span><ChevronRight size={18} /></button>
-      {admin && <button lang="es" type="button" onClick={() => onNavigate("admin")} disabled={busy}><Users size={19} /><span><strong>Grupo de pruebas</strong><small>{members.filter((m) => m.activated_at).length} activos · {members.filter((m) => !m.activated_at && !m.cancelled_at).length} pendientes</small></span><ChevronRight size={18} /></button>}
+      {admin && <button type="button" onClick={() => onNavigate("admin")} disabled={busy}><Users size={19} /><span><strong>{t("profile.admin")}</strong><small>{t("admin.counts", { active: members.filter((m) => m.activated_at).length, pending: members.filter((m) => !m.activated_at && !m.cancelled_at).length })}</small></span><ChevronRight size={18} /></button>}
     </nav>
 
     {view === "feedback" && <section className="account-section" aria-label={t("profile.feedback")}>
@@ -270,67 +273,67 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
       <button type="button" onClick={() => onNavigate("preferences")} disabled={busy}><CreditCard size={18} />{t("account.editProfile")}<ChevronRight size={18} /></button>
     </section>}
 
-    {view === "admin" && admin && <section className="account-section" lang="es" aria-label="Grupo de pruebas">
-      <p className="eyebrow">Solo administración</p>
-      <h3>Agregar probador</h3>
-      <p>{founderScope}</p>
-      {!mailConfigured && <p className="account-notice">Envío automático pendiente de configuración. Podés guardar el probador y abrir la bienvenida en tu correo.</p>}
+    {view === "admin" && admin && <section className="account-section" aria-label={t("profile.admin")}>
+      <p className="eyebrow">{t("admin.onlyAdmin")}</p>
+      <h3>{t("admin.addTester")}</h3>
+      {language === "en" && <p className="form-help">{t("account.termsLanguage")}</p>}<p lang="es">{founderScope}</p>
+      {!mailConfigured && <p className="account-notice">{t("admin.automaticPending")}</p>}
       <form onSubmit={reserve}><fieldset disabled={busy || loading}>
-        <label>Nombre<input required minLength={2} maxLength={120} value={inviteName} onChange={(event) => { setInviteName(event.target.value); setInviteReady(false); }} /></label>
-        <label>Correo de acceso<input required type="email" maxLength={254} autoCapitalize="none" value={inviteEmail} onChange={(event) => { setInviteEmail(event.target.value); setInviteReady(false); }} /></label>
-        <label>Por qué invitamos a esta persona<input required minLength={3} maxLength={1000} value={inviteReason} onChange={(event) => setInviteReason(event.target.value)} /></label>
-        <label>Qué nos gustaría que pruebe (opcional)<textarea maxLength={1000} rows={3} value={expectedFocus} onChange={(event) => setExpectedFocus(event.target.value)} /></label>
-        <p className="form-help">Estas notas son solo para administración. La persona completará su experiencia, uso e impresoras al activar el acceso por primera vez. Repetir un correo recupera la invitación original sin cambiar sus notas.</p>
-        {mailConfigured && <label className="account-checkbox"><input type="checkbox" checked={sendOnSave} onChange={(event) => setSendOnSave(event.target.checked)} />Enviar correo de bienvenida al guardar</label>}
-        <details className="welcome-preview"><summary>Vista previa del correo de bienvenida</summary><p className="feedback-details">{welcomeText(inviteName.trim(), inviteEmail.trim() || "el correo registrado")}</p></details>
-        <button className="primary-action" type="submit"><UserPlus size={18} />{busy ? "Procesando…" : mailConfigured && sendOnSave ? "Guardar y enviar bienvenida" : "Dar acceso gratuito de por vida"}</button>
+        <label>{t("name")}<input required minLength={2} maxLength={120} value={inviteName} onChange={(event) => { setInviteName(event.target.value); setInviteReady(false); }} /></label>
+        <label>{t("admin.accessEmail")}<input required type="email" maxLength={254} autoCapitalize="none" value={inviteEmail} onChange={(event) => { setInviteEmail(event.target.value); setInviteReady(false); }} /></label>
+        <label>{t("admin.reasonField")}<input required minLength={3} maxLength={1000} value={inviteReason} onChange={(event) => setInviteReason(event.target.value)} /></label>
+        <label>{t("admin.expectedFocusField")}<textarea maxLength={1000} rows={3} value={expectedFocus} onChange={(event) => setExpectedFocus(event.target.value)} /></label>
+        <p className="form-help">{t("admin.notesHelp")}</p>
+        {mailConfigured && <label className="account-checkbox"><input type="checkbox" checked={sendOnSave} onChange={(event) => setSendOnSave(event.target.checked)} />{t("admin.sendOnSave")}</label>}
+        <details className="welcome-preview"><summary>{t("admin.preview")}</summary>{language === "en" && <p className="form-help">{t("admin.emailLanguage")}</p>}<p className="feedback-details" lang="es">{welcomeText(inviteName.trim(), inviteEmail.trim() || "el correo registrado")}</p></details>
+        <button className="primary-action" type="submit"><UserPlus size={18} />{busy ? t("admin.processing") : mailConfigured && sendOnSave ? t("admin.saveSend") : t("admin.lifetimeAccess")}</button>
       </fieldset></form>
       {inviteReady && <button type="button" className="account-copy" disabled={busy} onClick={() => void perform(async () => {
         await navigator.clipboard.writeText(APP_URL);
-        setNotice({ original: "Enlace copiado. La persona debe entrar con el correo que registraste." });
-      })}><Copy size={18} />Copiar enlace de la app</button>}
-      <h4>Probadores</h4>
-      {!members.length && <p>Todavía no has agregado probadores.</p>}
+        setNotice({ key: "admin.linkCopied" });
+      })}><Copy size={18} />{t("admin.copyLink")}</button>}
+      <h4>{t("admin.testers")}</h4>
+      {!members.length && <p>{t("admin.noTesters")}</p>}
       {members.map((member) => <article className="account-list-row" key={member.id}
         ref={inviteResult?.id === member.id ? inviteResultRef : undefined}
         tabIndex={inviteResult?.id === member.id ? -1 : undefined}
-        aria-label={`Invitación de ${member.display_name || member.email}`}>
-        {inviteResult?.id === member.id && <p role="status" className="account-notice">{inviteResult.message}</p>}
+        aria-label={t("admin.invitationLabel", { name: member.display_name || member.email })}>
+        {inviteResult?.id === member.id && <p role="status" className="account-notice">{showMessage(inviteResult.message)}</p>}
         <strong>{member.display_name || member.email}</strong><span>{member.email}</span>
-        <small>{member.cancelled_at ? "Invitación cancelada" : member.activated_at ? "Activa · gratis de por vida" : "Pendiente de primer ingreso"}</small>
+        <small>{member.cancelled_at ? t("admin.cancelled") : member.activated_at ? t("admin.active") : t("admin.pendingActivation")}</small>
         <small>{[member.country, member.printers].filter(Boolean).join(" · ")}</small>
-        {member.testing_focus && <p>Referencia de la invitación anterior: {member.testing_focus}</p>}
-        {inviteNotes.filter((note) => note.membership_id === member.id).map((note) => <div key={note.membership_id}><p><strong>Motivo:</strong> {note.reason}</p>{note.expected_focus && <p><strong>Pruebas previstas:</strong> {note.expected_focus}</p>}</div>)}
-        {firstVisits.filter((visit) => visit.membership_id === member.id).map(({ answers }) => <details key={member.id}><summary>Respuestas del primer ingreso</summary>
-          <p>{answers.display_name} · {answers.country || "País no indicado"}</p>
-          <p>Experiencia: {({ beginner: "Principiante", intermediate: "Intermedia", advanced: "Avanzada" } as Record<string, string>)[answers.experience] || answers.experience}</p>
-          <p>Uso: {({ hobby: "Hobby", professional: "Profesional", both: "Hobby y profesional" } as Record<string, string>)[answers.usage] || answers.usage}</p>
-          <p>{answers.purpose}</p><p>Dispositivo: {answers.platform}</p>
-          <p>Impresoras al ingresar: {answers.printers.map((printer) => [printer.name, printer.manufacturer, printer.model].filter(Boolean).join(" · ")).join("; ") || "Sin impresoras"}</p>
+        {member.testing_focus && <p>{t("admin.previousFocus", { focus: member.testing_focus })}</p>}
+        {inviteNotes.filter((note) => note.membership_id === member.id).map((note) => <div key={note.membership_id}><p><strong>{t("admin.reason")}</strong> {note.reason}</p>{note.expected_focus && <p><strong>{t("admin.expectedTests")}</strong> {note.expected_focus}</p>}</div>)}
+        {firstVisits.filter((visit) => visit.membership_id === member.id).map(({ answers }) => <details key={member.id}><summary>{t("admin.firstVisitAnswers")}</summary>
+          <p>{answers.display_name} · {answers.country || t("admin.noCountry")}</p>
+          <p>{t("admin.experience")} {({ beginner: t("admin.beginner"), intermediate: t("admin.intermediate"), advanced: t("admin.advanced") } as Record<string, string>)[answers.experience] || answers.experience}</p>
+          <p>{t("admin.usage")} {({ hobby: t("admin.hobby"), professional: t("admin.professional"), both: t("admin.both") } as Record<string, string>)[answers.usage] || answers.usage}</p>
+          <p>{answers.purpose}</p><p>{t("admin.device")} {answers.platform}</p>
+          <p>{t("admin.initialPrinters")} {answers.printers.map((printer) => [printer.name, printer.manufacturer, printer.model].filter(Boolean).join(" · ")).join("; ") || t("admin.noPrinters")}</p>
         </details>)}
-        <small>{deliveryLabels[deliveries.find((delivery) => delivery.membership_id === member.id)?.status || "pending"]}</small>
+        <small>{deliveryLabel(deliveries.find((delivery) => delivery.membership_id === member.id)?.status)}</small>
         {!member.cancelled_at && <>
-          <a className="account-mail-link" href={`mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent(WELCOME_SUBJECT)}&body=${encodeURIComponent(welcomeText(member.display_name, member.email))}`}><Mail size={16} />Abrir bienvenida en mi correo</a>
+          <a className="account-mail-link" href={`mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent(WELCOME_SUBJECT)}&body=${encodeURIComponent(welcomeText(member.display_name, member.email))}`}><Mail size={16} />{t("admin.openMail")}</a>
           {mailConfigured && <button type="button" disabled={busy || ["accepted", "review_required"].includes(deliveries.find((delivery) => delivery.membership_id === member.id)?.status || "")} onClick={() => void perform(async () => {
             const message = await sendWelcome(member.id);
             setNotice(null); setInviteResult({ id: member.id, message });
-          })}><Send size={16} />Enviar bienvenida</button>}
+          })}><Send size={16} />{t("admin.sendWelcome")}</button>}
         </>}
-        {!member.activated_at && !member.cancelled_at && !deliveries.find((delivery) => delivery.membership_id === member.id)?.first_attempt_at && <button type="button" disabled={busy} title="Cancelar invitación pendiente" onClick={() => void perform(async () => {
+        {!member.activated_at && !member.cancelled_at && !deliveries.find((delivery) => delivery.membership_id === member.id)?.first_attempt_at && <button type="button" disabled={busy} title={t("admin.cancelPendingTitle")} onClick={() => void perform(async () => {
           const { error: cancelError } = await getSupabaseClient()!.rpc("cancel_tester_invitation", { p_id: member.id });
           if (cancelError) throw cancelError;
-          await load(); setNotice({ original: "Invitación pendiente cancelada." });
-        })}><X size={16} />Cancelar invitación</button>}
+          await load(); setNotice({ key: "admin.cancelledNotice" });
+        })}><X size={16} />{t("admin.cancel")}</button>}
       </article>)}
-      <h4>Aportes del grupo</h4>
-      <p className="form-help">Últimos 100 aportes. Las respuestas son visibles para su autor.</p>
-      {!feedback.length && <p>Todavía no hay aportes.</p>}
-      {feedback.map((item) => <FeedbackItem key={item.id} item={item} author={members.find((member) => member.user_id === item.user_id)?.display_name || members.find((member) => member.user_id === item.user_id)?.email}>
-        <FeedbackReview key={`${item.id}-${item.status}-${item.admin_reply}`} item={item} disabled={busy} onSave={(status, reply) => perform(async () => {
+      <h4>{t("admin.groupFeedback")}</h4>
+      <p className="form-help">{t("admin.recentFeedbackHelp")}</p>
+      {!feedback.length && <p>{t("admin.noFeedback")}</p>}
+      {feedback.map((item) => <FeedbackItem language={language} key={item.id} item={item} author={members.find((member) => member.user_id === item.user_id)?.display_name || members.find((member) => member.user_id === item.user_id)?.email}>
+        <FeedbackReview language={language} key={`${item.id}-${item.status}-${item.admin_reply}`} item={item} disabled={busy} onSave={(status, reply) => perform(async () => {
           const { data, error: reviewError } = await getSupabaseClient()!.from("user_feedback").update({ status, admin_reply: reply }).eq("id", item.id).select("*").single();
           if (reviewError || !data) throw reviewError || new Error("missing confirmation");
           setFeedback((current) => current.map((entry) => entry.id === data.id ? data : entry));
-          setNotice({ original: "Seguimiento actualizado." });
+          setNotice({ key: "admin.updated" });
         })} />
       </FeedbackItem>)}
     </section>}
@@ -345,12 +348,13 @@ function FeedbackItem({ item, author, children, language = "es" }: { language?: 
     {item.admin_reply && <p className="feedback-details"><b>{t("account.reply")} </b>{item.admin_reply}</p>}{children}</article>;
 }
 
-function FeedbackReview({ item, disabled, onSave }: { item: Feedback; disabled: boolean; onSave: (status: Feedback["status"], reply: string) => Promise<void> }) {
+function FeedbackReview({ item, disabled, onSave, language = "es" }: { language?: AppLanguage; item: Feedback; disabled: boolean; onSave: (status: Feedback["status"], reply: string) => Promise<void> }) {
+  const t = (key: MessageKey) => translate(language, key);
   const [status, setStatus] = useState(item.status);
   const [reply, setReply] = useState(item.admin_reply);
   return <form onSubmit={(event) => { event.preventDefault(); void onSave(status, reply); }}><fieldset disabled={disabled}>
-    <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as Feedback["status"])}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{translate("es", label)}</option>)}</select></label>
-    <label>Respuesta<textarea maxLength={2000} rows={2} value={reply} onChange={(event) => setReply(event.target.value)} /></label>
-    <button type="submit"><Send size={16} />Guardar seguimiento</button>
+    <label>{t("admin.status")}<select value={status} onChange={(event) => setStatus(event.target.value as Feedback["status"])}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
+    <label>{t("admin.reply")}<textarea maxLength={2000} rows={2} value={reply} onChange={(event) => setReply(event.target.value)} /></label>
+    <button type="submit"><Send size={16} />{t("admin.saveReview")}</button>
   </fieldset></form>;
 }
