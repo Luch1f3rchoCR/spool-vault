@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ChevronLeft, Edit3, Plus, Printer, Save } from "lucide-react";
 import type { PrinterProfile, UserProfile } from "@/lib/types";
 import styles from "./printer-manager.module.css";
@@ -67,13 +67,38 @@ export function PrinterManager({ printers, profile, isSaving, onBack, onSave, ba
   const money = (currency: string, value: number) => formatMoney(value, currency, language);
   const helpId = useId();
   const [values, setValues] = useState<PrinterValues | null>(null);
+  const isEditing = values !== null;
+  const formHeadingRef = useRef<HTMLHeadingElement>(null);
+  const listRef = useRef<HTMLElement>(null);
+  const returnFocusKey = useRef<string | null>(null);
   const sortedPrinters = [...printers].sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.name.localeCompare(b.name, language));
+
+  useEffect(() => {
+    if (isEditing) {
+      formHeadingRef.current?.focus();
+      return;
+    }
+    if (!returnFocusKey.current) return;
+    const triggers = Array.from(listRef.current?.querySelectorAll<HTMLButtonElement>("button[data-printer-trigger]") ?? []);
+    const target = triggers.find((button) => button.dataset.printerTrigger === returnFocusKey.current)
+      ?? triggers.find((button) => button.dataset.printerTrigger === "add");
+    target?.focus();
+    returnFocusKey.current = null;
+  }, [isEditing]);
+
+  function openEditor(nextValues: PrinterValues, triggerKey: string) {
+    returnFocusKey.current = triggerKey;
+    setValues(nextValues);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!values) return;
     const saved = await onSave(values);
     if (saved) setValues(null);
+    else if (formHeadingRef.current && !formHeadingRef.current.closest("form")?.contains(document.activeElement)) {
+      formHeadingRef.current.focus();
+    }
   }
 
   if (values) {
@@ -81,7 +106,7 @@ export function PrinterManager({ printers, profile, isSaving, onBack, onSave, ba
       <form lang={language} className="project-form printer-form" onSubmit={submit} aria-busy={isSaving}>
         <div className="project-form-head">
           <button type="button" onClick={() => setValues(null)} disabled={isSaving}><ChevronLeft size={17} />{t("back")}</button>
-          <div><p className="eyebrow">{t("equipment")}</p><h3>{t(values.printer_id ? "editPrinter" : "newPrinter")}</h3></div>
+          <div><p className="eyebrow">{t("equipment")}</p><h3 ref={formHeadingRef} tabIndex={-1}>{t(values.printer_id ? "editPrinter" : "newPrinter")}</h3></div>
         </div>
         <p className="form-help">{t("formHelp")}</p>
         <div className="form-grid printer-form-grid">
@@ -116,21 +141,21 @@ export function PrinterManager({ printers, profile, isSaving, onBack, onSave, ba
   }
 
   return (
-    <section lang={language} className="printer-manager">
+    <section ref={listRef} lang={language} className="printer-manager">
       <div className="project-form-head">
         <button type="button" onClick={onBack} disabled={isSaving}><ChevronLeft size={17} />{backLabel ?? t("projects")}</button>
         <div><p className="eyebrow">{t("equipment")}</p><h3>{t("printers")}</h3></div>
       </div>
-      <div className="printer-manager-actions"><p>{t("listHelp")}</p><button type="button" onClick={() => setValues(emptyValues(profile.production_cost_currency))}><Plus size={17} />{t("addPrinter")}</button></div>
+      <div className="printer-manager-actions"><p>{t("listHelp")}</p><button type="button" data-printer-trigger="add" onClick={() => openEditor(emptyValues(profile.production_cost_currency), "add")}><Plus size={17} />{t("addPrinter")}</button></div>
       <div className="printer-list">
         {sortedPrinters.length ? sortedPrinters.map((printer) => (
           <article className={printer.is_active ? "printer-card" : "printer-card inactive"} key={printer.id}>
             <span className="printer-card-icon"><Printer size={21} /></span>
             <div><strong>{printer.name}</strong><small>{[printer.manufacturer, printer.model, printer.nozzle_diameter_mm == null ? null : `${formatNumber(printer.nozzle_diameter_mm, language)} mm`].filter(Boolean).join(" · ") || t("noTechnicalDetails")}</small><small>{printer.location || t("noLocation")}</small></div>
             <div className="printer-card-cost"><strong>{printer.machine_cost_per_hour == null ? t("profileRate") : t("hourlyAmount", { amount: money(printer.machine_cost_currency ?? profile.production_cost_currency, printer.machine_cost_per_hour) })}</strong><small>{printer.average_power_w == null ? t("profilePower") : t("averageWatts", { watts: formatNumber(printer.average_power_w, language) })}</small><span>{t(printer.is_active ? "active" : "inactive")}</span></div>
-            <button type="button" onClick={() => setValues(editValues(printer))}><Edit3 size={16} />{t("edit")}</button>
+            <button type="button" data-printer-trigger={`edit:${printer.id}`} onClick={() => openEditor(editValues(printer), `edit:${printer.id}`)}><Edit3 size={16} />{t("edit")}</button>
           </article>
-        )) : <div className="project-empty compact"><Printer size={32} /><h3>{t("firstPrinter")}</h3><p>{t("firstPrinterHelp")}</p><button className="primary-action" type="button" onClick={() => setValues(emptyValues(profile.production_cost_currency))}><Plus size={17} />{t("addPrinter")}</button></div>}
+        )) : <div className="project-empty compact"><Printer size={32} /><h3>{t("firstPrinter")}</h3><p>{t("firstPrinterHelp")}</p><button className="primary-action" type="button" data-printer-trigger="first" onClick={() => openEditor(emptyValues(profile.production_cost_currency), "first")}><Plus size={17} />{t("addPrinter")}</button></div>}
       </div>
     </section>
   );
