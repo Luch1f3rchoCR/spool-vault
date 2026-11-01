@@ -23,4 +23,6 @@ Antes de cerrar el diseño físico, devolver a Desarrollo cualquier cambio que a
 
 ## Fuente técnica para el proyecto
 
+Actualización · 2026-10-31: consultar también [Device ID y evolución offline](../READER_DEVICE_ID_OFFLINE.md). Es una propuesta para revisar: no cambia el alcance conectado de V1, no aprueba BOM/PCB/firmware y no permite ejecutar lecturas pendientes al reconectar. El [diagnóstico de banco](../../firmware/rc522-diagnostic/README.md) ya está compilado/publicado, separado de la futura integración con Proper.
+
 Compartir también [alcance de Proper](../NFC_READER_ACCESSORY.md). El firmware, el protocolo y el soporte de navegadores deberán probarse; no prometer compatibilidad universal. Este archivo está listo para que el fundador lo lleve al proyecto «WayForge | Marca & Productos.»; no confirma que ya se haya creado un chat o enviado el encargo.
