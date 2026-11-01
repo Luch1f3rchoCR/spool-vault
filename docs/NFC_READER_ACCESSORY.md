@@ -6,11 +6,13 @@ Fecha: 2026-10-30. Idea del fundador: accesorio opcional con lector NFC + ESP32,
 
 - Proper ya escribe y lee etiquetas NDEF mediante Web NFC donde el navegador/dispositivo lo permite: `writeNfcTag`, `scanNfcTag`, `payloadForRoll` en `app/page.tsx`.
 - Las etiquetas actuales identifican el registro del rollo con una URL `/?roll=<id>` y pueden conservar un payload QR anterior. No confundir el rollo/lote con un spool físico reutilizable.
-- No existe todavía firmware para el lector externo, conexión ESP32, producto físico probado o compatibilidad universal. NFC del teléfono y lector externo son dos vías distintas.
+- Existe un [diagnóstico de banco compilado para ESP32 clásico + RC522](../firmware/rc522-diagnostic/README.md), publicado mediante PR #64. No lee NDEF completo ni conecta con Proper; no consta aquí una prueba física aprobada o compatibilidad universal. NFC del teléfono y lector externo son dos vías distintas.
 - Actualización del fundador: dispone de un lector marcado **RFID-RC522**, un ESP32 y stickers. El código informado para el ESP32 es «XX5R69»; no basta para identificar la variante/pinout. Tipo y capacidad de stickers desconocidos. La compatibilidad del montaje todavía no se ha probado; no se compraron componentes.
 - El proyecto de destino indicado existe como «WayForge | Marca & Productos.». Este documento prepara el traspaso físico; no implica que se haya enviado o aceptado allí, ni define una relación comercial/de marca.
 
 ## Propuesta de prototipo
+
+Actualización de análisis · 2026-10-31: [identidad de dispositivo y evolución offline](READER_DEVICE_ID_OFFLINE.md) conserva V1 conectado y propone Device ID para V1 y store-and-forward opcional para V1.5, pendientes de revisión/aprobación. No habilita una cola ni permite ejecutar lecturas automáticamente al reconectar.
 
 Flujo: sticker propio → módulo NFC → ESP32 → USB/serial → sesión de Proper en el navegador → ficha del rollo. Primera acción: identificar/abrir; pesar o registrar consumo requiere una acción explícita posterior del usuario. Acercar una etiqueta no debe descontar inventario ni cerrar impresiones.
 
