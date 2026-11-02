@@ -1,5 +1,109 @@
 # Proper · Migración de URL pública
 
+## Estado vigente · 2026-11-02 (Costa Rica)
+
+**Founder HQ adquirió `properformakers.com` por 2 años y lo declaró dominio oficial de Proper. La decisión está aprobada; la migración técnica al custom domain todavía NO se ha ejecutado.** La URL `https://properformakers.vercel.app/` continúa como origen público/técnico operativo durante la transición.
+
+Decisión formal: `docs/decisions/DEC-2026-11-02-official-domain-properformakers-com.md`.
+
+### Estado confirmado antes de tocar producción
+
+- Marca: **Proper.**; `properformakers.com` es dominio oficial, no rename de marca.
+- Dominio adquirido: `properformakers.com`, 2 años.
+- Costo base: **US$30.98** + parte proporcional de impuestos/tarifas de la compra conjunta; no se conoce aquí el adicional exacto.
+- Hosting: mantener el proyecto Vercel existente; no contratar Vercel Pro ni servicios adicionales.
+- Origen operativo actual: `https://properformakers.vercel.app/`.
+- Supabase Site URL confirmado por la migración anterior: `https://properformakers.vercel.app/`.
+- Redirect URLs confirmadas en la migración anterior: `https://properformakers.vercel.app/`, `https://spool-vault.vercel.app/**` y `http://localhost:3000/**`.
+- Plantillas Auth confirmadas en la migración anterior usan `{{ .ConfirmationURL }}`; no existe razón para inventar una ruta callback nueva.
+- `getAuthRedirectUrl()` usa primero `window.location.origin`; por tanto, cuando el usuario abra Proper desde el dominio oficial, el cliente puede solicitar el retorno al mismo origen siempre que Supabase lo permita.
+- `lib/tester-welcome.ts` sigue enlazando explícitamente a `https://properformakers.vercel.app/`; **no cambiarlo antes de validar DNS/TLS/Auth del .com**.
+- `app/page.tsx` contiene un placeholder visible con el origen Vercel. Los QR reales se generan con `window.location.origin`; etiquetas antiguas no se reescriben.
+- `NEXT_PUBLIC_SITE_URL` existe como configuración pública; el valor efectivo de Production debe inspeccionarse sin exponer secretos. Si cambia, requiere redeploy porque Next.js lo embebe en build.
+
+### Archivos/documentos afectados
+
+**Cambios de código posteriores a la validación del dominio:**
+
+- `lib/tester-welcome.ts`: cambiar `APP_URL` al dominio oficial.
+- `tests/tester-welcome.test.cjs`: actualizar expectativas del enlace público; conservar fixtures históricos que no representen configuración activa.
+- `app/page.tsx`: actualizar placeholder visible del escáner. La generación real por `window.location.origin` no requiere hardcodear el dominio.
+- Revisar cualquier UI que copie/reutilice `APP_URL` (actualmente el flujo de cuenta reutiliza esa constante).
+
+**Configuración externa:**
+
+- Vercel custom domain + DNS/TLS.
+- Supabase Auth Site URL + Redirect URLs.
+- Vercel Production `NEXT_PUBLIC_SITE_URL`, solo si el valor efectivo necesita alineación.
+
+**Documentación activa a actualizar al finalizar la migración:**
+
+- `RESEND_SETUP.md`
+- `TESTER_PROGRAM.md`
+- `PROJECT_CONTEXT.md`
+- `AGENTS.md` (smoke de producción) únicamente cuando el dominio oficial esté operativo.
+- Este documento, con evidencia final de pruebas/deploy.
+
+No hacer un reemplazo global de `spool-vault` ni `properformakers.vercel.app`: varias referencias son historial, fixtures, identificadores internos o evidencia de releases anteriores.
+
+### Secuencia técnica segura
+
+1. **Vercel:** confirmar el proyecto existente `spool-vault` y agregar `properformakers.com` como custom domain. No renombrar proyecto ni cambiar plan.
+2. **DNS:** aplicar únicamente los registros que Vercel solicite para el dominio web. No tocar MX/SPF/DKIM/DMARC de correo por esta tarea.
+3. **TLS/HTTP:** esperar/verificar dominio válido, HTTPS, HTTP 200, assets, manifest, navegación y consola antes de usarlo en Auth o correos.
+4. **Supabase Redirect URLs:** añadir exactamente `https://properformakers.com/**` (y, si la UI de Supabase requiere entrada raíz separada, la variante exacta correspondiente) conservando temporalmente los orígenes actuales.
+5. **Auth pre-Site-URL:** desde el .com solicitar OTP/magic link con una cuenta de prueba/autorizada y comprobar que Supabase acepta el redirect al nuevo origen.
+6. **Supabase Site URL:** solo después de esa prueba, cambiar Site URL a `https://properformakers.com/`.
+7. **Vercel env:** inspeccionar `NEXT_PUBLIC_SITE_URL`; si sigue apuntando al origen Vercel, cambiarlo a `https://properformakers.com` y redeployar Production. No exponer ni tocar secretos no relacionados.
+8. **Código público:** cambiar `APP_URL`, tests y placeholder; build + pruebas dirigidas + PR/merge/deploy.
+9. **Smoke autenticado:** login, logout, reingreso, inventario real, navegación y consola en `properformakers.com`.
+10. **Onboarding:** probar una cuenta founder/tester nueva de punta a punta, sin reutilizar el acceso del propietario como evidencia suficiente.
+11. **Deep links/QR:** verificar `/?roll=...` en .com y confirmar que URLs anteriores siguen resolviendo durante la transición.
+12. **PWA:** verificar manifest/service worker/instalación en el nuevo origen; recordar que cada origen mantiene almacenamiento y sesión propios.
+13. **Observación:** conservar `properformakers.vercel.app` activo como secundario. Evaluar redirects permanentes solo en un bloque posterior.
+
+### Riesgos y mitigaciones
+
+| Riesgo | Mitigación |
+| --- | --- |
+| Magic link/OTP cae en origen no permitido | Añadir Redirect URL exacta antes de cambiar Site URL o enlaces públicos. |
+| Bienvenida envía usuarios al .com antes de estar listo | Mantener `APP_URL` en Vercel hasta validar DNS/TLS/Auth. |
+| Usuario parece deslogueado al cambiar de dominio | Esperado por separación de cookies/storage por origen; probar reingreso explícito y no retirar el origen viejo de inmediato. |
+| Datos local/demo no aparecen en el nuevo origen | No prometer migración de localStorage; distinguir datos sincronizados de datos locales. |
+| QR/links pierden `?roll` | Probar deep links en ambos orígenes y no introducir redirect permanente hasta verificar query/fragment. |
+| PWA duplicada o caché distinta | Probar instalación/actualización en .com; service workers son por origen. |
+| DNS web rompe correo | Cambiar solo registros solicitados para Vercel; no tocar registros de correo. |
+| Site URL y `NEXT_PUBLIC_SITE_URL` quedan desalineados | Inspeccionar ambos explícitamente y hacer redeploy cuando cambie variable pública. |
+| Se confunde dominio oficial con rename técnico | Mantener repo/proyecto Supabase/proyecto Vercel/identificadores internos sin rename. |
+
+### Pruebas obligatorias antes de declarar migración DONE
+
+- Vercel custom domain: verified/valid + TLS.
+- GET `/`, `/manifest.webmanifest` y `/?roll=migration-smoke`: 200 y parámetro preservado.
+- Consola sin errores nuevos en recorrido público.
+- `getAuthRedirectUrl()`/OTP desde el dominio oficial genera/acepta destino `https://properformakers.com`.
+- Recepción y apertura de magic link/OTP en .com.
+- Login con inventario autenticado.
+- Logout y reingreso.
+- Onboarding de una cuenta founder/tester nueva hasta estado esperado.
+- Enlace de bienvenida nuevo apunta al .com solo después del cambio de código.
+- QR/deep link real o fixture seguro conserva `roll`.
+- PWA/manifest/service worker en .com.
+- `properformakers.vercel.app` continúa accesible durante transición.
+- Build, pruebas dirigidas y `git diff --check` del cambio de código posterior.
+
+### Rollback
+
+Mientras el dominio Vercel siga operativo, el rollback es deliberadamente simple:
+
+1. mantener/restaurar `properformakers.vercel.app` como Site URL si Auth del .com presenta fallos;
+2. conservar Redirect URLs de ambos orígenes para no cortar enlaces en circulación;
+3. revertir `APP_URL`/variable pública al origen Vercel y redeployar si el problema está en la promoción del dominio;
+4. no borrar `properformakers.com` ni modificar DNS de correo como parte de un rollback de Auth;
+5. documentar el fallo antes de reintentar.
+
+---
+
 ## Estado vigente · 2026-10-26 (Costa Rica)
 
 **Dominio y URLs de Auth configurados; el fundador confirmó recepción del correo, apertura del enlace y acceso a su inventario en el dominio nuevo. Los enlaces de esta versión usan la URL nueva; publicación del PR #55 autorizada. Logout y reingreso aún sin comprobar.** El inventario del 6 de octubre se conserva más abajo como evidencia histórica y no describe la configuración actual.
