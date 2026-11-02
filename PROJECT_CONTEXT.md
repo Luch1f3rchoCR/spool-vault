@@ -43,7 +43,7 @@ No reiniciar el MVP. No prometer NFC universal, lectura automática de etiquetas
 | Tema | Estado confirmado | Pendiente |
 | --- | --- | --- |
 | Infraestructura | Next.js, Supabase y Vercel; mismo repositorio | Mantener continuidad entre PC y Mac sin duplicar backend |
-| Dirección pública | https://spool-vault.vercel.app/ | No reemplazarla por una URL de preview para probar en celular |
+| Dirección pública | Dominio oficial: `https://properformakers.com/` (comprado 2026-11-02); origen operativo de transición: `https://properformakers.vercel.app/` | Ejecutar migración controlada Vercel/DNS/Supabase Auth antes de promover el `.com`; conservar orígenes anteriores durante pruebas |
 | Tu espacio | Panel lateral en escritorio y pantalla completa móvil, con vistas separadas; aprobado por el fundador | Conservar esta navegación en nuevos módulos |
 | Probadores | Administración privada y licencia personal Probador fundador · gratis de por vida | Reclutar el grupo pequeño y validar uso real |
 | Aportes y datos | Ideas/errores con seguimiento y exportación JSON de la cuenta | Restauración automática y eliminación de cuenta no cerradas |
