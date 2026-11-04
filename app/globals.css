@@ -1454,6 +1454,7 @@ h3 {
 }
 
 .roll-edit-modal {
+  padding: 14px;
   overflow-x: hidden;
 }
 

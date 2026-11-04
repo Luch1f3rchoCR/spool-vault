@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Save, X } from "lucide-react";
+import { defaultLanguage, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import type { FilamentRoll } from "@/lib/types";
 
 export type EditableRollValues = {
@@ -19,6 +20,7 @@ export type EditableRollValues = {
 };
 
 type RollEditModalProps = {
+  language?: AppLanguage;
   roll: FilamentRoll;
   brandOptions: string[];
   materialOptions: string[];
@@ -46,6 +48,7 @@ function editableValuesFromRoll(roll: FilamentRoll): EditableRollValues {
 }
 
 export function RollEditModal({
+  language = defaultLanguage,
   roll,
   brandOptions,
   materialOptions,
@@ -55,6 +58,8 @@ export function RollEditModal({
   onClose,
   onSave
 }: RollEditModalProps) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
   const [draft, setDraft] = useState<EditableRollValues>(() => editableValuesFromRoll(roll));
   const lineOptions = lineOptionsByMaterial[draft.material] ?? [draft.product_line || "Genérico"];
 
@@ -69,20 +74,21 @@ export function RollEditModal({
       <section
         className="panel modal-panel roll-edit-modal"
         role="dialog"
+        lang={language}
         aria-modal="true"
         aria-labelledby="edit-roll-title"
       >
         <div className="modal-head">
           <div>
-            <p className="eyebrow">Inventario</p>
-            <h2 id="edit-roll-title">Editar filamento</h2>
+            <p className="eyebrow">{t("nav.inventory")}</p>
+            <h2 id="edit-roll-title">{t("rollEdit.title")}</h2>
           </div>
           <button
             className="modal-close"
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            aria-label="Cerrar edición"
+            aria-label={t("rollEdit.close")}
           >
             <X size={20} aria-hidden="true" />
           </button>
@@ -97,7 +103,7 @@ export function RollEditModal({
           }}
         >
           <label>
-            Marca
+            {t("brand")}
             <select
               value={draft.brand}
               disabled={isSaving}
@@ -109,7 +115,7 @@ export function RollEditModal({
           </label>
 
           <label>
-            Material
+            {t("rollEdit.material")}
             <select
               value={draft.material}
               disabled={isSaving}
@@ -128,7 +134,7 @@ export function RollEditModal({
           </label>
 
           <label>
-            Línea
+            {t("rollEdit.line")}
             <select
               value={draft.product_line}
               disabled={isSaving}
@@ -142,7 +148,7 @@ export function RollEditModal({
           </label>
 
           <label>
-            Color
+            {t("rollEdit.color")}
             <input
               required
               value={draft.color_name}
@@ -152,7 +158,7 @@ export function RollEditModal({
           </label>
 
           <fieldset className="color-helper wide">
-            <legend>Color visual y HEX</legend>
+            <legend>{t("rollEdit.visualColor")}</legend>
             <div className="color-inputs">
               <input
                 className="color-picker"
@@ -160,7 +166,7 @@ export function RollEditModal({
                 value={draft.color_hex}
                 disabled={isSaving}
                 onChange={(event) => setDraft({ ...draft, color_hex: event.target.value })}
-                aria-label="Elegir color visualmente"
+                aria-label={t("rollEdit.pickColor")}
               />
               <input
                 required
@@ -168,11 +174,11 @@ export function RollEditModal({
                 disabled={isSaving}
                 pattern="#[0-9A-Fa-f]{6}"
                 onChange={(event) => setDraft({ ...draft, color_hex: event.target.value })}
-                aria-label="Código hexadecimal del color"
+                aria-label={t("rollEdit.hexCode")}
               />
             </div>
-            <p>La corrección cambia la ficha y conserva intactos los registros históricos.</p>
-            <div className="color-presets" aria-label="Colores rápidos">
+            <p>{t("rollEdit.historyHelp")}</p>
+            <div className="color-presets" aria-label={t("rollEdit.presets")}>
               {colorPresets.map((color) => (
                 <button
                   key={color}
@@ -181,7 +187,7 @@ export function RollEditModal({
                   style={{ backgroundColor: color }}
                   disabled={isSaving}
                   onClick={() => setDraft({ ...draft, color_hex: color })}
-                  aria-label={`Usar color ${color}`}
+                  aria-label={t("rollEdit.useColor", { color })}
                   title={color}
                 />
               ))}
@@ -189,7 +195,7 @@ export function RollEditModal({
           </fieldset>
 
           <label>
-            Peso inicial
+            {t("rollEdit.initialWeight")}
             <input
               required
               type="number"
@@ -199,11 +205,11 @@ export function RollEditModal({
               disabled={isSaving}
               onChange={(event) => setDraft({ ...draft, initial_weight_g: Number(event.target.value) })}
             />
-            <small className="field-hint">Mínimo actual: {Number(roll.available_weight_g).toLocaleString("es-CR")} g.</small>
+            <small className="field-hint">{t("rollEdit.minimumWeight", { weight: Number(roll.available_weight_g).toLocaleString(locale) })}</small>
           </label>
 
           <label>
-            Bajo desde
+            {t("rollEdit.lowThreshold")}
             <input
               required
               type="number"
@@ -217,17 +223,17 @@ export function RollEditModal({
           </label>
 
           <label className="wide">
-            Ubicación
+            {t("location")}
             <input
               value={draft.location}
               disabled={isSaving}
-              placeholder="AMS Slot 2, SUNLU, Gaveta..."
+              placeholder={t("rollEdit.locationExample")}
               onChange={(event) => setDraft({ ...draft, location: event.target.value })}
             />
           </label>
 
           <label className="wide">
-            Secado / observaciones
+            {t("rollEdit.notes")}
             <textarea
               value={draft.drying_notes}
               disabled={isSaving}
@@ -236,7 +242,7 @@ export function RollEditModal({
           </label>
 
           <label className="wide">
-            Foto URL
+            {t("rollEdit.photo")}
             <input
               type="url"
               value={draft.photo_url}
@@ -247,27 +253,27 @@ export function RollEditModal({
           </label>
 
           <label className="wide">
-            Link de compra
+            {t("rollEdit.purchaseUrl")}
             <input
               type="url"
               value={draft.purchase_url}
               disabled={isSaving}
-              placeholder="Tienda o producto"
+              placeholder={t("rollEdit.purchaseExample")}
               onChange={(event) => setDraft({ ...draft, purchase_url: event.target.value })}
             />
           </label>
 
           <div className="history-protection wide">
-            <strong>Compra protegida</strong>
+            <strong>{t("rollEdit.protectedPurchase")}</strong>
             <span>
-              {roll.supplier_name || "Proveedor no indicado"} · {roll.currency} {Number(roll.price_amount ?? 0).toLocaleString("es-CR")}
+              {roll.supplier_name || t("rollEdit.noSupplier")} · {roll.currency} {Number(roll.price_amount ?? 0).toLocaleString(locale)}
             </span>
-            <small>Precio, proveedor y presentación permanecen en el histórico. Su corrección se hará como un movimiento trazable.</small>
+            <small>{t("rollEdit.purchaseHistoryHelp")}</small>
           </div>
 
           <button className="primary-action wide" type="submit" disabled={isSaving}>
             <Save size={18} aria-hidden="true" />
-            {isSaving ? "Guardando sin duplicar…" : "Guardar cambios"}
+            {isSaving ? t("rollEdit.saving") : t("rollEdit.save")}
           </button>
         </form>
       </section>
