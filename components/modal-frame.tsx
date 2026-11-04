@@ -3,10 +3,10 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { ArrowLeft, X } from "lucide-react";
 
-export function ModalFrame({ title, titleId, eyebrow, className = "", busy = false, onClose, onBack, viewKey, children, closeLabel = "Cerrar ventana" }: {
+export function ModalFrame({ title, titleId, eyebrow, className = "", busy = false, onClose, onBack, viewKey, children, closeLabel = "Cerrar ventana", lang }: {
   title: string; titleId: string; eyebrow: string; className?: string; busy?: boolean;
   onClose: () => void; onBack?: () => void; viewKey?: string; children: ReactNode;
-  closeLabel?: string;
+  closeLabel?: string; lang?: string;
 }) {
   const panel = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -19,7 +19,7 @@ export function ModalFrame({ title, titleId, eyebrow, className = "", busy = fal
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
     if (event.target === event.currentTarget && !busy) (onBack ?? onClose)();
   }}>
-    <section ref={panel} className={`panel modal-panel modal-frame ${className}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy}
+    <section ref={panel} lang={lang} className={`panel modal-panel modal-frame ${className}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault(); event.stopPropagation();
