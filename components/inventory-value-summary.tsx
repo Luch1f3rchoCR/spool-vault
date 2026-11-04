@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, Wallet } from "lucide-react";
 import { ModalFrame } from "./modal-frame";
-import { defaultLanguage, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
+import { defaultLanguage, formatDate, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import { getSupabaseClient } from "../lib/supabase";
 import { awaitInventoryRequest, inventoryValueTotal, loadInventoryValueSummary } from "../lib/inventory-values";
 import { requestReportRate } from "../lib/inventory-valuation-report";
@@ -77,9 +77,22 @@ export function InventoryValueCards({ data, loading, error, mode, onRefresh, onD
 }
 
 type DateAttempt = { p_request_id: string; p_movement_id: string; p_purchased_at: string };
-export function InventoryValueDetails({ data, loading, error, userId, onRefresh, onClose }: {
+type DetailMessage = { key: MessageKey; original?: string; detail?: MessageKey };
+const valuationIssues: Readonly<Partial<Record<string, MessageKey>>> = {
+  missing_fx_snapshot: "inventoryDetail.missingRate",
+  missing_acquisition_date: "inventoryDetail.missingPurchaseDate",
+  missing_cost: "inventoryDetail.missingCost",
+  corrected_order_mismatch: "inventoryDetail.orderMismatch",
+  unsupported_currency: "inventoryDetail.unsupportedCurrency",
+  ambiguous_movement_order: "inventoryDetail.ambiguousOrder"
+};
+
+export function InventoryValueDetails({ data, loading, error, userId, onRefresh, onClose, language = defaultLanguage }: {
+  language?: AppLanguage;
   data: InventoryValueSummary | null; loading: boolean; error: SummaryError; userId: string; onRefresh: () => void; onClose: () => void;
 }) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
   const key = `proper-inventory-date-pending:${userId}`;
   const [pending, setPending] = useState<DateAttempt | null>(() => {
     try {
@@ -90,7 +103,7 @@ export function InventoryValueDetails({ data, loading, error, userId, onRefresh,
   const [rateKey, setRateKey] = useState("");
   const [movement, setMovement] = useState(pending?.p_movement_id ?? "");
   const [date, setDate] = useState(pending?.p_purchased_at ?? "");
-  const [busy, setBusy] = useState(false), [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false), [message, setMessage] = useState<DetailMessage | null>(null);
   const guard = useRef(false), active = useRef<AbortController | null>(null), feedback = useRef<HTMLParagraphElement>(null);
   useEffect(() => () => active.current?.abort(), []);
   useEffect(() => { if (message || error) feedback.current?.focus(); }, [message, error]);
@@ -100,15 +113,15 @@ export function InventoryValueDetails({ data, loading, error, userId, onRefresh,
   async function perform(kind: "rate" | "date") {
     if (guard.current) return;
     const client = getSupabaseClient();
-    if (!client) { setMessage("La conexión no está disponible."); return; }
+    if (!client) { setMessage({ key: "inventoryDetail.offline" }); return; }
     let operation: DateAttempt | null = null;
     if (kind === "date") {
-      if (!chosenMovement || !isIsoAcquisitionDate(date)) { setMessage("Elegí la compra y su fecha real de adquisición."); return; }
+      if (!chosenMovement || !isIsoAcquisitionDate(date)) { setMessage({ key: "inventoryDetail.chooseDate" }); return; }
       operation = pending ?? { p_request_id: crypto.randomUUID(), p_movement_id: chosenMovement, p_purchased_at: date };
-      try { sessionStorage.setItem(key, JSON.stringify(operation)); } catch { setMessage("No se pudo conservar el intento. No enviamos la operación."); return; }
+      try { sessionStorage.setItem(key, JSON.stringify(operation)); } catch { setMessage({ key: "inventoryDetail.storageError" }); return; }
       setPending(operation);
     } else if (!chosenRate) return;
-    guard.current = true; setBusy(true); setMessage("");
+    guard.current = true; setBusy(true); setMessage(null);
     const controller = new AbortController(); active.current = controller;
     const timer = setTimeout(() => controller.abort(), 30000);
     try {
@@ -121,44 +134,66 @@ export function InventoryValueDetails({ data, loading, error, userId, onRefresh,
           throw new Error(result.error.message);
         }
         if (!result.data || result.data.user_id !== userId || result.data.request_id !== operation!.p_request_id
-          || result.data.movement_id !== operation!.p_movement_id || result.data.purchased_at !== operation!.p_purchased_at) throw new Error("La respuesta no confirmó esta fecha.");
+          || result.data.movement_id !== operation!.p_movement_id || result.data.purchased_at !== operation!.p_purchased_at) {
+          setMessage({ key: "inventoryDetail.operationError", detail: "inventoryDetail.dateUnconfirmed" });
+          return;
+        }
         sessionStorage.removeItem(key); setPending(null); setDate("");
       }
-      setMessage(kind === "rate" ? "Tasa histórica confirmada. Actualizando el saldo…" : "Fecha de compra confirmada. Actualizando el saldo…");
+      setMessage({ key: kind === "rate" ? "inventoryDetail.rateSaved" : "inventoryDetail.dateSaved" });
       onRefresh();
-    } catch (cause) { setMessage(`No pudimos confirmar la operación. ${cause instanceof Error ? cause.message : "Podés reintentar."}`); }
+    } catch (cause) {
+      setMessage(cause instanceof Error
+        ? { key: "inventoryDetail.operationError", original: cause.message }
+        : { key: "inventoryDetail.operationError", detail: "inventoryDetail.tryAgain" });
+    }
     finally { clearTimeout(timer); active.current = null; guard.current = false; setBusy(false); }
   }
 
-  return <ModalFrame title="Valor del inventario" titleId="inventory-values-title" eyebrow="SALDO ACTUAL" className={modalStyles.modal}
-    busy={busy} onClose={() => { if (!guard.current) onClose(); }} closeLabel="Cerrar valoración">
-    <p className={modalStyles.intro}>Cantidad actual a costo histórico. Los consumos reducen el saldo; no se reescriben compras ni costos de producción.</p>
-    {(message || error) && <p ref={feedback} tabIndex={-1} role={error ? "alert" : "status"} className={modalStyles.feedback}>{[message, error && translate(defaultLanguage, error)].filter(Boolean).join(" ")}</p>}
-    {loading && <p role="status">Actualizando valoración…</p>}
-    {error && <button type="button" disabled={busy || loading} onClick={onRefresh}>Reintentar resumen</button>}
+  return <ModalFrame lang={language} title={t("inventoryDetail.title")} titleId="inventory-values-title" eyebrow={t("inventoryDetail.eyebrow")} className={modalStyles.modal}
+    busy={busy} onClose={() => { if (!guard.current) onClose(); }} closeLabel={t("inventoryDetail.close")}>
+    <p className={modalStyles.intro}>{t("inventoryDetail.intro")}</p>
+    {(message || error) && <p ref={feedback} tabIndex={-1} role={error ? "alert" : "status"} className={modalStyles.feedback}>{message && <>
+        {t(message.key)}
+        {message.detail && <> {t(message.detail)}</>}
+        {message.original && <> {language === "en" && <>{t("account.originalMessage")} </>}<span lang="">{message.original}</span></>}
+      </>}
+      {error && <>{message && " "}{t(error)}</>}</p>}
+    {loading && <p role="status">{t("inventoryDetail.refreshing")}</p>}
+    {error && <button type="button" disabled={busy || loading} onClick={onRefresh}>{t("inventoryDetail.retrySummary")}</button>}
     {(!!data?.missing_supply_dates.length || pending) && <form className={modalStyles.form} onSubmit={event => { event.preventDefault(); void perform("date"); }}>
       <fieldset className={modalStyles.fieldset} disabled={busy || loading || !!pending}>
-        <legend>Completar fecha de un insumo</legend><p className={modalStyles.help}>La fecha de registro puede ser distinta de la compra. Indicá la fecha real; se agrega como dato histórico, sin modificar la entrada original.</p>
-        <label>Entrada sin fecha<select value={chosenMovement ?? ""} onChange={event => { setMovement(event.target.value); setDate(""); }}>
-          {pending && !data?.missing_supply_dates.some(item => item.movement_id === pending.p_movement_id) && <option value={pending.p_movement_id}>Intento pendiente de confirmar</option>}
-          {data?.missing_supply_dates.map(item => <option key={item.movement_id} value={item.movement_id}>{item.supply_name} · {item.quantity} {item.unit} · registrado {new Date(item.recorded_at).toLocaleDateString("es-CR")}</option>)}
+        <legend>{t("inventoryDetail.completeDate")}</legend><p className={modalStyles.help}>{t("inventoryDetail.dateHelp")}</p>
+        <label>{t("inventoryDetail.missingDate")}<select value={chosenMovement ?? ""} onChange={event => { setMovement(event.target.value); setDate(""); }}>
+          {pending && !data?.missing_supply_dates.some(item => item.movement_id === pending.p_movement_id) && <option value={pending.p_movement_id}>{t("inventoryDetail.unconfirmed")}</option>}
+          {data?.missing_supply_dates.map(item => <option key={item.movement_id} value={item.movement_id}>{t("inventoryDetail.recorded", {
+            name: item.supply_name,
+            quantity: language === "es" ? item.quantity : item.quantity.toLocaleString(locale),
+            unit: item.unit,
+            date: language === "es" ? new Date(item.recorded_at).toLocaleDateString(locale) :
+              formatDate(item.recorded_at, language, { dateStyle: "medium" }) ?? t("dateUnavailable")
+          })}</option>)}
         </select></label>
-        <label>Fecha real de compra<input type="date" required value={date} onChange={event => setDate(event.target.value)} /></label>
+        <label>{t("inventoryDetail.actualDate")}<input type="date" required value={date} onChange={event => setDate(event.target.value)} /></label>
       </fieldset>
-      {pending && <p className={modalStyles.pending}>Conservamos el intento en esta pestaña. Reintentá con los mismos datos para confirmar el resultado.</p>}
-      <button className={modalStyles.primary} type="submit" disabled={busy || loading}>{busy ? "Confirmando…" : pending ? "Reintentar fecha" : "Confirmar fecha de compra"}</button>
+      {pending && <p className={modalStyles.pending}>{t("inventoryDetail.pending")}</p>}
+      <button className={modalStyles.primary} type="submit" disabled={busy || loading}>{busy ? t("inventoryDetail.confirming") : pending ? t("inventoryDetail.retryDate") : t("inventoryDetail.confirmDate")}</button>
     </form>}
     {!!data?.pending_rates.length && <section className={modalStyles.fieldset}>
-      <h3>Tasas históricas pendientes</h3><p className={modalStyles.help}>Cada consulta confirma una fecha y moneda. Una tasa guardada se reutiliza en todas tus compras que coincidan.</p>
-      <label>Fecha y moneda para valorar<select disabled={busy || loading || !!pending} value={chosenRate ? `${chosenRate.acquisition_date}:${chosenRate.source_currency}` : ""} onChange={event => setRateKey(event.target.value)}>
-        {data.pending_rates.map(rate => <option key={`${rate.acquisition_date}:${rate.source_currency}`} value={`${rate.acquisition_date}:${rate.source_currency}`}>{rate.acquisition_date} · {rate.source_currency}</option>)}
-      </select></label><button type="button" className={modalStyles.primary} disabled={busy || loading || !!pending} onClick={() => void perform("rate")}>{busy ? "Consultando…" : "Consultar tasa BCCR"}</button>
+      <h3>{t("inventoryDetail.pendingRates")}</h3><p className={modalStyles.help}>{t("inventoryDetail.rateHelp")}</p>
+      <label>{t("inventoryDetail.rateChoice")}<select disabled={busy || loading || !!pending} value={chosenRate ? `${chosenRate.acquisition_date}:${chosenRate.source_currency}` : ""} onChange={event => setRateKey(event.target.value)}>
+        {data.pending_rates.map(rate => <option key={`${rate.acquisition_date}:${rate.source_currency}`} value={`${rate.acquisition_date}:${rate.source_currency}`}>{language === "es" ? rate.acquisition_date : formatDate(rate.acquisition_date, language, { dateStyle: "medium" }) ?? t("dateUnavailable")} · {rate.source_currency}</option>)}
+      </select></label><button type="button" className={modalStyles.primary} disabled={busy || loading || !!pending} onClick={() => void perform("rate")}>{busy ? t("inventoryDetail.lookingUp") : t("inventoryDetail.lookup")}</button>
     </section>}
     <div className={styles.breakdown}>{data?.rows.map(row => <article key={`${row.asset_type}:${row.id}`}>
-      <strong>{row.name}</strong><small>{row.asset_type === "filament" ? "Filamento" : "Insumo"}</small>
-      <p>CRC {money(row.remaining_crc_value, "CRC")} · USD {money(row.remaining_usd_value, "USD")}</p>
-      {row.issue && <small>{({ missing_fx_snapshot: "Tasa histórica pendiente", missing_acquisition_date: "Falta fecha de compra", missing_cost: "Completá el costo desde la ficha de compra", corrected_order_mismatch: "La corrección requiere conciliación con su orden", unsupported_currency: "Moneda sin conversión disponible", ambiguous_movement_order: "No hay un orden histórico comprobable para convertir este saldo" } as Record<string,string>)[row.issue] ?? "Valoración incompleta"}</small>}
+      <strong>{row.name}</strong><small>{row.asset_type === "filament" ? t("inventoryDetail.filament") : t("inventoryDetail.supply")}</small>
+      <p>{(["CRC", "USD"] as const).map(currency => {
+        const value = currency === "CRC" ? row.remaining_crc_value : row.remaining_usd_value;
+        const formatted = money(value, currency, language);
+        return language === "es" || value == null ? `${currency} ${formatted}` : formatted;
+      }).join(" · ")}</p>
+      {row.issue && <small>{t(Object.hasOwn(valuationIssues, row.issue) ? valuationIssues[row.issue] ?? "inventoryDetail.incomplete" : "inventoryDetail.incomplete")}</small>}
     </article>)}</div>
-    {data && !data.rows.length && <p>Todavía no hay filamentos ni insumos que valorar.</p>}
+    {data && !data.rows.length && <p>{t("inventoryDetail.empty")}</p>}
   </ModalFrame>;
 }
