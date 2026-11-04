@@ -29,6 +29,12 @@ No traducir automáticamente nombres de filamentos, proyectos, proveedores, nota
 
 `ROADMAP.md` permanece reservado por el PR #45 de Marketing. Este checklist mantiene la continuidad sin tocar sus archivos; integrar su referencia al roadmap cuando ese frente se libere.
 
+## Continuidad del checklist
+
+Publicados: primer ingreso de probadores (#69), menú Agregar (#71), editor de filamentos (#72) e historial de producción y desglose de costos dentro de Proyectos (#73). Cada superficie usa español por defecto hasta integrar la preferencia global.
+
+Bloque en revisión: tarjetas de saldo histórico de Inicio e Inventario en español e inglés. Incluye códigos CRC/USD en los importes en inglés, estados de carga/error, saldo parcial y ayudas. Sigue pendiente la traducción del detalle de valoración, incluidos los formularios de fechas y tasas.
+
 ## Primer bloque de implementación · 2026-10-30
 
 Rama `feat/i18n-printer-foundation`, desde main `118d151`. `lib/i18n.ts` contiene el contrato común `AppLanguage`, el catálogo inicial, interpolación de texto sin HTML ni fallback silencioso entre idiomas, formatos de números/importes y presentación de pares cambiarios. La preferencia inválida se resuelve a español; no hay autodetección o persistencia nueva.
