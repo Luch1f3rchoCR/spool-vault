@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, Wallet } from "lucide-react";
 import { ModalFrame } from "./modal-frame";
+import { defaultLanguage, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import { getSupabaseClient } from "../lib/supabase";
 import { awaitInventoryRequest, inventoryValueTotal, loadInventoryValueSummary } from "../lib/inventory-values";
 import { requestReportRate } from "../lib/inventory-valuation-report";
@@ -13,9 +14,10 @@ import styles from "./inventory-value-summary.module.css";
 import modalStyles from "./supplies-modal.module.css";
 
 type Mode = "authenticated" | "demo" | "local" | "error";
+type SummaryError = "inventoryValue.loadError" | "";
 export function useInventoryValueSummary(rolls: FilamentRoll[], supplies: Supply[], mode: Mode, userId: string) {
   const [revision, setRevision] = useState(0);
-  const [loaded, setLoaded] = useState<{ rolls: FilamentRoll[]; supplies: Supply[]; userId: string; revision: number; data: InventoryValueSummary | null; error: string } | null>(null);
+  const [loaded, setLoaded] = useState<{ rolls: FilamentRoll[]; supplies: Supply[]; userId: string; revision: number; data: InventoryValueSummary | null; error: SummaryError } | null>(null);
   useEffect(() => {
     if (mode !== "authenticated" || !userId) return;
     let cancelled = false;
@@ -27,7 +29,7 @@ export function useInventoryValueSummary(rolls: FilamentRoll[], supplies: Supply
         const data = await loadInventoryValueSummary(client, userId, controller.signal);
         if (!cancelled) setLoaded({ rolls, supplies, userId, revision, data, error: "" });
       } catch {
-        if (!cancelled) setLoaded({ rolls, supplies, userId, revision, data: null, error: "No pudimos cargar el saldo histórico. Podés reintentar." });
+        if (!cancelled) setLoaded({ rolls, supplies, userId, revision, data: null, error: "inventoryValue.loadError" });
       } finally { clearTimeout(timer); }
     }
     void load();
@@ -37,36 +39,46 @@ export function useInventoryValueSummary(rolls: FilamentRoll[], supplies: Supply
   return { data: current?.data ?? null, error: current?.error ?? "", loading: mode === "authenticated" && !current, refresh: () => setRevision(value => value + 1) };
 }
 
-function money(value: number | null, currency: string) {
-  return value == null ? "—" : new Intl.NumberFormat("es-CR", { style: "currency", currency, maximumFractionDigits: currency === "CRC" ? 0 : 2 }).format(value);
+function money(value: number | null, currency: string, language = defaultLanguage) {
+  if (value == null) return "—";
+  return new Intl.NumberFormat(languageLocale(language), {
+    style: "currency",
+    currency,
+    currencyDisplay: language === "en" ? "code" : "symbol",
+    maximumFractionDigits: currency === "CRC" ? 0 : 2
+  }).format(value);
 }
 
-export function InventoryValueCards({ data, loading, error, mode, onRefresh, onDetails }: {
-  data: InventoryValueSummary | null; loading: boolean; error: string; mode: Mode; onRefresh: () => void; onDetails: () => void;
+export function InventoryValueCards({ data, loading, error, mode, onRefresh, onDetails, language = defaultLanguage }: {
+  language?: AppLanguage;
+  data: InventoryValueSummary | null; loading: boolean; error: SummaryError; mode: Mode; onRefresh: () => void; onDetails: () => void;
 }) {
-  return <section className={styles.panel} aria-label="Saldo actual del inventario">
-    <header><Wallet size={19} aria-hidden="true" /><div><h2>Saldo actual</h2><p className={styles.help}>Filamentos e insumos · costo histórico</p></div></header>
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  return <section className={styles.panel} lang={language} aria-label={t("inventoryValue.region")}>
+    <header><Wallet size={19} aria-hidden="true" /><div><h2>{t("inventoryValue.title")}</h2><p className={styles.help}>{t("inventoryValue.subtitle")}</p></div></header>
     <div className={styles.cards}>{(["CRC", "USD"] as const).map(currency => {
       const total = data ? inventoryValueTotal(data.rows, currency) : null;
-      return <article key={currency} aria-label={`Saldo en ${currency}`}>
-        <span className={styles.currency}>{currency === "CRC" ? "Colones · CRC" : "Dólares · USD"}</span>
-        <strong className={styles.amount}>{loading ? "Cargando…" : money(total?.total ?? null, currency)}</strong>
-        {total && <span>{total.missing ? `Parcial · ${total.missing} sin valorar` : "Total a costo histórico"}</span>}
+      return <article key={currency} aria-label={t("inventoryValue.balance", { currency })}>
+        <span className={styles.currency}>{t(currency === "CRC" ? "inventoryValue.crc" : "inventoryValue.usd")}</span>
+        <strong className={styles.amount}>{loading ? t("inventoryValue.loading") : money(total?.total ?? null, currency, language)}</strong>
+        {total && <span>{total.missing
+          ? t(total.missing === 1 ? "inventoryValue.partialOne" : "inventoryValue.partialMany", { count: total.missing.toLocaleString(languageLocale(language)) })
+          : t("inventoryValue.complete")}</span>}
       </article>;
     })}</div>
     {mode === "authenticated" && <div className={styles.actions}>
-      <button type="button" disabled={loading || !data} onClick={onDetails} aria-label="Ver desglose y completar">Ver desglose</button>
-      <button type="button" disabled={loading} onClick={onRefresh}><RefreshCw size={15} aria-hidden="true" />{loading ? "Actualizando…" : "Actualizar saldo"}</button>
+      <button type="button" disabled={loading || !data} onClick={onDetails} aria-label={t("inventoryValue.detailsLabel")}>{t("inventoryValue.details")}</button>
+      <button type="button" disabled={loading} onClick={onRefresh}><RefreshCw size={15} aria-hidden="true" />{loading ? t("inventoryValue.refreshing") : t("inventoryValue.refresh")}</button>
     </div>}
-    {mode !== "authenticated" && <p className={styles.help}>Iniciá sesión para valorar tu inventario sincronizado. El modo local/demo no calcula conversiones.</p>}
-    {error && <p role="alert" className={styles.help}>{error}</p>}
-    {data && data.rows.some(row => row.remaining_crc_value == null || row.remaining_usd_value == null) && <p className={styles.help} role="status">Saldo parcial: faltan datos históricos. Los pendientes no se cuentan como cero.</p>}
+    {mode !== "authenticated" && <p className={styles.help}>{t("inventoryValue.signedOut")}</p>}
+    {error && <p role="alert" className={styles.help}>{t(error)}</p>}
+    {data && data.rows.some(row => row.remaining_crc_value == null || row.remaining_usd_value == null) && <p className={styles.help} role="status">{t("inventoryValue.partialHelp")}</p>}
   </section>;
 }
 
 type DateAttempt = { p_request_id: string; p_movement_id: string; p_purchased_at: string };
 export function InventoryValueDetails({ data, loading, error, userId, onRefresh, onClose }: {
-  data: InventoryValueSummary | null; loading: boolean; error: string; userId: string; onRefresh: () => void; onClose: () => void;
+  data: InventoryValueSummary | null; loading: boolean; error: SummaryError; userId: string; onRefresh: () => void; onClose: () => void;
 }) {
   const key = `proper-inventory-date-pending:${userId}`;
   const [pending, setPending] = useState<DateAttempt | null>(() => {
@@ -121,7 +133,7 @@ export function InventoryValueDetails({ data, loading, error, userId, onRefresh,
   return <ModalFrame title="Valor del inventario" titleId="inventory-values-title" eyebrow="SALDO ACTUAL" className={modalStyles.modal}
     busy={busy} onClose={() => { if (!guard.current) onClose(); }} closeLabel="Cerrar valoración">
     <p className={modalStyles.intro}>Cantidad actual a costo histórico. Los consumos reducen el saldo; no se reescriben compras ni costos de producción.</p>
-    {(message || error) && <p ref={feedback} tabIndex={-1} role={error ? "alert" : "status"} className={modalStyles.feedback}>{[message, error].filter(Boolean).join(" ")}</p>}
+    {(message || error) && <p ref={feedback} tabIndex={-1} role={error ? "alert" : "status"} className={modalStyles.feedback}>{[message, error && translate(defaultLanguage, error)].filter(Boolean).join(" ")}</p>}
     {loading && <p role="status">Actualizando valoración…</p>}
     {error && <button type="button" disabled={busy || loading} onClick={onRefresh}>Reintentar resumen</button>}
     {(!!data?.missing_supply_dates.length || pending) && <form className={modalStyles.form} onSubmit={event => { event.preventDefault(); void perform("date"); }}>
