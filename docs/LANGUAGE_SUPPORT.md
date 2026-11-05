@@ -37,7 +37,9 @@ Publicadas en #74: tarjetas de saldo histórico de Inicio e Inventario en españ
 
 Publicado en #75: detalle de valoración en español e inglés, incluidos formularios de fecha y tasa, motivos de saldo incompleto y avisos de confirmación y reintento.
 
-Bloque en revisión: reporte de saldo de filamentos en español e inglés, con filtros, tabla, valores históricos y consulta de tasas. El CSV conserva sus encabezados, estados y formato actuales. El selector global sigue pendiente.
+Publicado en #76: reporte de saldo de filamentos en español e inglés, con filtros, tabla, valores históricos y consulta de tasas. El CSV conserva el formato existente.
+
+Bloque en revisión: formularios de compra faltante y corrección de compra en español e inglés. Se conservan moneda, fecha, costos, motivo y flujo de guardado. Siguen pendientes las órdenes de compra, Insumos y el selector global.
 
 ## Primer bloque de implementación · 2026-10-30
 

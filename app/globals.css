@@ -2501,6 +2501,7 @@ textarea:focus {
 
 .purchase-correction-modal {
   width: min(660px, 100%);
+  padding: 14px;
 }
 
 .correction-product {
