@@ -39,7 +39,9 @@ Publicado en #75: detalle de valoración en español e inglés, incluidos formul
 
 Publicado en #76: reporte de saldo de filamentos en español e inglés, con filtros, tabla, valores históricos y consulta de tasas. El CSV conserva el formato existente.
 
-Bloque en revisión: formularios de compra faltante y corrección de compra en español e inglés. Se conservan moneda, fecha, costos, motivo y flujo de guardado. Siguen pendientes las órdenes de compra, Insumos y el selector global.
+Publicado en #77: formularios de compra faltante y corrección de compra en español e inglés.
+
+Bloque en revisión: lista de órdenes y detalle de factura en español e inglés, con líneas, cargos, pagos, fechas y etiquetas accesibles para volver/cerrar. El formulario de nueva orden y sus mensajes siguen en español, con aviso al abrirlo desde la vista inglesa. Continúan pendientes su traducción, Insumos y el selector global.
 
 ## Primer bloque de implementación · 2026-10-30
 
