@@ -33,7 +33,9 @@ No traducir automáticamente nombres de filamentos, proyectos, proveedores, nota
 
 Publicados: primer ingreso de probadores (#69), menú Agregar (#71), editor de filamentos (#72) e historial de producción y desglose de costos dentro de Proyectos (#73). Cada superficie usa español por defecto hasta integrar la preferencia global.
 
-Bloque en revisión: tarjetas de saldo histórico de Inicio e Inventario en español e inglés. Incluye códigos CRC/USD en los importes en inglés, estados de carga/error, saldo parcial y ayudas. Sigue pendiente la traducción del detalle de valoración, incluidos los formularios de fechas y tasas.
+Publicadas en #74: tarjetas de saldo histórico de Inicio e Inventario en español e inglés, con códigos CRC/USD en los importes en inglés, estados de carga/error, saldo parcial y ayudas.
+
+Bloque en revisión: detalle de valoración en español e inglés, incluidos formularios de fecha y tasa, motivos de saldo incompleto y avisos de confirmación/reintento. Conserva los valores originales y muestra como tales los mensajes externos. El selector global sigue pendiente.
 
 ## Primer bloque de implementación · 2026-10-30
 
