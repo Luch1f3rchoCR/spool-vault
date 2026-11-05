@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { History, Save, X } from "lucide-react";
+import { defaultLanguage, formatDate, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import type { PackageType, PurchaseRecord } from "@/lib/types";
 
 export type PurchaseCorrectionValues = {
@@ -15,6 +16,7 @@ export type PurchaseCorrectionValues = {
 };
 
 type PurchaseCorrectionModalProps = {
+  language?: AppLanguage;
   originalPurchase: PurchaseRecord;
   effectivePurchase: PurchaseRecord;
   correctionCount: number;
@@ -24,11 +26,8 @@ type PurchaseCorrectionModalProps = {
   onSave: (values: PurchaseCorrectionValues) => Promise<void>;
 };
 
-function formatMoney(currency: string, value: number) {
-  return `${currency} ${Number(value).toLocaleString("es-CR")}`;
-}
-
 export function PurchaseCorrectionModal({
+  language = defaultLanguage,
   originalPurchase,
   effectivePurchase,
   correctionCount,
@@ -37,6 +36,9 @@ export function PurchaseCorrectionModal({
   onClose,
   onSave
 }: PurchaseCorrectionModalProps) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
+  const formatMoney = (currency: string, value: number) => `${currency} ${Number(value).toLocaleString(locale)}`;
   const [draft, setDraft] = useState<PurchaseCorrectionValues>(() => ({
     supplier_name: effectivePurchase.supplier_name,
     purchased_at: effectivePurchase.purchased_at,
@@ -65,20 +67,21 @@ export function PurchaseCorrectionModal({
       <section
         className="panel modal-panel purchase-correction-modal"
         role="dialog"
+        lang={language}
         aria-modal="true"
         aria-labelledby="correct-purchase-title"
       >
         <div className="modal-head">
           <div>
-            <p className="eyebrow">Histórico protegido</p>
-            <h2 id="correct-purchase-title">Corregir compra</h2>
+            <p className="eyebrow">{t("purchaseRecord.protected")}</p>
+            <h2 id="correct-purchase-title">{t("purchaseRecord.correctionTitle")}</h2>
           </div>
           <button
             className="modal-close"
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            aria-label="Cerrar corrección"
+            aria-label={t("purchaseRecord.correctionClose")}
           >
             <X size={20} aria-hidden="true" />
           </button>
@@ -88,18 +91,23 @@ export function PurchaseCorrectionModal({
           <span className="mini-swatch" style={{ backgroundColor: originalPurchase.color_hex }} />
           <div>
             <strong>{originalPurchase.brand} · {originalPurchase.product_line} · {originalPurchase.color_name}</strong>
-            <span>{originalPurchase.material} · {Number(originalPurchase.quantity_g).toLocaleString("es-CR")} g</span>
+            <span>{originalPurchase.material} · {Number(originalPurchase.quantity_g).toLocaleString(locale)} g</span>
           </div>
         </div>
 
         <div className="correction-audit">
           <History size={18} aria-hidden="true" />
           <div>
-            <strong>El registro original no se reemplaza</strong>
+            <strong>{t("purchaseRecord.correctionHeadline")}</strong>
             <span>
-              Original: {originalPurchase.supplier_name} · {originalPurchase.purchased_at} · {formatMoney(originalPurchase.currency, originalPurchase.total_price)}
+              {t("purchaseRecord.original", {
+                supplier: originalPurchase.supplier_name,
+                date: language === "es" ? originalPurchase.purchased_at :
+                  formatDate(originalPurchase.purchased_at, language, { dateStyle: "medium" }) ?? t("dateUnavailable"),
+                amount: formatMoney(originalPurchase.currency, originalPurchase.total_price)
+              })}
             </span>
-            {correctionCount > 0 && <small>{correctionCount} corrección{correctionCount === 1 ? "" : "es"} previa{correctionCount === 1 ? "" : "s"}.</small>}
+            {correctionCount > 0 && <small>{t(correctionCount === 1 ? "purchaseRecord.previousOne" : "purchaseRecord.previousMany", { count: correctionCount.toLocaleString(locale) })}</small>}
           </div>
         </div>
 
@@ -112,7 +120,7 @@ export function PurchaseCorrectionModal({
           }}
         >
           <label>
-            Proveedor
+            {t("filamentReport.supplier")}
             <input
               required
               list="purchase-supplier-options"
@@ -126,7 +134,7 @@ export function PurchaseCorrectionModal({
           </label>
 
           <label>
-            Fecha de compra
+            {t("purchaseRecord.date")}
             <input
               required
               type="date"
@@ -137,7 +145,7 @@ export function PurchaseCorrectionModal({
           </label>
 
           <label>
-            Presentación
+            {t("purchaseRecord.packaging")}
             <select
               value={draft.package_type}
               disabled={isSaving}
@@ -150,25 +158,25 @@ export function PurchaseCorrectionModal({
                 });
               }}
             >
-              <option value="spooled">Con spool</option>
-              <option value="refill">Refill / sin spool</option>
+              <option value="spooled">{t("purchaseRecord.spooled")}</option>
+              <option value="refill">{t("purchaseRecord.refill")}</option>
             </select>
           </label>
 
           <label>
-            Moneda
+            {t("purchaseRecord.currency")}
             <select
               value={draft.currency}
               disabled={isSaving}
               onChange={(event) => setDraft({ ...draft, currency: event.target.value })}
             >
-              <option value="CRC">CRC · colones</option>
-              <option value="USD">USD · dólares</option>
+              <option value="CRC">{t("purchaseRecord.crc")}</option>
+              <option value="USD">{t("purchaseRecord.usd")}</option>
             </select>
           </label>
 
           <label>
-            Precio total
+            {t("purchaseRecord.total")}
             <input
               required
               type="number"
@@ -181,7 +189,7 @@ export function PurchaseCorrectionModal({
           </label>
 
           <label>
-            Costo del spool
+            {t("purchaseRecord.spoolCost")}
             <input
               required
               type="number"
@@ -195,27 +203,27 @@ export function PurchaseCorrectionModal({
           </label>
 
           <div className="correction-cost-summary wide">
-            <span>Costo de filamento que quedará vigente</span>
+            <span>{t("purchaseRecord.effectiveCost")}</span>
             <strong>{formatMoney(draft.currency, filamentCost)}</strong>
           </div>
 
           <label className="wide">
-            Motivo de la corrección
+            {t("purchaseRecord.reason")}
             <textarea
               required
               minLength={3}
               maxLength={500}
               value={draft.reason}
               disabled={isSaving}
-              placeholder="Ej.: El precio digitado incluía ₡1.000 del spool."
+              placeholder={t("purchaseRecord.reasonExample")}
               onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
             />
-            <small className="field-hint">Quedará guardado en la auditoría de esta compra.</small>
+            <small className="field-hint">{t("purchaseRecord.auditHelp")}</small>
           </label>
 
           <button className="primary-action wide" type="submit" disabled={isSaving || draft.spool_cost > draft.total_price}>
             <Save size={18} aria-hidden="true" />
-            {isSaving ? "Guardando sin duplicar…" : "Guardar corrección"}
+            {isSaving ? t("purchaseRecord.savingCorrection") : t("purchaseRecord.saveCorrection")}
           </button>
         </form>
       </section>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AlertTriangle, ReceiptText, Save, X } from "lucide-react";
+import { defaultLanguage, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import type { FilamentRoll, PackageType } from "@/lib/types";
 
 export type MissingPurchaseValues = {
@@ -14,6 +15,7 @@ export type MissingPurchaseValues = {
 };
 
 type MissingPurchaseModalProps = {
+  language?: AppLanguage;
   roll: FilamentRoll;
   supplierOptions: string[];
   isSaving: boolean;
@@ -25,17 +27,17 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function formatMoney(currency: string, value: number) {
-  return `${currency} ${Number(value).toLocaleString("es-CR")}`;
-}
-
 export function MissingPurchaseModal({
+  language = defaultLanguage,
   roll,
   supplierOptions,
   isSaving,
   onClose,
   onSave
 }: MissingPurchaseModalProps) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
+  const formatMoney = (currency: string, value: number) => `${currency} ${Number(value).toLocaleString(locale)}`;
   const [supplierName, setSupplierName] = useState(roll.supplier_name?.trim() || "");
   const [purchasedAt, setPurchasedAt] = useState(roll.purchase_date || todayIso());
   const [packageType, setPackageType] = useState<PackageType>(roll.package_type);
@@ -77,20 +79,21 @@ export function MissingPurchaseModal({
       <section
         className="panel modal-panel purchase-correction-modal"
         role="dialog"
+        lang={language}
         aria-modal="true"
         aria-labelledby="missing-purchase-title"
       >
         <div className="modal-head">
           <div>
-            <p className="eyebrow">Costo incompleto</p>
-            <h2 id="missing-purchase-title">Registrar compra faltante</h2>
+            <p className="eyebrow">{t("filamentReport.missingCost")}</p>
+            <h2 id="missing-purchase-title">{t("purchaseRecord.missingTitle")}</h2>
           </div>
           <button
             className="modal-close"
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            aria-label="Cerrar compra faltante"
+            aria-label={t("purchaseRecord.missingClose")}
           >
             <X size={20} aria-hidden="true" />
           </button>
@@ -99,16 +102,16 @@ export function MissingPurchaseModal({
         <div className="correction-product">
           <span className="mini-swatch" style={{ backgroundColor: roll.color_hex }} />
           <div>
-            <strong>{roll.brand} · {roll.product_line || "Sin línea"} · {roll.color_name}</strong>
-            <span>{roll.material} · {Number(roll.initial_weight_g).toLocaleString("es-CR")} g iniciales</span>
+            <strong>{roll.brand} · {roll.product_line || t("purchaseRecord.noLine")} · {roll.color_name}</strong>
+            <span>{roll.material} · {t("purchaseRecord.initialWeight", { weight: Number(roll.initial_weight_g).toLocaleString(locale) })}</span>
           </div>
         </div>
 
         <div className="correction-audit missing-purchase-note">
           <AlertTriangle size={18} aria-hidden="true" />
           <div>
-            <strong>Este rollo no tiene una compra en su historial</strong>
-            <span>Guardaremos el registro original que faltó y actualizaremos el costo vigente juntos, sin crear duplicados.</span>
+            <strong>{t("purchaseRecord.missingHeadline")}</strong>
+            <span>{t("purchaseRecord.missingHelp")}</span>
           </div>
         </div>
 
@@ -129,7 +132,7 @@ export function MissingPurchaseModal({
           }}
         >
           <label>
-            Proveedor
+            {t("filamentReport.supplier")}
             <input
               required
               list="missing-purchase-supplier-options"
@@ -143,7 +146,7 @@ export function MissingPurchaseModal({
           </label>
 
           <label>
-            Fecha de compra
+            {t("purchaseRecord.date")}
             <input
               required
               type="date"
@@ -154,7 +157,7 @@ export function MissingPurchaseModal({
           </label>
 
           <label>
-            Presentación
+            {t("purchaseRecord.packaging")}
             <select
               value={packageType}
               disabled={isSaving}
@@ -164,28 +167,28 @@ export function MissingPurchaseModal({
                 setSpoolCost(nextPackage === "refill" ? "0" : (Number(spoolCost) > 0 ? spoolCost : "1000"));
               }}
             >
-              <option value="spooled">Con spool</option>
-              <option value="refill">Refill / sin spool</option>
+              <option value="spooled">{t("purchaseRecord.spooled")}</option>
+              <option value="refill">{t("purchaseRecord.refill")}</option>
             </select>
           </label>
 
           <label>
-            Moneda
+            {t("purchaseRecord.currency")}
             <select value={currency} disabled={isSaving} onChange={(event) => setCurrency(event.target.value)}>
-              <option value="CRC">CRC · colones</option>
-              <option value="USD">USD · dólares</option>
+              <option value="CRC">{t("purchaseRecord.crc")}</option>
+              <option value="USD">{t("purchaseRecord.usd")}</option>
             </select>
           </label>
 
           <label>
-            Precio total pagado
+            {t("purchaseRecord.paidTotal")}
             <input
               required
               autoFocus
               type="number"
               min="0"
               step="0.01"
-              placeholder="Ej. 11500"
+              placeholder={t("purchaseRecord.priceExample")}
               value={totalPrice}
               disabled={isSaving}
               onChange={(event) => setTotalPrice(event.target.value)}
@@ -193,7 +196,7 @@ export function MissingPurchaseModal({
           </label>
 
           <label>
-            Costo del spool
+            {t("purchaseRecord.spoolCost")}
             <input
               required
               type="number"
@@ -207,17 +210,17 @@ export function MissingPurchaseModal({
           </label>
 
           <div className="correction-cost-summary wide">
-            <span>Costo consumible del filamento</span>
+            <span>{t("purchaseRecord.filamentCost")}</span>
             <strong>{filamentCost == null ? "—" : formatMoney(currency, filamentCost)}</strong>
           </div>
 
           <p className="form-help wide">
-            Si el dato existente era incorrecto y ya hay una compra, usá “Corregir compra”. Esta acción es únicamente para una compra omitida.
+            {t("purchaseRecord.missingOnly")}
           </p>
 
           <button className="primary-action wide" type="submit" disabled={isSaving || !isValid}>
             {isSaving ? <ReceiptText size={18} aria-hidden="true" /> : <Save size={18} aria-hidden="true" />}
-            {isSaving ? "Guardando compra sin duplicar…" : "Guardar compra faltante"}
+            {isSaving ? t("purchaseRecord.savingMissing") : t("purchaseRecord.saveMissing")}
           </button>
         </form>
       </section>
