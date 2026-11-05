@@ -41,7 +41,9 @@ Publicado en #76: reporte de saldo de filamentos en español e inglés, con filt
 
 Publicado en #77: formularios de compra faltante y corrección de compra en español e inglés.
 
-Bloque en revisión: lista de órdenes y detalle de factura en español e inglés, con líneas, cargos, pagos, fechas y etiquetas accesibles para volver/cerrar. El formulario de nueva orden y sus mensajes siguen en español, con aviso al abrirlo desde la vista inglesa. Continúan pendientes su traducción, Insumos y el selector global.
+Publicado en #78: lista de órdenes y detalle de factura en español e inglés, con líneas, cargos, pagos y navegación accesible.
+
+Bloque en revisión: formulario de nueva orden y editor de filamentos en español e inglés. Incluye agrupación de compras, distribución de cargos, pago, ayudas y mensajes de guardado. Cambiar idioma conserva borradores y valores de reintento. Continúan pendientes Insumos y el selector global.
 
 ## Primer bloque de implementación · 2026-10-30
 

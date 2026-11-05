@@ -69,18 +69,12 @@ type Props = {
 
 type ManualDraft = Record<string, { shipping: string; other: string }>;
 
-const allocationLabels: Record<PurchaseAllocationMethod, string> = {
-  per_unit: "Por unidad",
-  by_value: "Por valor",
-  manual: "Manual"
-};
-
-const exchangeRateLabels: Record<ExchangeRateKind, string> = {
-  paid: "Real pagado",
-  historical: "Histórico",
-  current: "Actual del día",
-  manual: "Manual",
-  estimated: "Estimado"
+const exchangeRateLabels: Record<ExchangeRateKind, MessageKey> = {
+  paid: "purchaseOrders.exchange.paid",
+  historical: "purchaseOrders.exchange.historical",
+  current: "purchaseOrders.exchange.current",
+  manual: "purchaseOrders.exchange.manual",
+  estimated: "purchaseOrders.exchange.estimated"
 };
 
 function money(currency: string, value: number, language = defaultLanguage) {
@@ -137,7 +131,7 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [newRolls, setNewRolls] = useState<NewOrderRoll[]>([]);
   const [lineDraft, setLineDraft] = useState<NewOrderRoll | null>(null);
-  const [lineError, setLineError] = useState("");
+  const [lineError, setLineError] = useState<MessageKey | null>(null);
   const linesHeading = useRef<HTMLHeadingElement>(null);
   const returnToLines = useRef(false);
   useEffect(() => {
@@ -148,7 +142,7 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
   }, [lineDraft]);
   const [supplierName, setSupplierName] = useState("");
   const [currency, setCurrency] = useState(baseCurrency);
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] = useState<MessageKey | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const feedbackRef = useRef<HTMLParagraphElement>(null);
   const submitting = useRef(false);
@@ -264,7 +258,7 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
     event.preventDefault();
     if (submitting.current || isSaving || lineDraft || !selectedPurchases.length || !manualMatches || !paymentValid) return;
     submitting.current = true;
-    setFeedback("");
+    setFeedback(null);
     const manualAllocations = Object.fromEntries(selectedPurchases.map((purchase) => [purchase.id, {
       shipping: shippingAllocation.get(purchase.id) ?? 0,
       other: otherAllocation.get(purchase.id) ?? 0
@@ -289,8 +283,8 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
     });
     if (saved) resetForm();
     setSaveFailed(!saved);
-    setFeedback(saved ? "Orden guardada. El inventario está actualizado." : "No pudimos confirmar la orden. Conservamos las partidas: podés reintentar sin duplicarlas.");
-    } catch { setSaveFailed(true); setFeedback("No pudimos confirmar la orden. Conservamos las partidas para reintentar."); }
+    setFeedback(saved ? "orderForm.saved" : "orderForm.unconfirmed");
+    } catch { setSaveFailed(true); setFeedback("orderForm.failed"); }
     finally { submitting.current = false; }
   }
 
@@ -298,20 +292,20 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
 
   function updateLine(patch: Partial<NewOrderRoll>) {
     setLineDraft((line) => line ? { ...line, ...patch } : line);
-    setLineError("");
+    setLineError(null);
   }
 
   function closeLine() {
     if (isSaving) return;
     returnToLines.current = true;
     setLineDraft(null);
-    setLineError("");
+    setLineError(null);
   }
 
   function includeLine(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!lineDraft || isSaving) return;
-    if (!lineDraft.color_name.trim()) { setLineError("Escribí el nombre del color."); return; }
+    if (!lineDraft.color_name.trim()) { setLineError("orderForm.colorRequired"); return; }
     const line = { ...lineDraft, color_name: lineDraft.color_name.trim() };
     setNewRolls((rows) => rows.some((row) => row.line_id === line.line_id)
       ? rows.map((row) => row.line_id === line.line_id ? line : row) : [...rows, line]);
@@ -321,28 +315,28 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
   if (lineDraft) {
     const line = lineDraft;
     const editing = newRolls.some((row) => row.line_id === line.line_id);
-    return <ModalFrame lang="es" className="purchase-orders-modal" titleId="purchase-line-title" eyebrow="Borrador de compra"
-      title={editing ? "Editar filamento de la compra" : "Agregar filamento a la compra"} busy={isSaving}
-      onClose={closeLine} onBack={closeLine} viewKey={`line-${line.line_id}`} closeLabel="Volver a la compra">
-      <p className="form-help">Una línea por rollo físico. Incluirlo aquí no guarda inventario: todo se registra junto al guardar la compra completa.</p>
+    return <ModalFrame lang={language} className="purchase-orders-modal" titleId="purchase-line-title" eyebrow={t("orderForm.lineDraft")}
+      title={t(editing ? "orderForm.editLineTitle" : "orderForm.addLineTitle")} busy={isSaving}
+      onClose={closeLine} onBack={closeLine} viewKey={`line-${line.line_id}`} closeLabel={t("orderForm.back")} backLabel={t("orderForm.back")}>
+      <p className="form-help">{t("orderForm.physicalRollHelp")}</p>
       <form className="purchase-line-editor" onSubmit={includeLine}>
         <fieldset disabled={isSaving} className="purchase-line-editor-fields form-grid">
-          <label>Marca<select value={line.brand} onChange={(event) => updateLine({ brand: event.target.value })}>{brandOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
-          <label>Material<select value={line.material} onChange={(event) => updateLine({ material: event.target.value, product_line: lineOptionsByMaterial[event.target.value]?.[0] || "Genérico" })}>{materialOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
-          <label>Línea<select value={line.product_line} onChange={(event) => updateLine({ product_line: event.target.value })}>{(lineOptionsByMaterial[line.material] || ["Genérico"]).map((name) => <option key={name}>{name}</option>)}</select></label>
-          <label>Nombre del color<input required maxLength={120} value={line.color_name} onChange={(event) => updateLine({ color_name: event.target.value })} /></label>
-          <label>Color aproximado<input type="color" value={/^#[0-9a-f]{6}$/i.test(line.color_hex) ? line.color_hex : "#999999"} onChange={(event) => updateLine({ color_hex: event.target.value })} /></label>
+          <label>{t("brand")}<select value={line.brand} onChange={(event) => updateLine({ brand: event.target.value })}>{brandOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
+          <label>{t("rollEdit.material")}<select value={line.material} onChange={(event) => updateLine({ material: event.target.value, product_line: lineOptionsByMaterial[event.target.value]?.[0] || "Genérico" })}>{materialOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
+          <label>{t("rollEdit.line")}<select value={line.product_line} onChange={(event) => updateLine({ product_line: event.target.value })}>{(lineOptionsByMaterial[line.material] || ["Genérico"]).map((name) => <option key={name}>{name}</option>)}</select></label>
+          <label>{t("orderForm.colorName")}<input required maxLength={120} value={line.color_name} onChange={(event) => updateLine({ color_name: event.target.value })} /></label>
+          <label>{t("orderForm.colorPreview")}<input type="color" value={/^#[0-9a-f]{6}$/i.test(line.color_hex) ? line.color_hex : "#999999"} onChange={(event) => updateLine({ color_hex: event.target.value })} /></label>
           <label>HEX<input required pattern="#[0-9A-Fa-f]{6}" maxLength={7} value={line.color_hex} onChange={(event) => updateLine({ color_hex: event.target.value })} /></label>
-          <label>Peso del filamento (g)<input required type="number" min="0.01" max="999999" step="0.01" value={line.quantity_g} onChange={(event) => updateLine({ quantity_g: Number(event.target.value) })} /></label>
-          <label>Precio del producto ({orderCurrency})<input required type="number" min="0" step="0.01" value={line.total_price} onChange={(event) => updateLine({ total_price: event.target.value === "" ? "" : Number(event.target.value) })} /><small>Incluye spool si lo compraste; no incluye envío.</small></label>
-          <label>Presentación<select value={line.package_type} onChange={(event) => updateLine({ package_type: event.target.value as PackageType, spool_cost: 0 })}><option value="refill">Sin spool / refill</option><option value="spooled">Con spool</option></select></label>
-          {line.package_type === "spooled" && <label>Costo del spool incluido ({orderCurrency})<input required type="number" min="0" max={Number(line.total_price)} step="0.01" value={line.spool_cost} onChange={(event) => updateLine({ spool_cost: Number(event.target.value) })} /></label>}
-          <label>Ubicación (opcional)<input maxLength={160} value={line.location} onChange={(event) => updateLine({ location: event.target.value })} /></label>
+          <label>{t("orderForm.weight")}<input required type="number" min="0.01" max="999999" step="0.01" value={line.quantity_g} onChange={(event) => updateLine({ quantity_g: Number(event.target.value) })} /></label>
+          <label>{t("orderForm.productPrice", { currency: orderCurrency })}<input required type="number" min="0" step="0.01" value={line.total_price} onChange={(event) => updateLine({ total_price: event.target.value === "" ? "" : Number(event.target.value) })} /><small>{t("orderForm.productPriceHelp")}</small></label>
+          <label>{t("purchaseRecord.packaging")}<select value={line.package_type} onChange={(event) => updateLine({ package_type: event.target.value as PackageType, spool_cost: 0 })}><option value="refill">{t("orderForm.noSpool")}</option><option value="spooled">{t("purchaseRecord.spooled")}</option></select></label>
+          {line.package_type === "spooled" && <label>{t("orderForm.includedSpool", { currency: orderCurrency })}<input required type="number" min="0" max={Number(line.total_price)} step="0.01" value={line.spool_cost} onChange={(event) => updateLine({ spool_cost: Number(event.target.value) })} /></label>}
+          <label>{t("firstVisit.location")}<input maxLength={160} value={line.location} onChange={(event) => updateLine({ location: event.target.value })} /></label>
         </fieldset>
-        {lineError && <p className="account-error" role="alert">{lineError}</p>}
+        {lineError && <p className="account-error" role="alert">{t(lineError)}</p>}
         <div className="purchase-line-editor-actions">
-          <button className="secondary-action" type="button" onClick={closeLine} disabled={isSaving}>Cancelar</button>
-          <button className="primary-action" type="submit" disabled={isSaving}><Plus size={18} aria-hidden="true" />{editing ? "Actualizar línea" : "Incluir en la compra"}</button>
+          <button className="secondary-action" type="button" onClick={closeLine} disabled={isSaving}>{t("orderForm.cancel")}</button>
+          <button className="primary-action" type="submit" disabled={isSaving}><Plus size={18} aria-hidden="true" />{editing ? t("orderForm.updateLine") : t("orderForm.includeLine")}</button>
         </div>
       </form>
     </ModalFrame>;
@@ -360,50 +354,49 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
           payment={payments.find((payment) => payment.order_id === selectedOrder.id)} /> : null}
 
         <div hidden={Boolean(selectedOrder)}>
-        {feedback && <p lang="es" ref={feedbackRef} tabIndex={-1} role={saveFailed ? "alert" : "status"} className={saveFailed ? "account-error" : "account-notice"}>{feedback}{saveFailed && operationNote && <><br />{operationNote}</>}</p>}
+        {feedback && <p ref={feedbackRef} tabIndex={-1} role={saveFailed ? "alert" : "status"} className={saveFailed ? "account-error" : "account-notice"}>{t(feedback)}{saveFailed && operationNote && <><br />{language === "en" && <>{t("account.originalMessage")} </>}<span lang="">{operationNote}</span></>}</p>}
         <div className="purchase-order-summary">
           <div><ReceiptText size={19} aria-hidden="true" /><span><strong>{orders.length}</strong> {t("purchaseOrders.orders")}</span></div>
           <div><PackageCheck size={19} aria-hidden="true" /><span><strong>{availablePurchases.length}</strong> {t("purchaseOrders.ungrouped")}</span></div>
-          <button type="button" onClick={() => { setShowForm((value) => !value); setFeedback(""); }} disabled={isSaving}><Plus size={17} aria-hidden="true" /> {t("purchaseOrders.newOrder")}</button>
+          <button type="button" onClick={() => { setShowForm((value) => !value); setFeedback(null); }} disabled={isSaving}><Plus size={17} aria-hidden="true" /> {t("purchaseOrders.newOrder")}</button>
         </div>
 
-        {showForm && language === "en" && <p>{t("purchaseOrders.formLanguage")}</p>}
         {showForm && (
-          <form lang="es" className="purchase-order-form" onSubmit={submitOrder} aria-busy={isSaving}>
+          <form lang={language} className="purchase-order-form" onSubmit={submitOrder} aria-busy={isSaving}>
             <fieldset disabled={isSaving} className="purchase-order-fields">
             <div className="purchase-order-header form-grid">
-              <label>Proveedor de la orden<input required maxLength={200} list="order-suppliers" value={orderSupplier} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setSupplierName(event.target.value)} /></label>
+              <label>{t("orderForm.supplier")}<input required maxLength={200} list="order-suppliers" value={orderSupplier} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setSupplierName(event.target.value)} /></label>
               <datalist id="order-suppliers">{supplierNames.map((name) => <option key={name} value={name} />)}</datalist>
-              <label>Moneda de la orden<select value={orderCurrency} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setCurrency(event.target.value)}>{Array.from(new Set([orderCurrency, baseCurrency, "CRC", "USD", "EUR"])).map((code) => <option key={code}>{code}</option>)}</select></label>
+              <label>{t("orderForm.currency")}<select value={orderCurrency} disabled={isSaving || existingPurchases.length > 0} onChange={(event) => setCurrency(event.target.value)}>{Array.from(new Set([orderCurrency, baseCurrency, "CRC", "USD", "EUR"])).map((code) => <option key={code}>{code}</option>)}</select></label>
             </div>
             <div className="purchase-order-step">
-              <div className="section-head"><div><p className="eyebrow">Paso 1</p><h3 ref={linesHeading} tabIndex={-1}>Partidas de la compra</h3></div><span>{selectedPurchases.length} líneas</span></div>
-              <p className="form-help">Agregá un rollo a la vez. Podés editar o quitar sus líneas antes de guardar la compra completa.</p>
+              <div className="section-head"><div><p className="eyebrow">{t("orderForm.stepOne")}</p><h3 ref={linesHeading} tabIndex={-1}>{t("orderForm.lines")}</h3></div><span>{t(selectedPurchases.length === 1 ? "purchaseOrders.lineOne" : "purchaseOrders.lineMany", { count: selectedPurchases.length.toLocaleString(locale) })}</span></div>
+              <p className="form-help">{t("orderForm.linesHelp")}</p>
               <button type="button" disabled={isSaving || selectedPurchases.length >= 100} onClick={() => setLineDraft({
                 line_id: crypto.randomUUID(), brand: brandOptions[0] || "Genérico", material: "PLA", product_line: lineOptionsByMaterial.PLA?.[0] || "Genérico",
                 color_name: "", color_hex: "#999999", quantity_g: 1000, total_price: "", package_type: "refill", spool_cost: 0, location: ""
-              })}><Plus size={17} aria-hidden="true" />Agregar filamento</button>
-              <ol className="purchase-draft-lines" aria-label="Partidas de la compra">
+              })}><Plus size={17} aria-hidden="true" />{t("orderForm.addFilament")}</button>
+              <ol className="purchase-draft-lines" aria-label={t("orderForm.lines")}>
                 {selectedPurchases.map((purchase, index) => {
                   const line = newRolls.find((row) => row.line_id === purchase.id);
                   return <li key={purchase.id}>
                     <span className="mini-swatch" style={{ backgroundColor: purchase.color_hex }} />
-                    <div className="purchase-draft-description"><strong>{index + 1}. {purchase.color_name}</strong><small>{purchase.brand} · {purchase.product_line || purchase.material}</small><small>{purchase.quantity_g.toLocaleString("es-CR")} g · {purchase.package_type === "spooled" ? "Con spool" : "Sin spool / refill"} · {line ? "Por registrar" : "Compra registrada"}</small></div>
-                    <strong className="purchase-draft-price">{money(orderCurrency, purchase.total_price)}</strong>
+                    <div className="purchase-draft-description"><strong>{index + 1}. {purchase.color_name}</strong><small>{purchase.brand} · {purchase.product_line || purchase.material}</small><small>{purchase.quantity_g.toLocaleString(locale)} g · {purchase.package_type === "spooled" ? t("purchaseRecord.spooled") : t("orderForm.noSpool")} · {line ? t("orderForm.unrecorded") : t("orderForm.recorded")}</small></div>
+                    <strong className="purchase-draft-price">{displayMoney(orderCurrency, purchase.total_price)}</strong>
                     <div className="purchase-draft-actions">
-                      {line && <button type="button" disabled={isSaving} aria-label={`Editar línea ${index + 1}: ${purchase.color_name}`} onClick={() => setLineDraft({ ...line })}><Pencil size={16} aria-hidden="true" />Editar</button>}
-                      <button type="button" disabled={isSaving} aria-label={`Quitar línea ${index + 1}: ${purchase.color_name}`} onClick={() => line
+                      {line && <button type="button" disabled={isSaving} aria-label={t("orderForm.editLabel", { number: index + 1, color: purchase.color_name })} onClick={() => setLineDraft({ ...line })}><Pencil size={16} aria-hidden="true" />{t("orderForm.edit")}</button>}
+                      <button type="button" disabled={isSaving} aria-label={t("orderForm.removeLabel", { number: index + 1, color: purchase.color_name })} onClick={() => line
                         ? setNewRolls((rows) => rows.filter((row) => row.line_id !== line.line_id))
-                        : setSelectedIds((ids) => ids.filter((id) => id !== purchase.id))}><Trash2 size={16} aria-hidden="true" /><span>Quitar</span></button>
+                        : setSelectedIds((ids) => ids.filter((id) => id !== purchase.id))}><Trash2 size={16} aria-hidden="true" /><span>{t("orderForm.remove")}</span></button>
                     </div>
                   </li>;
                 })}
               </ol>
-              {!selectedPurchases.length && <p className="purchase-draft-empty">Todavía no hay líneas. Agregá el primer filamento para preparar tu compra.</p>}
-              <p className="form-help">Las líneas nuevas son un borrador; el inventario se actualiza únicamente al guardar la compra.</p>
+              {!selectedPurchases.length && <p className="purchase-draft-empty">{t("orderForm.noLines")}</p>}
+              <p className="form-help">{t("orderForm.draftHelp")}</p>
               <details className="purchase-existing">
-                <summary tabIndex={0}>Agrupar compras ya registradas ({availablePurchases.length})</summary>
-                <p className="form-help">Del mismo proveedor y moneda. Agruparlas no vuelve a ingresar filamento ni modifica su historia.</p>
+                <summary tabIndex={0}>{t("orderForm.groupExisting", { count: availablePurchases.length.toLocaleString(locale) })}</summary>
+                <p className="form-help">{t("orderForm.groupHelp")}</p>
               <div className="purchase-candidate-list">
                 {availablePurchases.map((purchase) => {
                   const compatible = !anchor || (
@@ -415,8 +408,8 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
                     <label key={purchase.id} className={selected ? "selected" : ""}>
                       <input type="checkbox" checked={selected} disabled={isSaving || (!selected && selectedPurchases.length >= 100) || (!compatible && !selected)} onChange={() => togglePurchase(purchase)} />
                       <span className="mini-swatch" style={{ backgroundColor: purchase.color_hex }} />
-                      <span><strong>{purchase.brand} · {purchase.product_line || purchase.material} · {purchase.color_name}</strong><small>{purchase.supplier_name.trim()} · {purchase.purchased_at}</small></span>
-                      <strong>{money(purchase.currency, purchase.total_price)}</strong>
+                      <span><strong>{purchase.brand} · {purchase.product_line || purchase.material} · {purchase.color_name}</strong><small>{purchase.supplier_name.trim()} · {dateLabel(purchase.purchased_at)}</small></span>
+                      <strong>{displayMoney(purchase.currency, purchase.total_price)}</strong>
                     </label>
                   );
                 })}
@@ -425,56 +418,56 @@ export function PurchaseOrdersModal({ purchases, orders, items, payments, baseCu
             </div>
 
             <div className="purchase-order-step">
-              <div className="section-head"><div><p className="eyebrow">Paso 2</p><h3>Cargos y prorrateo</h3></div>{anchor && <span>{anchor.currency}</span>}</div>
+              <div className="section-head"><div><p className="eyebrow">{t("orderForm.stepTwo")}</p><h3>{t("orderForm.charges")}</h3></div>{anchor && <span>{anchor.currency}</span>}</div>
               <div className="form-grid">
-                <label>Fecha de la orden<input required type="date" value={purchasedAt} disabled={isSaving} onChange={(event) => setPurchasedAt(event.target.value)} /></label>
-                <label>Confianza del costo<select value={confidence} disabled={isSaving} onChange={(event) => setConfidence(event.target.value as CostConfidence)}><option value="actual">Real · tengo el monto</option><option value="estimated">Estimado · supuesto visible</option><option value="incomplete">Incompleto · faltan cargos</option></select></label>
-                <label>Envío / express<input type="number" min="0" step="0.01" value={shipping} disabled={isSaving} onChange={(event) => setShipping(Number(event.target.value))} /></label>
-                <label>Otros cargos<input type="number" min="0" step="0.01" value={otherCharges} disabled={isSaving} onChange={(event) => setOtherCharges(Number(event.target.value))} /></label>
-                <label className="wide">Método de prorrateo<select value={allocationMethod} disabled={isSaving} onChange={(event) => setAllocationMethod(event.target.value as PurchaseAllocationMethod)}><option value="per_unit">Por unidad · recomendado</option><option value="by_value">Por valor de cada rollo</option><option value="manual">Manual por partida</option></select></label>
-                <button className="historical-assumption wide" type="button" disabled={isSaving || Boolean(anchor && anchor.currency !== "CRC")} onClick={() => { setShipping(3000); setAllocationMethod("per_unit"); setConfidence("estimated"); }}><Truck size={17} aria-hidden="true" /><span><strong>Aplicar supuesto histórico: ₡3.000 por orden</strong><small>Se divide por unidad; serían ₡1.000 por rollo cuando la orden tiene 3.</small></span></button>
+                <label>{t("orderForm.date")}<input required type="date" value={purchasedAt} disabled={isSaving} onChange={(event) => setPurchasedAt(event.target.value)} /></label>
+                <label>{t("orderForm.confidence")}<select value={confidence} disabled={isSaving} onChange={(event) => setConfidence(event.target.value as CostConfidence)}><option value="actual">{t("orderForm.actual")}</option><option value="estimated">{t("orderForm.estimated")}</option><option value="incomplete">{t("orderForm.incomplete")}</option></select></label>
+                <label>{t("purchaseOrders.express")}<input type="number" min="0" step="0.01" value={shipping} disabled={isSaving} onChange={(event) => setShipping(Number(event.target.value))} /></label>
+                <label>{t("purchaseOrders.otherCharges")}<input type="number" min="0" step="0.01" value={otherCharges} disabled={isSaving} onChange={(event) => setOtherCharges(Number(event.target.value))} /></label>
+                <label className="wide">{t("orderForm.allocation")}<select value={allocationMethod} disabled={isSaving} onChange={(event) => setAllocationMethod(event.target.value as PurchaseAllocationMethod)}><option value="per_unit">{t("orderForm.perUnit")}</option><option value="by_value">{t("orderForm.byValue")}</option><option value="manual">{t("orderForm.manual")}</option></select></label>
+                <button className="historical-assumption wide" type="button" disabled={isSaving || Boolean(anchor && anchor.currency !== "CRC")} onClick={() => { setShipping(3000); setAllocationMethod("per_unit"); setConfidence("estimated"); }}><Truck size={17} aria-hidden="true" /><span><strong>{t("orderForm.assumption")}</strong><small>{t("orderForm.assumptionHelp")}</small></span></button>
               </div>
 
               {selectedPurchases.length > 0 && (
                 <div className="allocation-preview">
-                  <div className="allocation-head"><Calculator size={17} aria-hidden="true" /><strong>Vista previa · {allocationLabels[allocationMethod]}</strong></div>
+                  <div className="allocation-head"><Calculator size={17} aria-hidden="true" /><strong>{t("orderForm.preview", { method: t(`purchaseOrders.allocation.${allocationMethod}`) })}</strong></div>
                   {selectedPurchases.map((purchase) => (
                     <div key={purchase.id}>
                       <span>{purchase.color_name}</span>
                       {allocationMethod === "manual" ? (
-                        <span className="manual-allocation"><input aria-label={`Envío para ${purchase.color_name}`} type="number" min="0" step="0.01" placeholder="Envío" value={manual[purchase.id]?.shipping ?? ""} onChange={(event) => setManual((current) => ({ ...current, [purchase.id]: { shipping: event.target.value, other: current[purchase.id]?.other ?? "" } }))} /><input aria-label={`Otros cargos para ${purchase.color_name}`} type="number" min="0" step="0.01" placeholder="Otros" value={manual[purchase.id]?.other ?? ""} onChange={(event) => setManual((current) => ({ ...current, [purchase.id]: { shipping: current[purchase.id]?.shipping ?? "", other: event.target.value } }))} /></span>
-                      ) : <span>+ {money(purchase.currency, (shippingAllocation.get(purchase.id) ?? 0) + (otherAllocation.get(purchase.id) ?? 0))}</span>}
-                      <strong>{money(purchase.currency, Number(purchase.total_price) + (shippingAllocation.get(purchase.id) ?? 0) + (otherAllocation.get(purchase.id) ?? 0))}</strong>
+                        <span className="manual-allocation"><input aria-label={t("orderForm.shippingLabel", { color: purchase.color_name })} type="number" min="0" step="0.01" placeholder={t("orderForm.shippingPlaceholder")} value={manual[purchase.id]?.shipping ?? ""} onChange={(event) => setManual((current) => ({ ...current, [purchase.id]: { shipping: event.target.value, other: current[purchase.id]?.other ?? "" } }))} /><input aria-label={t("orderForm.otherLabel", { color: purchase.color_name })} type="number" min="0" step="0.01" placeholder={t("orderForm.otherPlaceholder")} value={manual[purchase.id]?.other ?? ""} onChange={(event) => setManual((current) => ({ ...current, [purchase.id]: { shipping: current[purchase.id]?.shipping ?? "", other: event.target.value } }))} /></span>
+                      ) : <span>+ {displayMoney(purchase.currency, (shippingAllocation.get(purchase.id) ?? 0) + (otherAllocation.get(purchase.id) ?? 0))}</span>}
+                      <strong>{displayMoney(purchase.currency, Number(purchase.total_price) + (shippingAllocation.get(purchase.id) ?? 0) + (otherAllocation.get(purchase.id) ?? 0))}</strong>
                     </div>
                   ))}
-                  {!manualMatches && <p role="alert">El reparto manual debe sumar exactamente los cargos de la orden.</p>}
+                  {!manualMatches && <p role="alert">{t("orderForm.manualError")}</p>}
                 </div>
               )}
 
               <div className="payment-capture">
                 <label className="payment-toggle">
                   <input type="checkbox" checked={includePayment} disabled={isSaving || !anchor} onChange={(event) => togglePayment(event.target.checked)} />
-                  <span><CreditCard size={18} aria-hidden="true" /><span><strong>Registrar lo realmente pagado</strong><small>Opcional · conserva monto, moneda y tipo de cambio usados.</small></span></span>
+                  <span><CreditCard size={18} aria-hidden="true" /><span><strong>{t("orderForm.recordPayment")}</strong><small>{t("orderForm.paymentHelp")}</small></span></span>
                 </label>
                 {includePayment && (
                   <div className="form-grid payment-grid">
-                    <label>Monto pagado<input required type="number" min="0" step="0.01" value={paidAmount} disabled={isSaving} onChange={(event) => setPaidAmount(event.target.value)} /></label>
-                    <label>Moneda pagada<select value={paidCurrency} disabled={isSaving} onChange={(event) => changePaidCurrency(event.target.value)}>{paymentCurrencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label>
-                    <label>Tipo de cambio<input required type="number" min="0.00000001" step="0.00000001" value={exchangeRate} disabled={isSaving || paidCurrency === anchor?.currency} onChange={(event) => setExchangeRate(event.target.value)} /><small>1 {anchor?.currency} = {exchangeRate || "—"} {paidCurrency}</small></label>
-                    <label>Fecha del tipo de cambio<input required type="date" value={exchangeRateDate} disabled={isSaving} onChange={(event) => setExchangeRateDate(event.target.value)} /></label>
-                    <label>Clase<select value={exchangeRateKind} disabled={isSaving} onChange={(event) => setExchangeRateKind(event.target.value as ExchangeRateKind)}>{Object.entries(exchangeRateLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                    <label>Fuente<input maxLength={200} value={exchangeRateSource} disabled={isSaving} placeholder="Estado de cuenta, BCCR, banco…" onChange={(event) => setExchangeRateSource(event.target.value)} /></label>
+                    <label>{t("orderForm.paidAmount")}<input required type="number" min="0" step="0.01" value={paidAmount} disabled={isSaving} onChange={(event) => setPaidAmount(event.target.value)} /></label>
+                    <label>{t("orderForm.paidCurrency")}<select value={paidCurrency} disabled={isSaving} onChange={(event) => changePaidCurrency(event.target.value)}>{paymentCurrencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label>
+                    <label>{t("orderForm.exchangeRate")}<input required type="number" min="0.00000001" step="0.00000001" value={exchangeRate} disabled={isSaving || paidCurrency === anchor?.currency} onChange={(event) => setExchangeRate(event.target.value)} /><small>1 {anchor?.currency} = {exchangeRate || "—"} {paidCurrency}</small></label>
+                    <label>{t("orderForm.exchangeDate")}<input required type="date" value={exchangeRateDate} disabled={isSaving} onChange={(event) => setExchangeRateDate(event.target.value)} /></label>
+                    <label>{t("orderForm.exchangeKind")}<select value={exchangeRateKind} disabled={isSaving} onChange={(event) => setExchangeRateKind(event.target.value as ExchangeRateKind)}>{Object.entries(exchangeRateLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
+                    <label>{t("orderForm.source")}<input maxLength={200} value={exchangeRateSource} disabled={isSaving} placeholder={t("orderForm.sourceExample")} onChange={(event) => setExchangeRateSource(event.target.value)} /></label>
                     {expectedPaid !== null && (
-                      <p className="payment-preview wide">Conversión de referencia: <strong>{money(paidCurrency, expectedPaid)}</strong>{parsedPaidAmount !== null && Math.abs(parsedPaidAmount - expectedPaid) >= 0.01 ? ` · diferencia real ${money(paidCurrency, parsedPaidAmount - expectedPaid)}` : ""}</p>
+                      <p className="payment-preview wide">{t("orderForm.reference")} <strong>{displayMoney(paidCurrency, expectedPaid)}</strong>{parsedPaidAmount !== null && Math.abs(parsedPaidAmount - expectedPaid) >= 0.01 ? t("orderForm.difference", { amount: displayMoney(paidCurrency, parsedPaidAmount - expectedPaid) }) : ""}</p>
                     )}
-                    {!paymentValid && <p className="payment-error wide" role="alert">Completá el pago y usá tipo de cambio 1 cuando la moneda original y la pagada sean iguales.</p>}
+                    {!paymentValid && <p className="payment-error wide" role="alert">{t("orderForm.paymentError")}</p>}
                   </div>
                 )}
               </div>
 
-              <label className="order-notes">Notas<textarea maxLength={1000} value={notes} disabled={isSaving} placeholder="Factura, número de pedido o aclaración del supuesto usado…" onChange={(event) => setNotes(event.target.value)} /></label>
-              <div className="purchase-order-total"><span>Subtotal {money(anchor?.currency ?? "CRC", subtotal)} + cargos {money(anchor?.currency ?? "CRC", shipping + otherCharges)}</span><strong>{money(anchor?.currency ?? "CRC", subtotal + shipping + otherCharges)}</strong></div>
-              <button className="primary-action" type="submit" disabled={isSaving || !selectedPurchases.length || !manualMatches || !paymentValid}><Save size={18} aria-hidden="true" />{isSaving ? "Guardando orden completa…" : "Guardar orden"}</button>
+              <label className="order-notes">{t("orderForm.notes")}<textarea maxLength={1000} value={notes} disabled={isSaving} placeholder={t("orderForm.notesPlaceholder")} onChange={(event) => setNotes(event.target.value)} /></label>
+              <div className="purchase-order-total"><span>{t("orderForm.total", { subtotal: displayMoney(anchor?.currency ?? "CRC", subtotal), charges: displayMoney(anchor?.currency ?? "CRC", shipping + otherCharges) })}</span><strong>{displayMoney(anchor?.currency ?? "CRC", subtotal + shipping + otherCharges)}</strong></div>
+              <button className="primary-action" type="submit" disabled={isSaving || !selectedPurchases.length || !manualMatches || !paymentValid}><Save size={18} aria-hidden="true" />{isSaving ? t("orderForm.saving") : t("orderForm.save")}</button>
             </div>
             </fieldset>
           </form>
