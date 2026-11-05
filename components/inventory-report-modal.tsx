@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { ModalFrame } from "@/components/modal-frame";
+import { defaultLanguage, formatDate, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import type { FilamentInventoryValuation, InventoryBalanceRow, RollStatus } from "@/lib/types";
 import { getSupabaseClient } from "@/lib/supabase";
-import { loadReportValuations, matchReportValuation, missingReportRates, requestReportRate, summarizeValuations, valuationAmount, valuationCsvCells, valuationNote } from "@/lib/inventory-valuation-report";
+import { loadReportValuations, matchReportValuation, missingReportRates, requestReportRate, summarizeValuations, valuationAmount, valuationCsvCells, valuationNoteKey } from "@/lib/inventory-valuation-report";
 
 const statusLabels: Record<RollStatus, string> = {
   new: "Nuevo",
@@ -15,11 +16,12 @@ const statusLabels: Record<RollStatus, string> = {
   archived: "Archivado"
 };
 
-function formatMoney(value: number | null, currency: string) {
-  if (value == null) return "Costo incompleto";
-  return new Intl.NumberFormat("es-CR", {
+function reportMoney(value: number | null, currency: string, language: AppLanguage) {
+  if (value == null) return translate(language, "filamentReport.missingCost");
+  return new Intl.NumberFormat(languageLocale(language), {
     style: "currency",
     currency,
+    currencyDisplay: language === "en" ? "code" : "symbol",
     maximumFractionDigits: currency === "CRC" ? 0 : 2
   }).format(value);
 }
@@ -68,6 +70,7 @@ function downloadCsv(rows: InventoryBalanceRow[], valuations: Map<string, Filame
 }
 
 type Props = {
+  language?: AppLanguage;
   rows: InventoryBalanceRow[];
   mode: "authenticated" | "demo" | "local" | "error";
   isLoading: boolean;
@@ -75,16 +78,21 @@ type Props = {
   onClose: () => void;
 };
 
-export function InventoryReportModal({ rows, mode, isLoading, error, onClose }: Props) {
+export function InventoryReportModal({ rows, mode, isLoading, error, onClose, language = defaultLanguage }: Props) {
+  const t = (key: MessageKey, params?: Readonly<Record<string, string | number>>) => translate(language, key, params);
+  const locale = languageLocale(language);
+  const formatMoney = (value: number | null, currency: string) => reportMoney(value, currency, language);
+  const dateLabel = (value: string) => language === "es" ? value :
+    formatDate(value, language, { dateStyle: "medium" }) ?? t("dateUnavailable");
   const [query, setQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [valuationResult, setValuationResult] = useState<{
-    rows: InventoryBalanceRow[]; values: FilamentInventoryValuation[]; error: string;
+    rows: InventoryBalanceRow[]; values: FilamentInventoryValuation[]; error: "filamentReport.loadError" | "filamentReport.readError" | "";
   } | null>(null);
   const [retry, setRetry] = useState(0);
   const [selectedRate, setSelectedRate] = useState("");
   const [isRequestingRate, setIsRequestingRate] = useState(false);
-  const [rateNotice, setRateNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const [rateNotice, setRateNotice] = useState<{ error: false; date: string; currency: string } | { error: true; original?: string } | null>(null);
   const rateRequest = useRef<AbortController | null>(null);
   const rateFeedback = useRef<HTMLParagraphElement>(null);
   useEffect(() => { if (rateNotice) rateFeedback.current?.focus(); }, [rateNotice]);
@@ -104,7 +112,7 @@ export function InventoryReportModal({ rows, mode, isLoading, error, onClose }: 
         const values = await loadReportValuations(client, rows.map((row) => row.roll_id), controller.signal);
         if (!controller.signal.aborted) setValuationResult({ rows, values, error: "" });
       } catch {
-        if (!controller.signal.aborted) setValuationResult({ rows, values: [], error: "No se pudo cargar la valoración histórica. Los importes originales siguen disponibles." });
+        if (!controller.signal.aborted) setValuationResult({ rows, values: [], error: "filamentReport.loadError" });
       }
     }
     void load();
@@ -154,13 +162,16 @@ export function InventoryReportModal({ rows, mode, isLoading, error, onClose }: 
       const values = await loadReportValuations(client, rows.map((row) => row.roll_id), controller.signal);
       if (rateRequest.current !== controller) return;
       setValuationResult({ rows, values, error: "" });
-      setRateNotice({ text: `Tasa BCCR confirmada para ${selectedRequest[1].acquisition_date} · ${selectedRequest[1].source_currency}. Valoración actualizada; compras y costos originales sin cambios.`, error: false });
+      setRateNotice({ error: false, date: selectedRequest[1].acquisition_date, currency: selectedRequest[1].source_currency });
     } catch (cause) {
       if (rateRequest.current !== controller) return;
       if (confirmed) {
-        setValuationResult({ rows, values: [], error: "La tasa fue confirmada, pero no se pudo recargar la valoración. Reintentá la lectura." });
+        setValuationResult({ rows, values: [], error: "filamentReport.readError" });
         setRateNotice(null);
-      } else setRateNotice({ text: `${cause instanceof Error && cause.name !== "AbortError" && cause.name !== "TypeError" ? cause.message : "No pudimos confirmar el resultado de la consulta."} Podés reintentar la misma fecha y moneda sin duplicar la tasa.`, error: true });
+      } else setRateNotice({
+        error: true,
+        original: cause instanceof Error && cause.name !== "AbortError" && cause.name !== "TypeError" ? cause.message : undefined
+      });
     } finally {
       window.clearTimeout(timeout);
       if (rateRequest.current === controller) { rateRequest.current = null; setIsRequestingRate(false); }
@@ -168,75 +179,79 @@ export function InventoryReportModal({ rows, mode, isLoading, error, onClose }: 
   }
 
   return (
-    <ModalFrame title="Saldo de filamentos" titleId="report-title" eyebrow="Reporte de inventario" className="report-modal" viewKey={currentValuation?.error ? "valuation-error" : "valuation"} busy={isRequestingRate} onClose={onClose} closeLabel="Cerrar reporte">
+    <ModalFrame lang={language} title={t("filamentReport.title")} titleId="report-title" eyebrow={t("filamentReport.eyebrow")} className="report-modal" viewKey={currentValuation?.error ? "valuation-error" : "valuation"} busy={isRequestingRate} onClose={onClose} closeLabel={t("filamentReport.close")}>
 
-        {mode !== "authenticated" && <p className="report-mode-note">{mode === "demo" ? "Vista con datos de demostración." : "Vista local · estos valores no están sincronizados."}</p>}
-        {error && <p className="report-error" role="alert">{error}</p>}
+        {mode !== "authenticated" && <p className="report-mode-note">{mode === "demo" ? t("filamentReport.demo") : t("filamentReport.local")}</p>}
+        {error && <p className="report-error" role="alert">{language === "en" && <>{t("account.originalMessage")} </>}<span lang="">{error}</span></p>}
 
         <div className="report-toolbar">
-          <label className="search-box"><Search size={17} /><input disabled={isRequestingRate} aria-label="Buscar en el reporte" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el reporte..." /></label>
-          <label className="report-archive-toggle"><input disabled={isRequestingRate} type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Incluir archivados</label>
-          <button type="button" onClick={() => downloadCsv(filteredRows, mode === "authenticated" ? valuations : null)} disabled={isRequestingRate || !filteredRows.length || isLoading || (mode === "authenticated" && !currentValuation && !error)}><Download size={17} /> Descargar CSV</button>
+          <label className="search-box"><Search size={17} /><input disabled={isRequestingRate} aria-label={t("filamentReport.search")} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("filamentReport.searchPlaceholder")} /></label>
+          <label className="report-archive-toggle"><input disabled={isRequestingRate} type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> {t("filamentReport.archived")}</label>
+          <button type="button" onClick={() => downloadCsv(filteredRows, mode === "authenticated" ? valuations : null)} disabled={isRequestingRate || !filteredRows.length || isLoading || (mode === "authenticated" && !currentValuation && !error)}><Download size={17} /> {t("filamentReport.download")}</button>
         </div>
 
-        <h3>Importes originales · por moneda</h3>
-        <p>El saldo original no incluye cargos de la orden ni conversiones.</p>
-        <div className="report-totals" aria-label="Totales originales por moneda">
-          {totals.map(([currency, total]) => <article key={currency}><span>{currency}</span><strong>{formatMoney(total.remaining, currency)}</strong><small>restante de {formatMoney(total.purchase, currency)} comprado{total.incomplete ? ` · ${total.incomplete} incompleto` : ""}</small></article>)}
+        {language === "en" && <p>{t("filamentReport.csvHelp")}</p>}
+        <h3>{t("filamentReport.originalTitle")}</h3>
+        <p>{t("filamentReport.originalHelp")}</p>
+        <div className="report-totals" aria-label={t("filamentReport.originalTotals")}>
+          {totals.map(([currency, total]) => <article key={currency}><span>{currency}</span><strong>{formatMoney(total.remaining, currency)}</strong><small>{t("filamentReport.purchased", { amount: formatMoney(total.purchase, currency) })}{total.incomplete ? t("filamentReport.incompleteCount", { count: total.incomplete.toLocaleString(locale) }) : ""}</small></article>)}
         </div>
 
         {mode === "authenticated" && !error && <section aria-labelledby="valuation-title">
-          <h3 id="valuation-title">Valor histórico del filamento restante</h3>
-          <p>Incluye cargos asignados de la orden cuando existen. Excluye spools, insumos y archivados. No es valor de mercado ni monto realmente pagado.</p>
-          {!currentValuation ? <p role="status">Cargando valoración histórica…</p> : currentValuation.error ? <p className="report-error" role="alert">{currentValuation.error} <button type="button" onClick={() => setRetry((value) => value + 1)}>Reintentar valoración</button></p> : <>
-            <div className="report-totals" aria-label="Valor histórico en CRC y USD">
+          <h3 id="valuation-title">{t("filamentReport.historicalTitle")}</h3>
+          <p>{t("filamentReport.historicalHelp")}</p>
+          {!currentValuation ? <p role="status">{t("filamentReport.loadingValuation")}</p> : currentValuation.error ? <p className="report-error" role="alert">{t(currentValuation.error)} <button type="button" onClick={() => setRetry((value) => value + 1)}>{t("filamentReport.retryValuation")}</button></p> : <>
+            <div className="report-totals" aria-label={t("filamentReport.historicalTotals")}>
               {historicalTotals.map((total) => <article key={total.currency}>
-                <span>{total.currency} · {total.missing ? "Subtotal disponible" : "Saldo valorado"}</span>
-                <strong>{total.total == null ? "Sin valoración disponible" : formatMoney(total.total, total.currency)}</strong>
-                <small>{total.included} rollos valorados{total.missing ? ` · ${total.missing} pendientes, no incluidos` : ""} · según filtros</small>
+                <span>{total.currency} · {total.missing ? t("filamentReport.partial") : t("filamentReport.valued")}</span>
+                <strong>{total.total == null ? t("filamentReport.unavailable") : formatMoney(total.total, total.currency)}</strong>
+                <small>{t("filamentReport.valuedCount", { count: total.included.toLocaleString(locale) })}{total.missing ? t("filamentReport.pendingCount", { count: total.missing.toLocaleString(locale) }) : ""}{t("filamentReport.filtered")}</small>
               </article>)}
             </div>
-            <p>Las conversiones usan tasas BCCR guardadas para la fecha de adquisición; los importes en su propia moneda no requieren conversión. Las tasas faltantes no se consultan automáticamente.</p>
+            <p>{t("filamentReport.ratesHelp")}</p>
             {missingRates.length > 0 && <div>
-              <p>Elegí una fecha y moneda pendiente según los filtros. Consultar guarda o recupera una tasa histórica para todos tus filamentos de esa fecha y moneda, incluidos los que no muestra el filtro. No cambia compras ni el monto pagado.</p>
+              <p>{t("filamentReport.lookupHelp")}</p>
               <div className="report-toolbar">
-                <label style={{ gridColumn: "1 / -1" }}>Fecha y moneda<select value={selectedRequest?.[0] ?? ""} disabled={isRequestingRate} onChange={(event) => { setSelectedRate(event.target.value); setRateNotice(null); }}>
-                  {missingRates.map(([key, request]) => <option key={key} value={key}>{request.acquisition_date} · {request.source_currency}</option>)}
+                <label style={{ gridColumn: "1 / -1" }}>{t("filamentReport.dateCurrency")}<select value={selectedRequest?.[0] ?? ""} disabled={isRequestingRate} onChange={(event) => { setSelectedRate(event.target.value); setRateNotice(null); }}>
+                  {missingRates.map(([key, request]) => <option key={key} value={key}>{dateLabel(request.acquisition_date)} · {request.source_currency}</option>)}
                 </select></label>
-                <button type="button" onClick={() => void consultRate()} disabled={isRequestingRate}>{isRequestingRate ? "Consultando BCCR…" : "Consultar tasa BCCR"}</button>
+                <button type="button" onClick={() => void consultRate()} disabled={isRequestingRate}>{isRequestingRate ? t("filamentReport.lookingUp") : t("filamentReport.lookup")}</button>
               </div>
             </div>}
           </>}
-          {isRequestingRate && <p role="status">Consultando y actualizando la valoración. Esperá la confirmación.</p>}
-          {rateNotice && <p ref={rateFeedback} tabIndex={-1} className={rateNotice.error ? "report-error" : "report-mode-note"} role={rateNotice.error ? "alert" : "status"}>{rateNotice.text}</p>}
+          {isRequestingRate && <p role="status">{t("filamentReport.lookupProgress")}</p>}
+          {rateNotice && <p ref={rateFeedback} tabIndex={-1} className={rateNotice.error ? "report-error" : "report-mode-note"} role={rateNotice.error ? "alert" : "status"}>{rateNotice.error ? <>
+            {rateNotice.original ? <>{language === "en" && <>{t("account.originalMessage")} </>}<span lang="">{rateNotice.original}</span></> : t("filamentReport.lookupError")}
+            {" "}{t("filamentReport.lookupRetry")}
+          </> : t("filamentReport.rateConfirmed", { date: dateLabel(rateNotice.date), currency: rateNotice.currency })}</p>}
         </section>}
-        {mode !== "authenticated" && <p>La valoración histórica BCCR requiere un inventario sincronizado. No se calculan conversiones en modo local/demo.</p>}
+        {mode !== "authenticated" && <p>{t("filamentReport.localHelp")}</p>}
 
-        {isLoading ? <p className="empty-state">Calculando saldo consistente…</p> : filteredRows.length ? (
-          <div className="report-table-wrap" tabIndex={0} role="region" aria-label="Saldo de filamentos; desplazamiento horizontal">
+        {isLoading ? <p className="empty-state">{t("filamentReport.loading")}</p> : filteredRows.length ? (
+          <div className="report-table-wrap" tabIndex={0} role="region" aria-label={t("filamentReport.table")}>
             <table className="report-table">
-              <thead><tr><th>Filamento</th><th>Saldo</th><th>Estado</th><th>Spool</th><th>Proveedor</th><th>Compra</th><th>Restante original</th>{mode === "authenticated" && <><th>Histórico CRC</th><th>Histórico USD</th><th>Detalle valoración</th></>}<th>Ubicación</th></tr></thead>
+              <thead><tr><th>{t("filamentReport.filament")}</th><th>{t("filamentReport.balance")}</th><th>{t("filamentReport.status")}</th><th>{t("filamentReport.spool")}</th><th>{t("filamentReport.supplier")}</th><th>{t("filamentReport.purchase")}</th><th>{t("filamentReport.remaining")}</th>{mode === "authenticated" && <><th>{t("filamentReport.crc")}</th><th>{t("filamentReport.usd")}</th><th>{t("filamentReport.valuation")}</th></>}<th>{t("location")}</th></tr></thead>
               <tbody>{filteredRows.map((row) => {
                 const value = matchReportValuation(row, valuations.get(row.roll_id));
                 return <tr key={row.roll_id}>
                 <td><span className="report-color" style={{ backgroundColor: row.color_hex }} /><strong>{row.color_name}</strong><small>{row.brand} · {row.product_line || row.material}</small></td>
-                <td><strong>{Number(row.available_weight_g).toLocaleString("es-CR")} g</strong><small>{Number(row.remaining_percent).toLocaleString("es-CR")} %</small></td>
-                <td>{statusLabels[row.status]}</td>
-                <td>{row.spool_code || "Sin asignar"}</td>
-                <td>{row.supplier_name || "Sin proveedor"}</td>
+                <td><strong>{Number(row.available_weight_g).toLocaleString(locale)} g</strong><small>{Number(row.remaining_percent).toLocaleString(locale)} %</small></td>
+                <td>{Object.hasOwn(statusLabels, row.status) ? t(`filamentReport.status.${row.status}`) : ""}</td>
+                <td>{row.spool_code || t("filamentReport.unassigned")}</td>
+                <td>{row.supplier_name || t("filamentReport.noSupplier")}</td>
                 <td>{formatMoney(row.purchase_total, row.currency)}</td>
                 <td className={row.cost_status === "incomplete" ? "report-incomplete" : ""}>{formatMoney(row.remaining_filament_value, row.currency)}</td>
                 {mode === "authenticated" && <>
                   {(["CRC", "USD"] as const).map((currency) => <td key={currency}>{valuationAmount(value, currency) == null ? "—" : formatMoney(valuationAmount(value, currency), currency)}</td>)}
-                  <td>{currentValuation ? valuationNote(value) : "Cargando…"}
-                    {value && <small>{value.acquisition_date ? `Adquisición: ${value.acquisition_date}` : "Sin fecha"} · {value.cost_basis_source === "purchase_order_landed" ? "Con cargos de orden" : "Costo del rollo"}{value.cost_confidence === "estimated" ? " · Costo estimado" : value.cost_confidence === "incomplete" ? " · Costo incompleto" : ""}</small>}
+                  <td>{currentValuation ? t(`filamentReport.note.${valuationNoteKey(value)}`) : t("filamentReport.loadingRow")}
+                    {value && <small>{value.acquisition_date ? t("filamentReport.acquisition", { date: dateLabel(value.acquisition_date) }) : t("filamentReport.noDate")} · {value.cost_basis_source === "purchase_order_landed" ? t("filamentReport.orderCharges") : t("filamentReport.rollCost")}{value.cost_confidence === "estimated" ? ` · ${t("filamentReport.estimated")}` : value.cost_confidence === "incomplete" ? ` · ${t("filamentReport.missingCost")}` : ""}</small>}
                   </td>
                 </>}
-                <td>{row.location || "Sin ubicación"}</td>
+                <td>{row.location || t("filamentReport.noLocation")}</td>
               </tr>; })}</tbody>
             </table>
           </div>
-        ) : <p className="empty-state">No hay rollos que coincidan con el reporte.</p>}
+        ) : <p className="empty-state">{t("filamentReport.empty")}</p>}
     </ModalFrame>
   );
 }

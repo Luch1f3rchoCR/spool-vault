@@ -65,18 +65,28 @@ export function matchReportValuation(row: InventoryBalanceRow, value?: FilamentI
   return value;
 }
 
+const valuationNotes = {
+  unavailable: "Valoración no disponible; volvé a abrir el reporte.",
+  excluded_archived: "Archivado · excluido de la valoración",
+  complete_zero: "Sin saldo disponible",
+  missing_cost: "Falta registrar el costo",
+  missing_acquisition_date: "Falta la fecha de compra",
+  unsupported_currency: "Moneda sin conversión disponible",
+  missing_fx_snapshot: "Tasa histórica BCCR pendiente",
+  corrected_order_mismatch: "Corrección pendiente de conciliar con la orden",
+  incomplete: "Valoración incompleta",
+  complete: "Tasa histórica BCCR guardada",
+};
+
+export function valuationNoteKey(value?: FilamentInventoryValuation): keyof typeof valuationNotes {
+  if (!value) return "unavailable";
+  if (value.fx_status === "excluded_archived" || value.fx_status === "complete_zero") return value.fx_status;
+  const reason = value.incompleteness_reason;
+  return reason ? Object.hasOwn(valuationNotes, reason) ? reason : "incomplete" : "complete";
+}
+
 export function valuationNote(value?: FilamentInventoryValuation) {
-  if (!value) return "Valoración no disponible; volvé a abrir el reporte.";
-  if (value.fx_status === "excluded_archived") return "Archivado · excluido de la valoración";
-  if (value.fx_status === "complete_zero") return "Sin saldo disponible";
-  const reasons: Record<NonNullable<FilamentInventoryValuation["incompleteness_reason"]>, string> = {
-    missing_cost: "Falta registrar el costo",
-    missing_acquisition_date: "Falta la fecha de compra",
-    unsupported_currency: "Moneda sin conversión disponible",
-    missing_fx_snapshot: "Tasa histórica BCCR pendiente",
-    corrected_order_mismatch: "Corrección pendiente de conciliar con la orden"
-  };
-  return value.incompleteness_reason ? reasons[value.incompleteness_reason] ?? "Valoración incompleta" : "Tasa histórica BCCR guardada";
+  return valuationNotes[valuationNoteKey(value)];
 }
 
 export function valuationAmount(value: FilamentInventoryValuation | undefined, currency: "CRC" | "USD") {
