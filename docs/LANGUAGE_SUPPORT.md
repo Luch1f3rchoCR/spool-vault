@@ -43,7 +43,9 @@ Publicado en #77: formularios de compra faltante y corrección de compra en espa
 
 Publicado en #78: lista de órdenes y detalle de factura en español e inglés, con líneas, cargos, pagos y navegación accesible.
 
-Bloque en revisión: formulario de nueva orden y editor de filamentos en español e inglés. Incluye agrupación de compras, distribución de cargos, pago, ayudas y mensajes de guardado. Cambiar idioma conserva borradores y valores de reintento. Continúan pendientes Insumos y el selector global.
+Publicado en #79: formulario de nueva orden y editor de filamentos en español e inglés, incluidos cargos, pago y mensajes de guardado.
+
+Bloque en revisión: Insumos en español e inglés, con catálogo, entradas y ajustes, historial, búsquedas y mensajes. Las categorías y unidades predefinidas cambian su etiqueta visible, conservando sus valores guardados. Unidades personalizadas, nombres y notas se muestran originales. Continúan pendientes perfiles de impresión, otras superficies de la app y el selector global.
 
 ## Primer bloque de implementación · 2026-10-30
 
