@@ -106,3 +106,13 @@ test('invalid historical dates remain missing rather than silently becoming anot
   }
   assert.ok(formatDate('2024-02-29', 'es'));
 });
+
+
+test('print profile validation codes preserve Spanish defaults and have English messages', () => {
+  const {printProfileValidationMessages} = require('../lib/filament-print-profile-fields.ts');
+  assert.equal(new Set(Object.values(printProfileValidationMessages)).size, Object.keys(printProfileValidationMessages).length);
+  for (const [code, original] of Object.entries(printProfileValidationMessages)) {
+    assert.equal(translate('es', `printProfile.validation.${code}`), original);
+    assert.ok(translate('en', `printProfile.validation.${code}`).trim());
+  }
+});
