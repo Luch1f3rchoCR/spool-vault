@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { defaultLanguage, formatDate, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import { createVariantDraft, type ProjectCreateValues } from "@/lib/project-variant";
 export type { ProjectCreateValues } from "@/lib/project-variant";
 import { supplyShortages, type Supply } from "@/lib/supplies";
@@ -54,6 +55,7 @@ export type ProductionRunValues = {
 };
 
 type Props = {
+  language?: AppLanguage;
   supplies: Supply[];
   projects: PrintProject[];
   requirements: ProjectFilamentRequirement[];
@@ -91,26 +93,21 @@ type ComponentDraft = {
   notes: string;
 };
 
-const runStatusLabels: Record<ProductionRunStatus, string> = {
-  completed: "Exitosa",
-  partial: "Parcial",
-  failed: "Fallida"
-};
-
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function money(currency: string, value: number) {
-  return new Intl.NumberFormat("es-CR", {
+function money(currency: string, value: number, language = defaultLanguage) {
+  return new Intl.NumberFormat(languageLocale(language), {
     style: "currency",
     currency,
+    currencyDisplay: language === "en" ? "code" : "symbol",
     maximumFractionDigits: currency === "CRC" ? 0 : 2
   }).format(Number(value));
 }
 
-function duration(minutes: number | null) {
-  if (minutes == null) return "Sin duración";
+function duration(minutes: number | null, language = defaultLanguage) {
+  if (minutes == null) return translate(language, "projects.noDuration");
   const hours = Math.floor(minutes / 60);
   const remaining = minutes % 60;
   if (!hours) return `${remaining} min`;
@@ -240,7 +237,7 @@ function ProjectForm({
   }
 
   return (
-    <form className="project-form" onSubmit={submit} aria-busy={isSaving}>
+    <form lang="es" className="project-form" onSubmit={submit} aria-busy={isSaving}>
       <div className="project-form-head">
         <button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />Volver</button>
         <div><p className="eyebrow">{sourceName ? "Nueva variante" : "Nueva receta"}</p><h3>{sourceName ? "Guardar variante" : "Crear proyecto"}</h3></div>
@@ -437,7 +434,7 @@ function ProductionRunForm({
   }
 
   return (
-    <form className="project-form production-run-form" onSubmit={submit} aria-busy={isSaving}>
+    <form lang="es" className="project-form production-run-form" onSubmit={submit} aria-busy={isSaving}>
       <div className="project-form-head"><button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />Volver</button><div><p className="eyebrow">Producción real</p><h3>{project.name}</h3></div></div>
       <p className="project-mode-note">Podés usar otro color del mismo material para esta impresión. La receta original no cambia; al confirmar se registra el consumo real. Esta acción no envía trabajos a la impresora.</p>
       <div className="form-grid project-main-fields">
@@ -503,8 +500,12 @@ export function ProjectsModal({
   onCreateProject,
   onCompleteRun,
   onSavePrinter,
-  onOpenFile
+  onOpenFile,
+  language = defaultLanguage
 }: Props) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
+  const displayMoney = (currency: string, value: number) => money(currency, value, language);
   const [showCreate, setShowCreate] = useState(false);
   const [variantSource, setVariantSource] = useState<PrintProject | null>(null);
   const [showPrinters, setShowPrinters] = useState(false);
@@ -514,44 +515,110 @@ export function ProjectsModal({
   const sortedRuns = [...runs].sort((a, b) => b.produced_at.localeCompare(a.produced_at) || b.created_at.localeCompare(a.created_at));
 
   return (
-    <ModalFrame title="Proyectos" titleId="projects-title" eyebrow="Producción" className="projects-modal"
+    <ModalFrame lang={language} title={t("projects")} titleId="projects-title" eyebrow={t("nav.production")} closeLabel={t("projects.close")} className="projects-modal"
       busy={isSavingProject || isSavingRun || isSavingPrinter} onClose={onClose}
       viewKey={showPrinters ? "printers" : showCreate ? "create" : runProjectId || "list"}>
-        <p className="spool-operation-note" role="status">{statusMessage}</p>
-        {mode !== "authenticated" && <p className="project-mode-note">Los proyectos guardados en este modo quedan solamente en este navegador. Iniciá sesión para sincronizar archivos y producción.</p>}
+        <p className="spool-operation-note" role="status">
+          {statusMessage && <>{language === "en" && <>{t("account.originalMessage")} </>}<span lang="">{statusMessage}</span></>}
+        </p>
+        {mode !== "authenticated" && <p className="project-mode-note">{t("projects.local")}</p>}
 
+        {language === "en" && (showCreate || runProject) && <p className="form-help">{t("projects.formsInSpanish")}</p>}
         {showPrinters ? (
-          <PrinterManager printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
+          <PrinterManager language={language} printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
         ) : showCreate ? (
           <ProjectForm supplies={supplies} key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
         ) : runProject ? (
           <ProductionRunForm supplies={supplies} project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
         ) : (
           <>
-            <div className="project-summary"><article><FolderKanban size={18} /><strong>{projects.length}</strong><span>proyectos</span></article><article><Printer size={18} /><strong>{runs.length}</strong><span>corridas</span></article><article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString("es-CR")} g</strong><span>por recetas</span></article><button type="button" onClick={() => setShowPrinters(true)}><Printer size={18} />Impresoras</button><button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Nuevo proyecto</button></div>
+            <div className="project-summary">
+              <article><FolderKanban size={18} /><strong>{projects.length.toLocaleString(locale)}</strong><span>{t("projects.projects")}</span></article>
+              <article><Printer size={18} /><strong>{runs.length.toLocaleString(locale)}</strong><span>{t("projects.runs")}</span></article>
+              <article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString(locale)} g</strong><span>{t("projects.recipeGrams")}</span></article>
+              <button type="button" onClick={() => setShowPrinters(true)}><Printer size={18} />{t("projects.printers")}</button>
+              <button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />{t("projects.new")}</button>
+            </div>
 
             <div className="project-list">
               {sortedProjects.length ? sortedProjects.map((project) => {
                 const projectRequirements = requirements.filter((item) => item.project_id === project.id).sort((a, b) => a.position - b.position);
                 const projectComponents = components.filter((item) => item.project_id === project.id).sort((a, b) => a.position - b.position);
                 const projectRuns = sortedRuns.filter((run) => run.project_id === project.id);
-                return <article className="project-card" key={project.id}><div className="project-card-head"><div><span className="project-icon"><FolderKanban size={20} /></span><div><h3>{project.name}</h3><p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes)} · {projectRuns.length} corrida{projectRuns.length === 1 ? "" : "s"}</p></div></div><div className="project-card-actions"><button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />Registrar impresión</button><button type="button" onClick={() => { setVariantSource(project); setShowCreate(true); }}><Save size={16} />Guardar variante</button>{project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || "Archivo"}</button>}</div></div>{project.description && <p className="project-description">{project.description}</p>}<div className="project-recipe-preview">{projectRequirements.map((item) => <span key={item.id}><i style={{ backgroundColor: item.color_hex }} /><strong>{item.label || item.color_name}</strong><small>{Number(item.planned_grams).toLocaleString("es-CR")} g</small></span>)}</div>{projectComponents.length > 0 && <p className="project-components-preview">+ {projectComponents.map((item) => `${Number(item.quantity).toLocaleString("es-CR")} ${item.unit} ${item.name}`).join(" · ")}</p>}{projectRuns.slice(0, 2).map((run) => {
-                  const filamentLines = runFilaments.filter((line) => line.run_id === run.id);
-                  const componentLines = runComponents.filter((line) => line.run_id === run.id);
-                  const operatingCosts = runCosts.find((cost) => cost.run_id === run.id);
-                  const totals = totalsByCurrency(filamentLines, componentLines, operatingCosts);
-                  const incomplete = filamentLines.some((line) => line.cost_amount == null)
-                    || !operatingCosts
-                    || operatingCosts.electricity_cost_amount == null
-                    || operatingCosts.machine_cost_amount == null
-                    || operatingCosts.labor_cost_amount == null;
-                  const comparable = run.sale_amount != null && run.sale_currency && totals.size === 1 && totals.has(run.sale_currency) && !incomplete ? totals.get(run.sale_currency) ?? null : null;
-                  return <div className="project-run-row" key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><div><strong>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</strong><small>{duration(run.actual_minutes)} · {filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString("es-CR")} g{operatingCosts ? ` · ${duration(operatingCosts.actual_labor_minutes)} de trabajo` : " · costos operativos pendientes"}{operatingCosts?.printer_name ? ` · ${operatingCosts.printer_name}` : ""}</small></div><div className="run-money"><small>{incomplete ? "Subtotal registrado" : "Costo registrado"}</small>{Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{money(currency, total)}</span>)}{run.sale_amount != null && <strong>Venta {money(run.sale_currency || baseCurrency, run.sale_amount)}</strong>}{comparable != null && <small>Utilidad {money(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable)}</small>}</div><ProductionCostBreakdown run={run} filaments={filamentLines} components={componentLines} operatingCosts={operatingCosts} /></div>;
-                })}</article>;
-              }) : <div className="project-empty"><FolderKanban size={34} /><h3>Tu primera receta está lista para nacer</h3><p>Guardá el STL/3MF, los filamentos, gramos, tiempo e insumos que necesita.</p><button className="primary-action" type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Crear primer proyecto</button></div>}
+                const runCount = t(projectRuns.length === 1 ? "projects.runOne" : "projects.runMany", { count: projectRuns.length.toLocaleString(locale) });
+
+                return <article className="project-card" key={project.id}>
+                  <div className="project-card-head">
+                    <div>
+                      <span className="project-icon"><FolderKanban size={20} /></span>
+                      <div>
+                        <h3>{project.name}</h3>
+                        <p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes, language)} · {runCount}</p>
+                      </div>
+                    </div>
+                    <div className="project-card-actions">
+                      <button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />{t("production.record")}</button>
+                      <button type="button" onClick={() => { setVariantSource(project); setShowCreate(true); }}><Save size={16} />{t("projects.variant")}</button>
+                      {project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || t("projects.file")}</button>}
+                    </div>
+                  </div>
+                  {project.description && <p className="project-description">{project.description}</p>}
+                  <div className="project-recipe-preview">
+                    {projectRequirements.map((item) => <span key={item.id}>
+                      <i style={{ backgroundColor: item.color_hex }} />
+                      <strong>{item.label || item.color_name}</strong>
+                      <small>{Number(item.planned_grams).toLocaleString(locale)} g</small>
+                    </span>)}
+                  </div>
+                  {projectComponents.length > 0 && <p className="project-components-preview">
+                    + {projectComponents.map((item) => `${Number(item.quantity).toLocaleString(locale)} ${item.unit} ${item.name}`).join(" · ")}
+                  </p>}
+                  {projectRuns.slice(0, 2).map((run) => {
+                    const filamentLines = runFilaments.filter((line) => line.run_id === run.id);
+                    const componentLines = runComponents.filter((line) => line.run_id === run.id);
+                    const operatingCosts = runCosts.find((cost) => cost.run_id === run.id);
+                    const totals = totalsByCurrency(filamentLines, componentLines, operatingCosts);
+                    const incomplete = filamentLines.some((line) => line.cost_amount == null)
+                      || !operatingCosts
+                      || operatingCosts.electricity_cost_amount == null
+                      || operatingCosts.machine_cost_amount == null
+                      || operatingCosts.labor_cost_amount == null;
+                    const comparable = run.sale_amount != null && run.sale_currency && totals.size === 1 && totals.has(run.sale_currency) && !incomplete ? totals.get(run.sale_currency) ?? null : null;
+                    const date = language === "es" ? run.produced_at :
+                      formatDate(run.produced_at, language, { dateStyle: "medium" }) ?? t("dateUnavailable");
+                    const quantity = t(Number(run.quantity) === 1 ? "production.unitOne" : "production.unitMany", {
+                      quantity: Number(run.quantity).toLocaleString(locale)
+                    });
+                    const grams = filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString(locale);
+                    const labor = operatingCosts
+                      ? t("projects.labor", { duration: duration(operatingCosts.actual_labor_minutes, language) })
+                      : t("projects.pendingCosts");
+
+                    return <div className="project-run-row" key={run.id}>
+                      <span className={`run-status ${run.status}`}>{t(`production.${run.status}`)}</span>
+                      <div>
+                        <strong>{date} · {quantity}</strong>
+                        <small>{duration(run.actual_minutes, language)} · {grams} g · {labor}{operatingCosts?.printer_name ? ` · ${operatingCosts.printer_name}` : ""}</small>
+                      </div>
+                      <div className="run-money">
+                        <small>{t(incomplete ? "projects.subtotal" : "projects.cost")}</small>
+                        {Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{displayMoney(currency, total)}</span>)}
+                        {run.sale_amount != null && <strong>{t("projects.sale", { amount: displayMoney(run.sale_currency || baseCurrency, run.sale_amount) })}</strong>}
+                        {comparable != null && <small>{t("projects.profit", { amount: displayMoney(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable) })}</small>}
+                      </div>
+                      <ProductionCostBreakdown language={language} run={run} filaments={filamentLines} components={componentLines} operatingCosts={operatingCosts} />
+                    </div>;
+                  })}
+                </article>;
+              }) : <div className="project-empty">
+                <FolderKanban size={34} />
+                <h3>{t("projects.empty")}</h3>
+                <p>{t("projects.emptyHelp")}</p>
+                <button className="primary-action" type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />{t("projects.first")}</button>
+              </div>}
             </div>
 
-            <ProductionHistory runs={sortedRuns} filaments={runFilaments} components={runComponents} costs={runCosts} />
+            <ProductionHistory language={language} runs={sortedRuns} filaments={runFilaments} components={runComponents} costs={runCosts} />
           </>
         )}
     </ModalFrame>
