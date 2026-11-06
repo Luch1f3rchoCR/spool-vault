@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { currencyLabel, defaultLanguage, formatDate, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import { createVariantDraft, type ProjectCreateValues } from "@/lib/project-variant";
 export type { ProjectCreateValues } from "@/lib/project-variant";
 import { supplyShortages, type Supply } from "@/lib/supplies";
@@ -54,6 +55,7 @@ export type ProductionRunValues = {
 };
 
 type Props = {
+  language?: AppLanguage;
   supplies: Supply[];
   projects: PrintProject[];
   requirements: ProjectFilamentRequirement[];
@@ -91,26 +93,21 @@ type ComponentDraft = {
   notes: string;
 };
 
-const runStatusLabels: Record<ProductionRunStatus, string> = {
-  completed: "Exitosa",
-  partial: "Parcial",
-  failed: "Fallida"
-};
-
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function money(currency: string, value: number) {
-  return new Intl.NumberFormat("es-CR", {
+function money(currency: string, value: number, language = defaultLanguage) {
+  return new Intl.NumberFormat(languageLocale(language), {
     style: "currency",
     currency,
+    currencyDisplay: language === "en" ? "code" : "symbol",
     maximumFractionDigits: currency === "CRC" ? 0 : 2
   }).format(Number(value));
 }
 
-function duration(minutes: number | null) {
-  if (minutes == null) return "Sin duración";
+function duration(minutes: number | null, language = defaultLanguage) {
+  if (minutes == null) return translate(language, "projects.noDuration");
   const hours = Math.floor(minutes / 60);
   const remaining = minutes % 60;
   if (!hours) return `${remaining} min`;
@@ -151,8 +148,10 @@ function ProjectForm({
   baseCurrency,
   isSaving,
   onCancel,
-  onCreate
+  onCreate,
+  language
 }: {
+  language: AppLanguage;
   supplies: Supply[];
   initialValues?: ProjectCreateValues;
   sourceName?: string;
@@ -162,6 +161,8 @@ function ProjectForm({
   onCancel: () => void;
   onCreate: Props["onCreateProject"];
 }) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
   const availableRolls = rolls.filter((roll) => roll.status !== "archived");
   const [name, setName] = useState(initialValues?.name ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
@@ -240,70 +241,71 @@ function ProjectForm({
   }
 
   return (
-    <form className="project-form" onSubmit={submit} aria-busy={isSaving}>
+    <form lang={language} className="project-form" onSubmit={submit} aria-busy={isSaving}>
       <div className="project-form-head">
-        <button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />Volver</button>
-        <div><p className="eyebrow">{sourceName ? "Nueva variante" : "Nueva receta"}</p><h3>{sourceName ? "Guardar variante" : "Crear proyecto"}</h3></div>
+        <button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />{t("back")}</button>
+        <div><p className="eyebrow">{sourceName ? t("recipeForm.variant") : t("recipeForm.recipe")}</p><h3>{sourceName ? t("projects.variant") : t("recipeForm.create")}</h3></div>
       </div>
-      {sourceName && <p className="project-mode-note">Basada en «{sourceName}». Podés cambiar colores, gramos e insumos. Se guarda como un proyecto independiente, sin modificar el original ni descontar inventario. El STL/3MF no se copia: adjuntalo si lo necesitás.</p>}
+      {sourceName && <p className="project-mode-note">{t("recipeForm.variantHelp", { name: sourceName })}</p>}
 
       <div className="form-grid project-main-fields">
-        <label className="wide">Nombre del proyecto<input required maxLength={120} value={name} disabled={isSaving} placeholder="Ej. Dragón articulado grande" onChange={(event) => setName(event.target.value)} /></label>
-        <label>Versión<input maxLength={40} value={version} disabled={isSaving} placeholder="1.0" onChange={(event) => setVersion(event.target.value)} /></label>
-        <label>Licencia<input maxLength={120} value={licenseName} disabled={isSaving} placeholder="Personal, comercial, CC…" onChange={(event) => setLicenseName(event.target.value)} /></label>
-        <label>Horas estimadas<input type="number" min="0" max="1666" value={estimatedHours} disabled={isSaving} placeholder="5" onChange={(event) => setEstimatedHours(event.target.value)} /></label>
-        <label>Minutos adicionales<input type="number" min="0" max="59" value={estimatedMinutes} disabled={isSaving} placeholder="30" onChange={(event) => setEstimatedMinutes(event.target.value)} /></label>
-        <label className="wide">Descripción<textarea maxLength={1000} value={description} disabled={isSaving} placeholder="Notas de armado, perfil, soportes…" onChange={(event) => setDescription(event.target.value)} /></label>
-        <label className="wide project-file-field">Archivo STL o 3MF<input type="file" accept=".stl,.3mf" disabled={isSaving} onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><small>Privado · máximo 50 MB. El 3MF conserva más información del laminado.</small>{!validFile && <span>Solo se admiten archivos STL o 3MF.</span>}</label>
-        <label className="wide checkbox-field"><input type="checkbox" checked={commercialUse} disabled={isSaving} onChange={(event) => setCommercialUse(event.target.checked)} /><span>La licencia permite uso comercial</span></label>
+        <label className="wide">{t("recipeForm.name")}<input required maxLength={120} value={name} disabled={isSaving} placeholder={t("recipeForm.nameExample")} onChange={(event) => setName(event.target.value)} /></label>
+        <label>{t("recipeForm.version")}<input maxLength={40} value={version} disabled={isSaving} placeholder="1.0" onChange={(event) => setVersion(event.target.value)} /></label>
+        <label>{t("recipeForm.license")}<input maxLength={120} value={licenseName} disabled={isSaving} placeholder={t("recipeForm.licenseExample")} onChange={(event) => setLicenseName(event.target.value)} /></label>
+        <label>{t("recipeForm.hours")}<input type="number" min="0" max="1666" value={estimatedHours} disabled={isSaving} placeholder="5" onChange={(event) => setEstimatedHours(event.target.value)} /></label>
+        <label>{t("recipeForm.minutes")}<input type="number" min="0" max="59" value={estimatedMinutes} disabled={isSaving} placeholder="30" onChange={(event) => setEstimatedMinutes(event.target.value)} /></label>
+        <label className="wide">{t("supplies.descriptionTitle")}<textarea maxLength={1000} value={description} disabled={isSaving} placeholder={t("recipeForm.descriptionExample")} onChange={(event) => setDescription(event.target.value)} /></label>
+        <label className="wide project-file-field">{t("recipeForm.file")}<input type="file" accept=".stl,.3mf" disabled={isSaving} onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><small>{t("recipeForm.fileHelp")}</small>{!validFile && <span>{t("recipeForm.fileError")}</span>}</label>
+        <label className="wide checkbox-field"><input type="checkbox" checked={commercialUse} disabled={isSaving} onChange={(event) => setCommercialUse(event.target.checked)} /><span>{t("recipeForm.commercial")}</span></label>
       </div>
 
       <section className="project-recipe-section">
-        <div className="section-head"><div><p className="eyebrow">Materiales</p><h3>Filamentos de la receta</h3></div><button type="button" onClick={addRequirement} disabled={isSaving || requirements.length >= 32}><Plus size={16} />Filamento</button></div>
+        <div className="section-head"><div><p className="eyebrow">{t("recipeForm.materials")}</p><h3>{t("recipeForm.filaments")}</h3></div><button type="button" onClick={addRequirement} disabled={isSaving || requirements.length >= 32}><Plus size={16} />{t("filamentReport.filament")}</button></div>
         {requirements.map((item, index) => {
           const selected = rolls.find((roll) => roll.id === item.roll_id);
           return (
             <div className="recipe-row filament-recipe-row" key={item.key}>
               <span className="recipe-position">{index + 1}</span>
-              <label>Rollo preferido<select required value={item.roll_id} disabled={isSaving} onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, roll_id: event.target.value } : entry))}><option value="">Elegí un rollo</option>{availableRolls.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {roll.material} · {Math.round(Number(roll.available_weight_g))} g</option>)}</select></label>
-              <label>Gramos<input required type="number" min="0.01" step="0.01" value={item.planned_grams} disabled={isSaving} placeholder="500" onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, planned_grams: event.target.value } : entry))} /></label>
-              <label>Uso / pieza<input value={item.label} disabled={isSaving} placeholder="Cuerpo, ojos…" onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, label: event.target.value } : entry))} /></label>
-              <button className="remove-recipe" type="button" aria-label="Quitar filamento" disabled={isSaving || requirements.length === 1} onClick={() => setRequirements((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
-              {!item.roll_id && sourceName && <small className="recipe-warning">El rollo original ya no está disponible. Elegí uno para esta variante.</small>}
-              {selected && Number(item.planned_grams || 0) > Number(selected.available_weight_g) && <small className="recipe-warning">La receta supera el saldo actual de este rollo.</small>}
+              <label>{t("recipeForm.preferred")}<select required value={item.roll_id} disabled={isSaving} onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, roll_id: event.target.value } : entry))}><option value="">{t("recipeForm.choose")}</option>{availableRolls.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {roll.material} · {Math.round(Number(roll.available_weight_g)).toLocaleString(locale)} g</option>)}</select></label>
+              <label>{t("recipeForm.grams")}<input required type="number" min="0.01" step="0.01" value={item.planned_grams} disabled={isSaving} placeholder="500" onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, planned_grams: event.target.value } : entry))} /></label>
+              <label>{t("recipeForm.usage")}<input value={item.label} disabled={isSaving} placeholder={t("recipeForm.usageExample")} onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, label: event.target.value } : entry))} /></label>
+              <button className="remove-recipe" type="button" aria-label={t("recipeForm.removeFilament")} disabled={isSaving || requirements.length === 1} onClick={() => setRequirements((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
+              {!item.roll_id && sourceName && <small className="recipe-warning">{t("recipeForm.missingRoll")}</small>}
+              {selected && Number(item.planned_grams || 0) > Number(selected.available_weight_g) && <small className="recipe-warning">{t("recipeForm.overStock")}</small>}
             </div>
           );
         })}
       </section>
 
       <section className="project-recipe-section">
-        <div className="section-head"><div><p className="eyebrow">Extras</p><h3>Imanes, pines y otros</h3></div><button type="button" onClick={addComponent} disabled={isSaving || components.length >= 64}><Plus size={16} />Insumo</button></div>
+        <div className="section-head"><div><p className="eyebrow">{t("recipeForm.extras")}</p><h3>{t("recipeForm.supplies")}</h3></div><button type="button" onClick={addComponent} disabled={isSaving || components.length >= 64}><Plus size={16} />{t("inventoryDetail.supply")}</button></div>
         {components.length ? components.map((item, index) => (
           <div className="recipe-row component-recipe-row" key={item.key}>
             <span className="recipe-position">{index + 1}</span>
-            <label className="supply-picker">Desde inventario<select value={item.supply_id ?? ""} disabled={isSaving} onChange={event => {
+            <label className="supply-picker">{t("recipeForm.fromStock")}<select value={item.supply_id ?? ""} disabled={isSaving} onChange={event => {
               const supply=supplies.find(s=>s.id===event.target.value);
               setComponents(current=>current.map(entry=>entry.key===item.key ? supply ? {...entry,supply_id:supply.id,name:supply.name,unit:supply.unit,unit_cost:String(supply.unit_cost),currency:supply.currency,supplier_name:""} : {...entry,supply_id:null} : entry));
-            }}><option value="">Extra manual · sin stock</option>{supplies.map(s=><option key={s.id} value={s.id}>{s.name} · {s.quantity} {s.unit}</option>)}</select></label>
-            <label>Insumo<input required value={item.name} disabled={isSaving || !!item.supply_id} placeholder="Imán 6×2 mm" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, name: event.target.value } : entry))} /></label>
-            <label>Cantidad<input required type="number" min="0.001" step="0.001" value={item.quantity} disabled={isSaving} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, quantity: event.target.value } : entry))} /></label>
-            <label>Unidad<input required value={item.unit} disabled={isSaving || !!item.supply_id} placeholder="unidad" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit: event.target.value } : entry))} /></label>
-            <label>Costo por unidad<input required type="number" min="0" step="0.01" value={item.unit_cost} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit_cost: event.target.value } : entry))} /></label>
-            <label>Moneda<select value={item.currency} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, currency: event.target.value } : entry))}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
-            <label>Proveedor<input value={item.supplier_name} disabled={isSaving || !!item.supply_id} placeholder="Opcional" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, supplier_name: event.target.value } : entry))} /></label>
-            <button className="remove-recipe" type="button" aria-label="Quitar insumo" disabled={isSaving} onClick={() => setComponents((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
+            }}><option value="">{t("recipeForm.manual")}</option>{supplies.map(s=><option key={s.id} value={s.id}>{s.name} · {s.quantity.toLocaleString(locale)} {s.unit}</option>)}</select></label>
+            <label>{t("inventoryDetail.supply")}<input required value={item.name} disabled={isSaving || !!item.supply_id} placeholder={t("recipeForm.supplyExample")} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, name: event.target.value } : entry))} /></label>
+            <label>{t("recipeForm.quantity")}<input required type="number" min="0.001" step="0.001" value={item.quantity} disabled={isSaving} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, quantity: event.target.value } : entry))} /></label>
+            <label>{t("recipeForm.unit")}<input required value={item.unit} disabled={isSaving || !!item.supply_id} placeholder={t("recipeForm.unitExample")} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit: event.target.value } : entry))} /></label>
+            <label>{t("recipeForm.unitCost")}<input required type="number" min="0" step="0.01" value={item.unit_cost} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit_cost: event.target.value } : entry))} /></label>
+            <label>{t("purchaseRecord.currency")}<select value={item.currency} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, currency: event.target.value } : entry))}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
+            <label>{t("filamentReport.supplier")}<input value={item.supplier_name} disabled={isSaving || !!item.supply_id} placeholder={t("optional")} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, supplier_name: event.target.value } : entry))} /></label>
+            <button className="remove-recipe" type="button" aria-label={t("recipeForm.removeSupply")} disabled={isSaving} onClick={() => setComponents((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
           </div>
-        )) : <p className="empty-state">Podés agregar imanes, pines, pintura, luces, empaque o cualquier otro costo.</p>}
+        )) : <p className="empty-state">{t("recipeForm.extrasHelp")}</p>}
       </section>
 
       <button className="primary-action" type="submit" disabled={isSaving || !availableRolls.length || !name.trim() || !validRequirements || !validComponents || !validFile}>
-        <Save size={18} />{isSaving ? "Guardando receta y archivo…" : sourceName ? "Guardar variante" : "Guardar proyecto"}
+        <Save size={18} />{isSaving ? t("recipeForm.saving") : sourceName ? t("projects.variant") : t("recipeForm.save")}
       </button>
     </form>
   );
 }
 
 function ProductionRunForm({
+  language,
   supplies,
   project,
   requirements,
@@ -316,6 +318,7 @@ function ProductionRunForm({
   onCancel,
   onSave
 }: {
+  language: AppLanguage;
   supplies: Supply[];
   project: PrintProject;
   requirements: ProjectFilamentRequirement[];
@@ -328,6 +331,9 @@ function ProductionRunForm({
   onCancel: () => void;
   onSave: Props["onCompleteRun"];
 }) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
+  const displayMoney = (currency: string, value: number) => money(currency, value, language);
   const [producedAt, setProducedAt] = useState(todayIso());
   const [quantity, setQuantity] = useState(1);
   const [status, setStatus] = useState<ProductionRunStatus>("completed");
@@ -354,7 +360,14 @@ function ProductionRunForm({
     setComponentUsage(Object.fromEntries(components.map((item) => [item.id, String(Number(item.quantity) * safeQuantity)])));
   }
 
-  const shortageMessages: string[] = supplyShortages(components, componentUsage, supplies);
+  const shortageMessages = supplyShortages(components, componentUsage, supplies).map((shortage) =>
+    shortage.kind === "missing" ? t("printRun.missingSupply") : t("printRun.supplyShortage", {
+      name: shortage.supply.name,
+      needed: language === "es" ? shortage.needed : shortage.needed.toLocaleString(locale, { maximumFractionDigits: 20 }),
+      unit: shortage.supply.unit,
+      available: language === "es" ? shortage.supply.quantity : Number(shortage.supply.quantity).toLocaleString(locale, { maximumFractionDigits: 20 })
+    })
+  );
   const previewTotals = new Map<string, number>();
   let incompleteFilamentCosts = 0;
 
@@ -363,17 +376,17 @@ function ProductionRunForm({
     const roll = rolls.find((item) => item.id === usage?.roll_id);
     const grams = Number(usage?.grams_used || 0);
     if (!roll || grams <= 0) {
-      shortageMessages.push(`${requirement.color_name}: elegí un rollo y los gramos reales.`);
+      shortageMessages.push(t("printRun.missingRoll", { name: requirement.color_name }));
       return;
     }
-    if (grams > Number(roll.available_weight_g)) shortageMessages.push(`${roll.color_name}: faltan ${(grams - Number(roll.available_weight_g)).toLocaleString("es-CR")} g.`);
+    if (grams > Number(roll.available_weight_g)) shortageMessages.push(t("printRun.rollShortage", { name: roll.color_name, grams: (grams - Number(roll.available_weight_g)).toLocaleString(locale) }));
     if (roll.filament_cost_amount == null || Number(roll.initial_weight_g) <= 0) incompleteFilamentCosts += 1;
     else previewTotals.set(roll.currency, (previewTotals.get(roll.currency) ?? 0) + Number(roll.filament_cost_amount) / Number(roll.initial_weight_g) * grams);
   });
 
   components.forEach((component) => {
     const used = Number(componentUsage[component.id] || 0);
-    if (!Number.isFinite(used) || used < 0) shortageMessages.push(`${component.name}: indicá una cantidad válida (cero si no se utilizó).`);
+    if (!Number.isFinite(used) || used < 0) shortageMessages.push(t("printRun.invalidSupplyQuantity", { name: component.name }));
     else {
       const supply=component.supply_id ? supplies.find(s=>s.id===component.supply_id) : null;
       const currency=supply?.currency ?? component.currency;
@@ -386,7 +399,7 @@ function ProductionRunForm({
   const resolvedMachineRate = selectedPrinter?.machine_cost_per_hour ?? profile.machine_cost_per_hour;
   const costCurrency = profile.production_cost_currency || baseCurrency;
   const printerCurrencyMismatch = selectedPrinter?.machine_cost_per_hour != null && selectedPrinter.machine_cost_currency !== costCurrency;
-  if (printerCurrencyMismatch) shortageMessages.push("La tarifa de esta impresora usa otra moneda. Revisá su tarifa o la moneda de costos de Perfil; no convertimos montos automáticamente.");
+  if (printerCurrencyMismatch) shortageMessages.push(t("printRun.printerCurrencyMismatch"));
   const actualHours = actualMinutes === "" ? null : Number(actualMinutes) / 60;
   const laborHours = actualLaborMinutes === "" ? null : Number(actualLaborMinutes) / 60;
   const electricityCost = actualHours == null
@@ -437,46 +450,46 @@ function ProductionRunForm({
   }
 
   return (
-    <form className="project-form production-run-form" onSubmit={submit} aria-busy={isSaving}>
-      <div className="project-form-head"><button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />Volver</button><div><p className="eyebrow">Producción real</p><h3>{project.name}</h3></div></div>
-      <p className="project-mode-note">Podés usar otro color del mismo material para esta impresión. La receta original no cambia; al confirmar se registra el consumo real. Esta acción no envía trabajos a la impresora.</p>
+    <form lang={language} className="project-form production-run-form" onSubmit={submit} aria-busy={isSaving}>
+      <div className="project-form-head"><button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />{t("printRun.back")}</button><div><p className="eyebrow">{t("printRun.eyebrow")}</p><h3>{project.name}</h3></div></div>
+      <p className="project-mode-note">{t("printRun.help")}</p>
       <div className="form-grid project-main-fields">
-        <label>Fecha<input required type="date" value={producedAt} disabled={isSaving} onChange={(event) => setProducedAt(event.target.value)} /></label>
-        <label>Cantidad producida<input required type="number" min="1" value={quantity} disabled={isSaving} onChange={(event) => applyQuantity(Number(event.target.value))} /></label>
-        <label>Resultado<select value={status} disabled={isSaving} onChange={(event) => setStatus(event.target.value as ProductionRunStatus)}><option value="completed">Exitosa</option><option value="partial">Parcial</option><option value="failed">Fallida / reimpresión</option></select></label>
-        <label>Minutos reales<input type="number" min="0" value={actualMinutes} disabled={isSaving} placeholder="300" onChange={(event) => setActualMinutes(event.target.value)} /></label>
-        <label className="wide">Impresora<select value={printerId} disabled={isSaving} onChange={(event) => setPrinterId(event.target.value)}><option value="">Tarifa general de Perfil</option>{printers.filter((printer) => printer.is_active).map((printer) => <option key={printer.id} value={printer.id}>{printer.name}{printer.model ? ` · ${printer.model}` : ""}</option>)}</select></label>
+        <label>{t("printRun.date")}<input required type="date" value={producedAt} disabled={isSaving} onChange={(event) => setProducedAt(event.target.value)} /></label>
+        <label>{t("printRun.produced")}<input required type="number" min="1" value={quantity} disabled={isSaving} onChange={(event) => applyQuantity(Number(event.target.value))} /></label>
+        <label>{t("printRun.result")}<select value={status} disabled={isSaving} onChange={(event) => setStatus(event.target.value as ProductionRunStatus)}><option value="completed">{t("production.completed")}</option><option value="partial">{t("production.partial")}</option><option value="failed">{t("printRun.failed")}</option></select></label>
+        <label>{t("printRun.minutes")}<input type="number" min="0" value={actualMinutes} disabled={isSaving} placeholder="300" onChange={(event) => setActualMinutes(event.target.value)} /></label>
+        <label className="wide">{t("printRun.printer")}<select value={printerId} disabled={isSaving} onChange={(event) => setPrinterId(event.target.value)}><option value="">{t("printRun.profileRate")}</option>{printers.filter((printer) => printer.is_active).map((printer) => <option key={printer.id} value={printer.id}>{printer.name}{printer.model ? ` · ${printer.model}` : ""}</option>)}</select></label>
       </div>
 
-      <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">Consumo real</p><h3>Rollos utilizados</h3></div></div>{requirements.map((requirement) => {
+      <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">{t("printRun.consumption")}</p><h3>{t("printRun.rolls")}</h3></div></div>{requirements.map((requirement) => {
         const usage = usages[requirement.id];
         const candidates = rolls.filter((roll) => roll.status !== "archived" && roll.material === requirement.material);
-        return <div className="run-usage-row" key={requirement.id}><span className="mini-swatch" style={{ backgroundColor: requirement.color_hex }} /><div><strong>{requirement.label || requirement.color_name}</strong><small>Receta: {Number(requirement.planned_grams).toLocaleString("es-CR")} g por unidad</small></div><label>Rollo<select value={usage?.roll_id ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], roll_id: event.target.value } }))}><option value="">Elegí un rollo</option>{candidates.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {Math.round(Number(roll.available_weight_g))} g</option>)}</select></label><label>Gramos reales<input required type="number" min="0.01" step="0.01" value={usage?.grams_used ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], grams_used: event.target.value } }))} /></label></div>;
+        return <div className="run-usage-row" key={requirement.id}><span className="mini-swatch" style={{ backgroundColor: requirement.color_hex }} /><div><strong>{requirement.label || requirement.color_name}</strong><small>{t("printRun.recipeGrams", { grams: Number(requirement.planned_grams).toLocaleString(locale) })}</small></div><label>{t("printRun.roll")}<select value={usage?.roll_id ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], roll_id: event.target.value } }))}><option value="">{t("recipeForm.choose")}</option>{candidates.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {Math.round(Number(roll.available_weight_g)).toLocaleString(locale)} g</option>)}</select></label><label>{t("printRun.actualGrams")}<input required type="number" min="0.01" step="0.01" value={usage?.grams_used ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], grams_used: event.target.value } }))} /></label></div>;
       })}</section>
 
-      {components.length > 0 && <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">Extras reales</p><h3>Insumos consumidos</h3></div></div>{components.map((component) => <div className="run-component-row" key={component.id}><div><strong>{component.name}</strong><small>{money(component.currency, component.supply_id ? supplies.find(s=>s.id===component.supply_id)?.unit_cost ?? 0 : component.unit_cost)} / {component.unit}{component.supply_id ? " · descuenta existencias" : " · extra manual, sin stock"}</small></div><label>Cantidad<input required type="number" min="0" step="0.001" value={componentUsage[component.id] ?? ""} disabled={isSaving} onChange={(event) => setComponentUsage((current) => ({ ...current, [component.id]: event.target.value }))} /></label></div>)}</section>}
+      {components.length > 0 && <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">{t("printRun.extras")}</p><h3>{t("printRun.usedSupplies")}</h3></div></div>{components.map((component) => <div className="run-component-row" key={component.id}><div><strong>{component.name}</strong><small>{displayMoney(component.currency, component.supply_id ? supplies.find(s=>s.id===component.supply_id)?.unit_cost ?? 0 : component.unit_cost)} / {component.unit}{component.supply_id ? " · " + t("printRun.deductsStock") : " · " + t("printRun.manualExtra")}</small></div><label>{t("recipeForm.quantity")}<input required type="number" min="0" step="0.001" value={componentUsage[component.id] ?? ""} disabled={isSaving} onChange={(event) => setComponentUsage((current) => ({ ...current, [component.id]: event.target.value }))} /></label></div>)}</section>}
 
       <section className="project-recipe-section run-operating-costs">
-        <div className="section-head"><div><p className="eyebrow">Operación</p><h3>Tiempo, máquina y fallos</h3></div></div>
+        <div className="section-head"><div><p className="eyebrow">{t("production.costs.operation")}</p><h3>{t("printRun.timeAndCosts")}</h3></div></div>
         <div className="form-grid">
-          <label>Mano de obra real (min)<input type="number" min="0" value={actualLaborMinutes} disabled={isSaving} placeholder="Ej. 25" onChange={(event) => setActualLaborMinutes(event.target.value)} /></label>
-          <label>Fallos y desperdicio ({costCurrency})<input type="number" min="0" step="0.01" value={failureCostAmount} disabled={isSaving} placeholder="0" onChange={(event) => setFailureCostAmount(event.target.value)} /></label>
+          <label>{t("printRun.laborMinutes")}<input type="number" min="0" value={actualLaborMinutes} disabled={isSaving} placeholder={t("printRun.laborExample")} onChange={(event) => setActualLaborMinutes(event.target.value)} /></label>
+          <label>{t("printRun.wasteAmount", { currency: costCurrency })}<input type="number" min="0" step="0.01" value={failureCostAmount} disabled={isSaving} placeholder="0" onChange={(event) => setFailureCostAmount(event.target.value)} /></label>
         </div>
         <div className="run-operating-grid">
-          <span><small>Electricidad{selectedPrinter ? ` · ${selectedPrinter.name}` : ""}</small><strong>{electricityCost == null ? "Por configurar" : money(costCurrency, electricityCost)}</strong></span>
-          <span><small>Uso de máquina</small><strong>{printerCurrencyMismatch ? "Revisar moneda" : machineCost == null ? "Falta duración" : money(costCurrency, machineCost)}</strong></span>
-          <span><small>Mano de obra</small><strong>{laborCost == null ? "Falta tiempo" : money(costCurrency, laborCost)}</strong></span>
-          <span><small>Fallos</small><strong>{money(costCurrency, failureCost)}</strong></span>
+          <span><small>{t("production.costs.electricity")}{selectedPrinter ? ` · ${selectedPrinter.name}` : ""}</small><strong>{electricityCost == null ? t("printRun.unconfigured") : displayMoney(costCurrency, electricityCost)}</strong></span>
+          <span><small>{t("production.costs.machine")}</small><strong>{printerCurrencyMismatch ? t("printRun.checkCurrency") : machineCost == null ? t("printRun.missingDuration") : displayMoney(costCurrency, machineCost)}</strong></span>
+          <span><small>{t("production.costs.labor")}</small><strong>{laborCost == null ? t("printRun.missingLabor") : displayMoney(costCurrency, laborCost)}</strong></span>
+          <span><small>{t("printRun.failures")}</small><strong>{displayMoney(costCurrency, failureCost)}</strong></span>
         </div>
-        {electricityCost == null && <p className="operating-cost-note"><AlertTriangle size={15} />Configurá el precio por kWh y la potencia promedio en Perfil para incluir electricidad.</p>}
-        <p className="operating-cost-note">Al cerrar, guardamos una copia de estas tarifas. El histórico no cambia si luego las actualizás.</p>
+        {electricityCost == null && <p className="operating-cost-note"><AlertTriangle size={15} />{t("printRun.electricityHelp")}</p>}
+        <p className="operating-cost-note">{t("printRun.snapshot")}</p>
       </section>
 
-      <section className="run-cost-preview"><div className="section-head"><div><p className="eyebrow">Vista previa</p><h3>Costo y utilidad</h3></div></div><div className="run-cost-currencies">{Array.from(previewTotals.entries()).map(([currency, total]) => <span key={currency}><small>Costo {currency}</small><strong>{money(currency, total)}</strong></span>)}{!previewTotals.size && <span><small>Costo</small><strong>Incompleto</strong></span>}</div>{incompleteFilamentCosts > 0 && <p><AlertTriangle size={15} />{incompleteFilamentCosts} filamento{incompleteFilamentCosts === 1 ? "" : "s"} sin costo registrado.</p>}<div className="form-grid"><label>Venta total<input type="number" min="0" step="0.01" value={saleAmount} disabled={isSaving} placeholder="Opcional" onChange={(event) => setSaleAmount(event.target.value)} /></label><label>Moneda<select value={saleCurrency} disabled={isSaving || saleAmount === ""} onChange={(event) => setSaleCurrency(event.target.value)}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label></div>{profit != null ? <div className={profit >= 0 ? "profit-preview positive" : "profit-preview negative"}><TrendingUp size={18} /><span>Utilidad estimada</span><strong>{money(saleCurrency, profit)}</strong></div> : parsedSale != null && <p><AlertTriangle size={15} />No mezclamos monedas ni costos incompletos. La utilidad aparecerá cuando todos los costos sean comparables.</p>}</section>
+      <section className="run-cost-preview"><div className="section-head"><div><p className="eyebrow">{t("printRun.preview")}</p><h3>{t("printRun.costAndProfit")}</h3></div></div><div className="run-cost-currencies">{Array.from(previewTotals.entries()).map(([currency, total]) => <span key={currency}><small>{t("printRun.costCurrency", { currency })}</small><strong>{displayMoney(currency, total)}</strong></span>)}{!previewTotals.size && <span><small>{t("printRun.cost")}</small><strong>{t("printRun.incomplete")}</strong></span>}</div>{incompleteFilamentCosts > 0 && <p><AlertTriangle size={15} />{t(incompleteFilamentCosts === 1 ? "printRun.missingFilamentOne" : "printRun.missingFilamentMany", { count: incompleteFilamentCosts.toLocaleString(locale) })}</p>}<div className="form-grid"><label>{t("printRun.sale")}<input type="number" min="0" step="0.01" value={saleAmount} disabled={isSaving} placeholder={t("printRun.optional")} onChange={(event) => setSaleAmount(event.target.value)} /></label><label>{t("printRun.currency")}<select value={saleCurrency} disabled={isSaving || saleAmount === ""} onChange={(event) => setSaleCurrency(event.target.value)}><option value="CRC">{language === "en" ? currencyLabel("CRC", language) : "CRC"}</option><option value="USD">{language === "en" ? currencyLabel("USD", language) : "USD"}</option><option value="EUR">{language === "en" ? currencyLabel("EUR", language) : "EUR"}</option></select></label></div>{profit != null ? <div className={profit >= 0 ? "profit-preview positive" : "profit-preview negative"}><TrendingUp size={18} /><span>{t("printRun.profit")}</span><strong>{displayMoney(saleCurrency, profit)}</strong></div> : parsedSale != null && <p><AlertTriangle size={15} />{t("printRun.profitUnavailable")}</p>}</section>
 
-      {shortageMessages.length > 0 && <div className="run-blockers"><strong>No se puede cerrar todavía</strong>{shortageMessages.map((message) => <span key={message}>{message}</span>)}</div>}
-      <label className="project-run-notes">Notas<textarea maxLength={1000} value={notes} disabled={isSaving} placeholder="Fallo, desperdicio, observaciones de calidad…" onChange={(event) => setNotes(event.target.value)} /></label>
-      <button className="primary-action" type="submit" disabled={isSaving || shortageMessages.length > 0}><PackageCheck size={18} />{isSaving ? "Cerrando corrida sin duplicar…" : "Cerrar corrida y descontar inventario"}</button>
+      {shortageMessages.length > 0 && <div className="run-blockers"><strong>{t("printRun.blocked")}</strong>{shortageMessages.map((message) => <span key={message}>{message}</span>)}</div>}
+      <label className="project-run-notes">{t("printRun.notes")}<textarea maxLength={1000} value={notes} disabled={isSaving} placeholder={t("printRun.notesExample")} onChange={(event) => setNotes(event.target.value)} /></label>
+      <button className="primary-action" type="submit" disabled={isSaving || shortageMessages.length > 0}><PackageCheck size={18} />{t(isSaving ? "printRun.saving" : "printRun.save")}</button>
     </form>
   );
 }
@@ -503,8 +516,12 @@ export function ProjectsModal({
   onCreateProject,
   onCompleteRun,
   onSavePrinter,
-  onOpenFile
+  onOpenFile,
+  language = defaultLanguage
 }: Props) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
+  const displayMoney = (currency: string, value: number) => money(currency, value, language);
   const [showCreate, setShowCreate] = useState(false);
   const [variantSource, setVariantSource] = useState<PrintProject | null>(null);
   const [showPrinters, setShowPrinters] = useState(false);
@@ -514,44 +531,109 @@ export function ProjectsModal({
   const sortedRuns = [...runs].sort((a, b) => b.produced_at.localeCompare(a.produced_at) || b.created_at.localeCompare(a.created_at));
 
   return (
-    <ModalFrame title="Proyectos" titleId="projects-title" eyebrow="Producción" className="projects-modal"
+    <ModalFrame lang={language} title={t("projects")} titleId="projects-title" eyebrow={t("nav.production")} closeLabel={t("projects.close")} className="projects-modal"
       busy={isSavingProject || isSavingRun || isSavingPrinter} onClose={onClose}
       viewKey={showPrinters ? "printers" : showCreate ? "create" : runProjectId || "list"}>
-        <p className="spool-operation-note" role="status">{statusMessage}</p>
-        {mode !== "authenticated" && <p className="project-mode-note">Los proyectos guardados en este modo quedan solamente en este navegador. Iniciá sesión para sincronizar archivos y producción.</p>}
+        <p className="spool-operation-note" role="status">
+          {statusMessage && <>{language === "en" && <>{t("account.originalMessage")} </>}<span lang="">{statusMessage}</span></>}
+        </p>
+        {mode !== "authenticated" && <p className="project-mode-note">{t("projects.local")}</p>}
 
         {showPrinters ? (
-          <PrinterManager printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
+          <PrinterManager language={language} printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
         ) : showCreate ? (
-          <ProjectForm supplies={supplies} key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
+          <ProjectForm language={language} supplies={supplies} key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
         ) : runProject ? (
-          <ProductionRunForm supplies={supplies} project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
+          <ProductionRunForm language={language} supplies={supplies} project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
         ) : (
           <>
-            <div className="project-summary"><article><FolderKanban size={18} /><strong>{projects.length}</strong><span>proyectos</span></article><article><Printer size={18} /><strong>{runs.length}</strong><span>corridas</span></article><article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString("es-CR")} g</strong><span>por recetas</span></article><button type="button" onClick={() => setShowPrinters(true)}><Printer size={18} />Impresoras</button><button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Nuevo proyecto</button></div>
+            <div className="project-summary">
+              <article><FolderKanban size={18} /><strong>{projects.length.toLocaleString(locale)}</strong><span>{t("projects.projects")}</span></article>
+              <article><Printer size={18} /><strong>{runs.length.toLocaleString(locale)}</strong><span>{t("projects.runs")}</span></article>
+              <article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString(locale)} g</strong><span>{t("projects.recipeGrams")}</span></article>
+              <button type="button" onClick={() => setShowPrinters(true)}><Printer size={18} />{t("projects.printers")}</button>
+              <button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />{t("projects.new")}</button>
+            </div>
 
             <div className="project-list">
               {sortedProjects.length ? sortedProjects.map((project) => {
                 const projectRequirements = requirements.filter((item) => item.project_id === project.id).sort((a, b) => a.position - b.position);
                 const projectComponents = components.filter((item) => item.project_id === project.id).sort((a, b) => a.position - b.position);
                 const projectRuns = sortedRuns.filter((run) => run.project_id === project.id);
-                return <article className="project-card" key={project.id}><div className="project-card-head"><div><span className="project-icon"><FolderKanban size={20} /></span><div><h3>{project.name}</h3><p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes)} · {projectRuns.length} corrida{projectRuns.length === 1 ? "" : "s"}</p></div></div><div className="project-card-actions"><button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />Registrar impresión</button><button type="button" onClick={() => { setVariantSource(project); setShowCreate(true); }}><Save size={16} />Guardar variante</button>{project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || "Archivo"}</button>}</div></div>{project.description && <p className="project-description">{project.description}</p>}<div className="project-recipe-preview">{projectRequirements.map((item) => <span key={item.id}><i style={{ backgroundColor: item.color_hex }} /><strong>{item.label || item.color_name}</strong><small>{Number(item.planned_grams).toLocaleString("es-CR")} g</small></span>)}</div>{projectComponents.length > 0 && <p className="project-components-preview">+ {projectComponents.map((item) => `${Number(item.quantity).toLocaleString("es-CR")} ${item.unit} ${item.name}`).join(" · ")}</p>}{projectRuns.slice(0, 2).map((run) => {
-                  const filamentLines = runFilaments.filter((line) => line.run_id === run.id);
-                  const componentLines = runComponents.filter((line) => line.run_id === run.id);
-                  const operatingCosts = runCosts.find((cost) => cost.run_id === run.id);
-                  const totals = totalsByCurrency(filamentLines, componentLines, operatingCosts);
-                  const incomplete = filamentLines.some((line) => line.cost_amount == null)
-                    || !operatingCosts
-                    || operatingCosts.electricity_cost_amount == null
-                    || operatingCosts.machine_cost_amount == null
-                    || operatingCosts.labor_cost_amount == null;
-                  const comparable = run.sale_amount != null && run.sale_currency && totals.size === 1 && totals.has(run.sale_currency) && !incomplete ? totals.get(run.sale_currency) ?? null : null;
-                  return <div className="project-run-row" key={run.id}><span className={`run-status ${run.status}`}>{runStatusLabels[run.status]}</span><div><strong>{run.produced_at} · {run.quantity} unidad{run.quantity === 1 ? "" : "es"}</strong><small>{duration(run.actual_minutes)} · {filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString("es-CR")} g{operatingCosts ? ` · ${duration(operatingCosts.actual_labor_minutes)} de trabajo` : " · costos operativos pendientes"}{operatingCosts?.printer_name ? ` · ${operatingCosts.printer_name}` : ""}</small></div><div className="run-money"><small>{incomplete ? "Subtotal registrado" : "Costo registrado"}</small>{Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{money(currency, total)}</span>)}{run.sale_amount != null && <strong>Venta {money(run.sale_currency || baseCurrency, run.sale_amount)}</strong>}{comparable != null && <small>Utilidad {money(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable)}</small>}</div><ProductionCostBreakdown run={run} filaments={filamentLines} components={componentLines} operatingCosts={operatingCosts} /></div>;
-                })}</article>;
-              }) : <div className="project-empty"><FolderKanban size={34} /><h3>Tu primera receta está lista para nacer</h3><p>Guardá el STL/3MF, los filamentos, gramos, tiempo e insumos que necesita.</p><button className="primary-action" type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Crear primer proyecto</button></div>}
+                const runCount = t(projectRuns.length === 1 ? "projects.runOne" : "projects.runMany", { count: projectRuns.length.toLocaleString(locale) });
+
+                return <article className="project-card" key={project.id}>
+                  <div className="project-card-head">
+                    <div>
+                      <span className="project-icon"><FolderKanban size={20} /></span>
+                      <div>
+                        <h3>{project.name}</h3>
+                        <p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes, language)} · {runCount}</p>
+                      </div>
+                    </div>
+                    <div className="project-card-actions">
+                      <button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />{t("production.record")}</button>
+                      <button type="button" onClick={() => { setVariantSource(project); setShowCreate(true); }}><Save size={16} />{t("projects.variant")}</button>
+                      {project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || t("projects.file")}</button>}
+                    </div>
+                  </div>
+                  {project.description && <p className="project-description">{project.description}</p>}
+                  <div className="project-recipe-preview">
+                    {projectRequirements.map((item) => <span key={item.id}>
+                      <i style={{ backgroundColor: item.color_hex }} />
+                      <strong>{item.label || item.color_name}</strong>
+                      <small>{Number(item.planned_grams).toLocaleString(locale)} g</small>
+                    </span>)}
+                  </div>
+                  {projectComponents.length > 0 && <p className="project-components-preview">
+                    + {projectComponents.map((item) => `${Number(item.quantity).toLocaleString(locale)} ${item.unit} ${item.name}`).join(" · ")}
+                  </p>}
+                  {projectRuns.slice(0, 2).map((run) => {
+                    const filamentLines = runFilaments.filter((line) => line.run_id === run.id);
+                    const componentLines = runComponents.filter((line) => line.run_id === run.id);
+                    const operatingCosts = runCosts.find((cost) => cost.run_id === run.id);
+                    const totals = totalsByCurrency(filamentLines, componentLines, operatingCosts);
+                    const incomplete = filamentLines.some((line) => line.cost_amount == null)
+                      || !operatingCosts
+                      || operatingCosts.electricity_cost_amount == null
+                      || operatingCosts.machine_cost_amount == null
+                      || operatingCosts.labor_cost_amount == null;
+                    const comparable = run.sale_amount != null && run.sale_currency && totals.size === 1 && totals.has(run.sale_currency) && !incomplete ? totals.get(run.sale_currency) ?? null : null;
+                    const date = language === "es" ? run.produced_at :
+                      formatDate(run.produced_at, language, { dateStyle: "medium" }) ?? t("dateUnavailable");
+                    const quantity = t(Number(run.quantity) === 1 ? "production.unitOne" : "production.unitMany", {
+                      quantity: Number(run.quantity).toLocaleString(locale)
+                    });
+                    const grams = filamentLines.reduce((sum, line) => sum + Number(line.grams_used), 0).toLocaleString(locale);
+                    const labor = operatingCosts
+                      ? t("projects.labor", { duration: duration(operatingCosts.actual_labor_minutes, language) })
+                      : t("projects.pendingCosts");
+
+                    return <div className="project-run-row" key={run.id}>
+                      <span className={`run-status ${run.status}`}>{t(`production.${run.status}`)}</span>
+                      <div>
+                        <strong>{date} · {quantity}</strong>
+                        <small>{duration(run.actual_minutes, language)} · {grams} g · {labor}{operatingCosts?.printer_name ? ` · ${operatingCosts.printer_name}` : ""}</small>
+                      </div>
+                      <div className="run-money">
+                        <small>{t(incomplete ? "projects.subtotal" : "projects.cost")}</small>
+                        {Array.from(totals.entries()).map(([currency, total]) => <span key={currency}>{displayMoney(currency, total)}</span>)}
+                        {run.sale_amount != null && <strong>{t("projects.sale", { amount: displayMoney(run.sale_currency || baseCurrency, run.sale_amount) })}</strong>}
+                        {comparable != null && <small>{t("projects.profit", { amount: displayMoney(run.sale_currency || baseCurrency, Number(run.sale_amount) - comparable) })}</small>}
+                      </div>
+                      <ProductionCostBreakdown language={language} run={run} filaments={filamentLines} components={componentLines} operatingCosts={operatingCosts} />
+                    </div>;
+                  })}
+                </article>;
+              }) : <div className="project-empty">
+                <FolderKanban size={34} />
+                <h3>{t("projects.empty")}</h3>
+                <p>{t("projects.emptyHelp")}</p>
+                <button className="primary-action" type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />{t("projects.first")}</button>
+              </div>}
             </div>
 
-            <ProductionHistory runs={sortedRuns} filaments={runFilaments} components={runComponents} costs={runCosts} />
+            <ProductionHistory language={language} runs={sortedRuns} filaments={runFilaments} components={runComponents} costs={runCosts} />
           </>
         )}
     </ModalFrame>

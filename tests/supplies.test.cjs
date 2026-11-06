@@ -5,9 +5,9 @@ const {createVariantDraft}=require('../lib/project-variant.ts');
 test('aggregate repeated supplies; manual extras do not consume stock',()=>{
  const components=[{id:'a',supply_id:'s',name:'Iman'},{id:'b',supply_id:'s',name:'Iman'},{id:'c',name:'Manual'}];
  const supplies=[{id:'s',name:'Iman',unit:'unidad',quantity:5}];
- assert.equal(supplyShortages(components,{a:'3',b:'3',c:'99'},supplies).length,1);
+ assert.deepEqual(supplyShortages(components,{a:'3',b:'3',c:'99'},supplies),[{kind:'insufficient',supply:supplies[0],needed:6}]);
  assert.deepEqual(supplyShortages(components,{a:'2',b:'3',c:'99'},supplies),[]);
- assert.equal(supplyShortages(components,{a:'1',b:'1'},[]).length,1);
+ assert.deepEqual(supplyShortages(components,{a:'1',b:'1'},[]),[{kind:'missing'}]);
 });
 test('numeric database values are normalized',()=>{
  assert.equal(normalizeSupply({quantity:'12.5',unit_cost:'0.9'}).quantity,12.5);
