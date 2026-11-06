@@ -148,8 +148,10 @@ function ProjectForm({
   baseCurrency,
   isSaving,
   onCancel,
-  onCreate
+  onCreate,
+  language
 }: {
+  language: AppLanguage;
   supplies: Supply[];
   initialValues?: ProjectCreateValues;
   sourceName?: string;
@@ -159,6 +161,8 @@ function ProjectForm({
   onCancel: () => void;
   onCreate: Props["onCreateProject"];
 }) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
   const availableRolls = rolls.filter((roll) => roll.status !== "archived");
   const [name, setName] = useState(initialValues?.name ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
@@ -237,64 +241,64 @@ function ProjectForm({
   }
 
   return (
-    <form lang="es" className="project-form" onSubmit={submit} aria-busy={isSaving}>
+    <form lang={language} className="project-form" onSubmit={submit} aria-busy={isSaving}>
       <div className="project-form-head">
-        <button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />Volver</button>
-        <div><p className="eyebrow">{sourceName ? "Nueva variante" : "Nueva receta"}</p><h3>{sourceName ? "Guardar variante" : "Crear proyecto"}</h3></div>
+        <button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />{t("back")}</button>
+        <div><p className="eyebrow">{sourceName ? t("recipeForm.variant") : t("recipeForm.recipe")}</p><h3>{sourceName ? t("projects.variant") : t("recipeForm.create")}</h3></div>
       </div>
-      {sourceName && <p className="project-mode-note">Basada en «{sourceName}». Podés cambiar colores, gramos e insumos. Se guarda como un proyecto independiente, sin modificar el original ni descontar inventario. El STL/3MF no se copia: adjuntalo si lo necesitás.</p>}
+      {sourceName && <p className="project-mode-note">{t("recipeForm.variantHelp", { name: sourceName })}</p>}
 
       <div className="form-grid project-main-fields">
-        <label className="wide">Nombre del proyecto<input required maxLength={120} value={name} disabled={isSaving} placeholder="Ej. Dragón articulado grande" onChange={(event) => setName(event.target.value)} /></label>
-        <label>Versión<input maxLength={40} value={version} disabled={isSaving} placeholder="1.0" onChange={(event) => setVersion(event.target.value)} /></label>
-        <label>Licencia<input maxLength={120} value={licenseName} disabled={isSaving} placeholder="Personal, comercial, CC…" onChange={(event) => setLicenseName(event.target.value)} /></label>
-        <label>Horas estimadas<input type="number" min="0" max="1666" value={estimatedHours} disabled={isSaving} placeholder="5" onChange={(event) => setEstimatedHours(event.target.value)} /></label>
-        <label>Minutos adicionales<input type="number" min="0" max="59" value={estimatedMinutes} disabled={isSaving} placeholder="30" onChange={(event) => setEstimatedMinutes(event.target.value)} /></label>
-        <label className="wide">Descripción<textarea maxLength={1000} value={description} disabled={isSaving} placeholder="Notas de armado, perfil, soportes…" onChange={(event) => setDescription(event.target.value)} /></label>
-        <label className="wide project-file-field">Archivo STL o 3MF<input type="file" accept=".stl,.3mf" disabled={isSaving} onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><small>Privado · máximo 50 MB. El 3MF conserva más información del laminado.</small>{!validFile && <span>Solo se admiten archivos STL o 3MF.</span>}</label>
-        <label className="wide checkbox-field"><input type="checkbox" checked={commercialUse} disabled={isSaving} onChange={(event) => setCommercialUse(event.target.checked)} /><span>La licencia permite uso comercial</span></label>
+        <label className="wide">{t("recipeForm.name")}<input required maxLength={120} value={name} disabled={isSaving} placeholder={t("recipeForm.nameExample")} onChange={(event) => setName(event.target.value)} /></label>
+        <label>{t("recipeForm.version")}<input maxLength={40} value={version} disabled={isSaving} placeholder="1.0" onChange={(event) => setVersion(event.target.value)} /></label>
+        <label>{t("recipeForm.license")}<input maxLength={120} value={licenseName} disabled={isSaving} placeholder={t("recipeForm.licenseExample")} onChange={(event) => setLicenseName(event.target.value)} /></label>
+        <label>{t("recipeForm.hours")}<input type="number" min="0" max="1666" value={estimatedHours} disabled={isSaving} placeholder="5" onChange={(event) => setEstimatedHours(event.target.value)} /></label>
+        <label>{t("recipeForm.minutes")}<input type="number" min="0" max="59" value={estimatedMinutes} disabled={isSaving} placeholder="30" onChange={(event) => setEstimatedMinutes(event.target.value)} /></label>
+        <label className="wide">{t("supplies.descriptionTitle")}<textarea maxLength={1000} value={description} disabled={isSaving} placeholder={t("recipeForm.descriptionExample")} onChange={(event) => setDescription(event.target.value)} /></label>
+        <label className="wide project-file-field">{t("recipeForm.file")}<input type="file" accept=".stl,.3mf" disabled={isSaving} onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><small>{t("recipeForm.fileHelp")}</small>{!validFile && <span>{t("recipeForm.fileError")}</span>}</label>
+        <label className="wide checkbox-field"><input type="checkbox" checked={commercialUse} disabled={isSaving} onChange={(event) => setCommercialUse(event.target.checked)} /><span>{t("recipeForm.commercial")}</span></label>
       </div>
 
       <section className="project-recipe-section">
-        <div className="section-head"><div><p className="eyebrow">Materiales</p><h3>Filamentos de la receta</h3></div><button type="button" onClick={addRequirement} disabled={isSaving || requirements.length >= 32}><Plus size={16} />Filamento</button></div>
+        <div className="section-head"><div><p className="eyebrow">{t("recipeForm.materials")}</p><h3>{t("recipeForm.filaments")}</h3></div><button type="button" onClick={addRequirement} disabled={isSaving || requirements.length >= 32}><Plus size={16} />{t("filamentReport.filament")}</button></div>
         {requirements.map((item, index) => {
           const selected = rolls.find((roll) => roll.id === item.roll_id);
           return (
             <div className="recipe-row filament-recipe-row" key={item.key}>
               <span className="recipe-position">{index + 1}</span>
-              <label>Rollo preferido<select required value={item.roll_id} disabled={isSaving} onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, roll_id: event.target.value } : entry))}><option value="">Elegí un rollo</option>{availableRolls.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {roll.material} · {Math.round(Number(roll.available_weight_g))} g</option>)}</select></label>
-              <label>Gramos<input required type="number" min="0.01" step="0.01" value={item.planned_grams} disabled={isSaving} placeholder="500" onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, planned_grams: event.target.value } : entry))} /></label>
-              <label>Uso / pieza<input value={item.label} disabled={isSaving} placeholder="Cuerpo, ojos…" onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, label: event.target.value } : entry))} /></label>
-              <button className="remove-recipe" type="button" aria-label="Quitar filamento" disabled={isSaving || requirements.length === 1} onClick={() => setRequirements((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
-              {!item.roll_id && sourceName && <small className="recipe-warning">El rollo original ya no está disponible. Elegí uno para esta variante.</small>}
-              {selected && Number(item.planned_grams || 0) > Number(selected.available_weight_g) && <small className="recipe-warning">La receta supera el saldo actual de este rollo.</small>}
+              <label>{t("recipeForm.preferred")}<select required value={item.roll_id} disabled={isSaving} onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, roll_id: event.target.value } : entry))}><option value="">{t("recipeForm.choose")}</option>{availableRolls.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {roll.material} · {Math.round(Number(roll.available_weight_g)).toLocaleString(locale)} g</option>)}</select></label>
+              <label>{t("recipeForm.grams")}<input required type="number" min="0.01" step="0.01" value={item.planned_grams} disabled={isSaving} placeholder="500" onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, planned_grams: event.target.value } : entry))} /></label>
+              <label>{t("recipeForm.usage")}<input value={item.label} disabled={isSaving} placeholder={t("recipeForm.usageExample")} onChange={(event) => setRequirements((current) => current.map((entry) => entry.key === item.key ? { ...entry, label: event.target.value } : entry))} /></label>
+              <button className="remove-recipe" type="button" aria-label={t("recipeForm.removeFilament")} disabled={isSaving || requirements.length === 1} onClick={() => setRequirements((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
+              {!item.roll_id && sourceName && <small className="recipe-warning">{t("recipeForm.missingRoll")}</small>}
+              {selected && Number(item.planned_grams || 0) > Number(selected.available_weight_g) && <small className="recipe-warning">{t("recipeForm.overStock")}</small>}
             </div>
           );
         })}
       </section>
 
       <section className="project-recipe-section">
-        <div className="section-head"><div><p className="eyebrow">Extras</p><h3>Imanes, pines y otros</h3></div><button type="button" onClick={addComponent} disabled={isSaving || components.length >= 64}><Plus size={16} />Insumo</button></div>
+        <div className="section-head"><div><p className="eyebrow">{t("recipeForm.extras")}</p><h3>{t("recipeForm.supplies")}</h3></div><button type="button" onClick={addComponent} disabled={isSaving || components.length >= 64}><Plus size={16} />{t("inventoryDetail.supply")}</button></div>
         {components.length ? components.map((item, index) => (
           <div className="recipe-row component-recipe-row" key={item.key}>
             <span className="recipe-position">{index + 1}</span>
-            <label className="supply-picker">Desde inventario<select value={item.supply_id ?? ""} disabled={isSaving} onChange={event => {
+            <label className="supply-picker">{t("recipeForm.fromStock")}<select value={item.supply_id ?? ""} disabled={isSaving} onChange={event => {
               const supply=supplies.find(s=>s.id===event.target.value);
               setComponents(current=>current.map(entry=>entry.key===item.key ? supply ? {...entry,supply_id:supply.id,name:supply.name,unit:supply.unit,unit_cost:String(supply.unit_cost),currency:supply.currency,supplier_name:""} : {...entry,supply_id:null} : entry));
-            }}><option value="">Extra manual · sin stock</option>{supplies.map(s=><option key={s.id} value={s.id}>{s.name} · {s.quantity} {s.unit}</option>)}</select></label>
-            <label>Insumo<input required value={item.name} disabled={isSaving || !!item.supply_id} placeholder="Imán 6×2 mm" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, name: event.target.value } : entry))} /></label>
-            <label>Cantidad<input required type="number" min="0.001" step="0.001" value={item.quantity} disabled={isSaving} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, quantity: event.target.value } : entry))} /></label>
-            <label>Unidad<input required value={item.unit} disabled={isSaving || !!item.supply_id} placeholder="unidad" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit: event.target.value } : entry))} /></label>
-            <label>Costo por unidad<input required type="number" min="0" step="0.01" value={item.unit_cost} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit_cost: event.target.value } : entry))} /></label>
-            <label>Moneda<select value={item.currency} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, currency: event.target.value } : entry))}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
-            <label>Proveedor<input value={item.supplier_name} disabled={isSaving || !!item.supply_id} placeholder="Opcional" onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, supplier_name: event.target.value } : entry))} /></label>
-            <button className="remove-recipe" type="button" aria-label="Quitar insumo" disabled={isSaving} onClick={() => setComponents((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
+            }}><option value="">{t("recipeForm.manual")}</option>{supplies.map(s=><option key={s.id} value={s.id}>{s.name} · {s.quantity.toLocaleString(locale)} {s.unit}</option>)}</select></label>
+            <label>{t("inventoryDetail.supply")}<input required value={item.name} disabled={isSaving || !!item.supply_id} placeholder={t("recipeForm.supplyExample")} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, name: event.target.value } : entry))} /></label>
+            <label>{t("recipeForm.quantity")}<input required type="number" min="0.001" step="0.001" value={item.quantity} disabled={isSaving} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, quantity: event.target.value } : entry))} /></label>
+            <label>{t("recipeForm.unit")}<input required value={item.unit} disabled={isSaving || !!item.supply_id} placeholder={t("recipeForm.unitExample")} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit: event.target.value } : entry))} /></label>
+            <label>{t("recipeForm.unitCost")}<input required type="number" min="0" step="0.01" value={item.unit_cost} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, unit_cost: event.target.value } : entry))} /></label>
+            <label>{t("purchaseRecord.currency")}<select value={item.currency} disabled={isSaving || !!item.supply_id} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, currency: event.target.value } : entry))}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
+            <label>{t("filamentReport.supplier")}<input value={item.supplier_name} disabled={isSaving || !!item.supply_id} placeholder={t("optional")} onChange={(event) => setComponents((current) => current.map((entry) => entry.key === item.key ? { ...entry, supplier_name: event.target.value } : entry))} /></label>
+            <button className="remove-recipe" type="button" aria-label={t("recipeForm.removeSupply")} disabled={isSaving} onClick={() => setComponents((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={16} /></button>
           </div>
-        )) : <p className="empty-state">Podés agregar imanes, pines, pintura, luces, empaque o cualquier otro costo.</p>}
+        )) : <p className="empty-state">{t("recipeForm.extrasHelp")}</p>}
       </section>
 
       <button className="primary-action" type="submit" disabled={isSaving || !availableRolls.length || !name.trim() || !validRequirements || !validComponents || !validFile}>
-        <Save size={18} />{isSaving ? "Guardando receta y archivo…" : sourceName ? "Guardar variante" : "Guardar proyecto"}
+        <Save size={18} />{isSaving ? t("recipeForm.saving") : sourceName ? t("projects.variant") : t("recipeForm.save")}
       </button>
     </form>
   );
@@ -523,11 +527,11 @@ export function ProjectsModal({
         </p>
         {mode !== "authenticated" && <p className="project-mode-note">{t("projects.local")}</p>}
 
-        {language === "en" && (showCreate || runProject) && <p className="form-help">{t("projects.formsInSpanish")}</p>}
+        {language === "en" && runProject && !showCreate && <p className="form-help">{t("projects.formsInSpanish")}</p>}
         {showPrinters ? (
           <PrinterManager language={language} printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
         ) : showCreate ? (
-          <ProjectForm supplies={supplies} key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
+          <ProjectForm language={language} supplies={supplies} key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
         ) : runProject ? (
           <ProductionRunForm supplies={supplies} project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
         ) : (

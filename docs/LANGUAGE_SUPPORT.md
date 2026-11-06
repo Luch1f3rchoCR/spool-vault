@@ -47,9 +47,9 @@ Publicado en #79: formulario de nueva orden y editor de filamentos en español e
 
 Publicado en #80: Insumos en español e inglés, incluidos catálogo, movimientos e historial. Los valores guardados de categorías y unidades se conservan.
 
-En revisión (#81): perfiles de impresión en español e inglés, incluidos campos, validaciones, revisiones y mensajes. El error visible y la validación personalizada del navegador actualizan su idioma conservando borradores y el intento pendiente.
+Publicado en #81: perfiles de impresión en español e inglés, incluidos campos, validaciones, revisiones y mensajes. El error visible y la validación personalizada del navegador actualizan su idioma conservando borradores y el intento pendiente.
 
-Bloque siguiente en revisión sobre #81: lista de Proyectos en español e inglés, con recetas, acciones, resúmenes de costos e historial. Impresoras y el desglose reciben el mismo idioma. Continúan pendientes los formularios de receta y registro de impresión, inventario/spools y el selector global.
+En revisión (#82): lista de Proyectos y formularios de receta y variante en español e inglés, con acciones, costos e historial. Impresoras y el desglose reciben el mismo idioma. Se verificó que cambiar de idioma conserva el archivo y los datos del borrador. Continúan pendientes el registro de impresión, inventario/spools y el selector global.
 
 ## Primer bloque de implementación · 2026-10-30
 
