@@ -49,7 +49,7 @@ Publicado en #80: Insumos en español e inglés, incluidos catálogo, movimiento
 
 Publicado en #81: perfiles de impresión en español e inglés, incluidos campos, validaciones, revisiones y mensajes. El error visible y la validación personalizada del navegador actualizan su idioma conservando borradores y el intento pendiente.
 
-En revisión (#82): lista de Proyectos y formularios de receta y variante en español e inglés, con acciones, costos e historial. Impresoras y el desglose reciben el mismo idioma. Se verificó que cambiar de idioma conserva el archivo y los datos del borrador. Continúan pendientes el registro de impresión, inventario/spools y el selector global.
+En revisión (#82): lista de Proyectos y formularios de receta y variante en español e inglés, con acciones, costos e historial. Impresoras y el desglose reciben el mismo idioma. Se verificó que cambiar de idioma conserva el archivo y los datos del borrador. El mismo PR incluye el registro de impresión en ambos idiomas: consumo real, avisos de existencias, costos, utilidad y acciones. La versión inglesa identifica las monedas por código y explica las opciones de venta. El idioma conserva el borrador, los códigos y las cantidades enviadas. Continúan pendientes las pantallas restantes de inventario/spools y el selector global.
 
 ## Primer bloque de implementación · 2026-10-30
 

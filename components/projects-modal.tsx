@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { defaultLanguage, formatDate, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
+import { currencyLabel, defaultLanguage, formatDate, languageLocale, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import { createVariantDraft, type ProjectCreateValues } from "@/lib/project-variant";
 export type { ProjectCreateValues } from "@/lib/project-variant";
 import { supplyShortages, type Supply } from "@/lib/supplies";
@@ -305,6 +305,7 @@ function ProjectForm({
 }
 
 function ProductionRunForm({
+  language,
   supplies,
   project,
   requirements,
@@ -317,6 +318,7 @@ function ProductionRunForm({
   onCancel,
   onSave
 }: {
+  language: AppLanguage;
   supplies: Supply[];
   project: PrintProject;
   requirements: ProjectFilamentRequirement[];
@@ -329,6 +331,9 @@ function ProductionRunForm({
   onCancel: () => void;
   onSave: Props["onCompleteRun"];
 }) {
+  const t = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(language, key, values);
+  const locale = languageLocale(language);
+  const displayMoney = (currency: string, value: number) => money(currency, value, language);
   const [producedAt, setProducedAt] = useState(todayIso());
   const [quantity, setQuantity] = useState(1);
   const [status, setStatus] = useState<ProductionRunStatus>("completed");
@@ -355,7 +360,14 @@ function ProductionRunForm({
     setComponentUsage(Object.fromEntries(components.map((item) => [item.id, String(Number(item.quantity) * safeQuantity)])));
   }
 
-  const shortageMessages: string[] = supplyShortages(components, componentUsage, supplies);
+  const shortageMessages = supplyShortages(components, componentUsage, supplies).map((shortage) =>
+    shortage.kind === "missing" ? t("printRun.missingSupply") : t("printRun.supplyShortage", {
+      name: shortage.supply.name,
+      needed: language === "es" ? shortage.needed : shortage.needed.toLocaleString(locale, { maximumFractionDigits: 20 }),
+      unit: shortage.supply.unit,
+      available: language === "es" ? shortage.supply.quantity : Number(shortage.supply.quantity).toLocaleString(locale, { maximumFractionDigits: 20 })
+    })
+  );
   const previewTotals = new Map<string, number>();
   let incompleteFilamentCosts = 0;
 
@@ -364,17 +376,17 @@ function ProductionRunForm({
     const roll = rolls.find((item) => item.id === usage?.roll_id);
     const grams = Number(usage?.grams_used || 0);
     if (!roll || grams <= 0) {
-      shortageMessages.push(`${requirement.color_name}: elegí un rollo y los gramos reales.`);
+      shortageMessages.push(t("printRun.missingRoll", { name: requirement.color_name }));
       return;
     }
-    if (grams > Number(roll.available_weight_g)) shortageMessages.push(`${roll.color_name}: faltan ${(grams - Number(roll.available_weight_g)).toLocaleString("es-CR")} g.`);
+    if (grams > Number(roll.available_weight_g)) shortageMessages.push(t("printRun.rollShortage", { name: roll.color_name, grams: (grams - Number(roll.available_weight_g)).toLocaleString(locale) }));
     if (roll.filament_cost_amount == null || Number(roll.initial_weight_g) <= 0) incompleteFilamentCosts += 1;
     else previewTotals.set(roll.currency, (previewTotals.get(roll.currency) ?? 0) + Number(roll.filament_cost_amount) / Number(roll.initial_weight_g) * grams);
   });
 
   components.forEach((component) => {
     const used = Number(componentUsage[component.id] || 0);
-    if (!Number.isFinite(used) || used < 0) shortageMessages.push(`${component.name}: indicá una cantidad válida (cero si no se utilizó).`);
+    if (!Number.isFinite(used) || used < 0) shortageMessages.push(t("printRun.invalidSupplyQuantity", { name: component.name }));
     else {
       const supply=component.supply_id ? supplies.find(s=>s.id===component.supply_id) : null;
       const currency=supply?.currency ?? component.currency;
@@ -387,7 +399,7 @@ function ProductionRunForm({
   const resolvedMachineRate = selectedPrinter?.machine_cost_per_hour ?? profile.machine_cost_per_hour;
   const costCurrency = profile.production_cost_currency || baseCurrency;
   const printerCurrencyMismatch = selectedPrinter?.machine_cost_per_hour != null && selectedPrinter.machine_cost_currency !== costCurrency;
-  if (printerCurrencyMismatch) shortageMessages.push("La tarifa de esta impresora usa otra moneda. Revisá su tarifa o la moneda de costos de Perfil; no convertimos montos automáticamente.");
+  if (printerCurrencyMismatch) shortageMessages.push(t("printRun.printerCurrencyMismatch"));
   const actualHours = actualMinutes === "" ? null : Number(actualMinutes) / 60;
   const laborHours = actualLaborMinutes === "" ? null : Number(actualLaborMinutes) / 60;
   const electricityCost = actualHours == null
@@ -438,46 +450,46 @@ function ProductionRunForm({
   }
 
   return (
-    <form lang="es" className="project-form production-run-form" onSubmit={submit} aria-busy={isSaving}>
-      <div className="project-form-head"><button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />Volver</button><div><p className="eyebrow">Producción real</p><h3>{project.name}</h3></div></div>
-      <p className="project-mode-note">Podés usar otro color del mismo material para esta impresión. La receta original no cambia; al confirmar se registra el consumo real. Esta acción no envía trabajos a la impresora.</p>
+    <form lang={language} className="project-form production-run-form" onSubmit={submit} aria-busy={isSaving}>
+      <div className="project-form-head"><button type="button" onClick={onCancel} disabled={isSaving}><ChevronLeft size={17} />{t("printRun.back")}</button><div><p className="eyebrow">{t("printRun.eyebrow")}</p><h3>{project.name}</h3></div></div>
+      <p className="project-mode-note">{t("printRun.help")}</p>
       <div className="form-grid project-main-fields">
-        <label>Fecha<input required type="date" value={producedAt} disabled={isSaving} onChange={(event) => setProducedAt(event.target.value)} /></label>
-        <label>Cantidad producida<input required type="number" min="1" value={quantity} disabled={isSaving} onChange={(event) => applyQuantity(Number(event.target.value))} /></label>
-        <label>Resultado<select value={status} disabled={isSaving} onChange={(event) => setStatus(event.target.value as ProductionRunStatus)}><option value="completed">Exitosa</option><option value="partial">Parcial</option><option value="failed">Fallida / reimpresión</option></select></label>
-        <label>Minutos reales<input type="number" min="0" value={actualMinutes} disabled={isSaving} placeholder="300" onChange={(event) => setActualMinutes(event.target.value)} /></label>
-        <label className="wide">Impresora<select value={printerId} disabled={isSaving} onChange={(event) => setPrinterId(event.target.value)}><option value="">Tarifa general de Perfil</option>{printers.filter((printer) => printer.is_active).map((printer) => <option key={printer.id} value={printer.id}>{printer.name}{printer.model ? ` · ${printer.model}` : ""}</option>)}</select></label>
+        <label>{t("printRun.date")}<input required type="date" value={producedAt} disabled={isSaving} onChange={(event) => setProducedAt(event.target.value)} /></label>
+        <label>{t("printRun.produced")}<input required type="number" min="1" value={quantity} disabled={isSaving} onChange={(event) => applyQuantity(Number(event.target.value))} /></label>
+        <label>{t("printRun.result")}<select value={status} disabled={isSaving} onChange={(event) => setStatus(event.target.value as ProductionRunStatus)}><option value="completed">{t("production.completed")}</option><option value="partial">{t("production.partial")}</option><option value="failed">{t("printRun.failed")}</option></select></label>
+        <label>{t("printRun.minutes")}<input type="number" min="0" value={actualMinutes} disabled={isSaving} placeholder="300" onChange={(event) => setActualMinutes(event.target.value)} /></label>
+        <label className="wide">{t("printRun.printer")}<select value={printerId} disabled={isSaving} onChange={(event) => setPrinterId(event.target.value)}><option value="">{t("printRun.profileRate")}</option>{printers.filter((printer) => printer.is_active).map((printer) => <option key={printer.id} value={printer.id}>{printer.name}{printer.model ? ` · ${printer.model}` : ""}</option>)}</select></label>
       </div>
 
-      <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">Consumo real</p><h3>Rollos utilizados</h3></div></div>{requirements.map((requirement) => {
+      <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">{t("printRun.consumption")}</p><h3>{t("printRun.rolls")}</h3></div></div>{requirements.map((requirement) => {
         const usage = usages[requirement.id];
         const candidates = rolls.filter((roll) => roll.status !== "archived" && roll.material === requirement.material);
-        return <div className="run-usage-row" key={requirement.id}><span className="mini-swatch" style={{ backgroundColor: requirement.color_hex }} /><div><strong>{requirement.label || requirement.color_name}</strong><small>Receta: {Number(requirement.planned_grams).toLocaleString("es-CR")} g por unidad</small></div><label>Rollo<select value={usage?.roll_id ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], roll_id: event.target.value } }))}><option value="">Elegí un rollo</option>{candidates.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {Math.round(Number(roll.available_weight_g))} g</option>)}</select></label><label>Gramos reales<input required type="number" min="0.01" step="0.01" value={usage?.grams_used ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], grams_used: event.target.value } }))} /></label></div>;
+        return <div className="run-usage-row" key={requirement.id}><span className="mini-swatch" style={{ backgroundColor: requirement.color_hex }} /><div><strong>{requirement.label || requirement.color_name}</strong><small>{t("printRun.recipeGrams", { grams: Number(requirement.planned_grams).toLocaleString(locale) })}</small></div><label>{t("printRun.roll")}<select value={usage?.roll_id ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], roll_id: event.target.value } }))}><option value="">{t("recipeForm.choose")}</option>{candidates.map((roll) => <option key={roll.id} value={roll.id}>{roll.color_name} · {Math.round(Number(roll.available_weight_g)).toLocaleString(locale)} g</option>)}</select></label><label>{t("printRun.actualGrams")}<input required type="number" min="0.01" step="0.01" value={usage?.grams_used ?? ""} disabled={isSaving} onChange={(event) => setUsages((current) => ({ ...current, [requirement.id]: { ...current[requirement.id], grams_used: event.target.value } }))} /></label></div>;
       })}</section>
 
-      {components.length > 0 && <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">Extras reales</p><h3>Insumos consumidos</h3></div></div>{components.map((component) => <div className="run-component-row" key={component.id}><div><strong>{component.name}</strong><small>{money(component.currency, component.supply_id ? supplies.find(s=>s.id===component.supply_id)?.unit_cost ?? 0 : component.unit_cost)} / {component.unit}{component.supply_id ? " · descuenta existencias" : " · extra manual, sin stock"}</small></div><label>Cantidad<input required type="number" min="0" step="0.001" value={componentUsage[component.id] ?? ""} disabled={isSaving} onChange={(event) => setComponentUsage((current) => ({ ...current, [component.id]: event.target.value }))} /></label></div>)}</section>}
+      {components.length > 0 && <section className="project-recipe-section"><div className="section-head"><div><p className="eyebrow">{t("printRun.extras")}</p><h3>{t("printRun.usedSupplies")}</h3></div></div>{components.map((component) => <div className="run-component-row" key={component.id}><div><strong>{component.name}</strong><small>{displayMoney(component.currency, component.supply_id ? supplies.find(s=>s.id===component.supply_id)?.unit_cost ?? 0 : component.unit_cost)} / {component.unit}{component.supply_id ? " · " + t("printRun.deductsStock") : " · " + t("printRun.manualExtra")}</small></div><label>{t("recipeForm.quantity")}<input required type="number" min="0" step="0.001" value={componentUsage[component.id] ?? ""} disabled={isSaving} onChange={(event) => setComponentUsage((current) => ({ ...current, [component.id]: event.target.value }))} /></label></div>)}</section>}
 
       <section className="project-recipe-section run-operating-costs">
-        <div className="section-head"><div><p className="eyebrow">Operación</p><h3>Tiempo, máquina y fallos</h3></div></div>
+        <div className="section-head"><div><p className="eyebrow">{t("production.costs.operation")}</p><h3>{t("printRun.timeAndCosts")}</h3></div></div>
         <div className="form-grid">
-          <label>Mano de obra real (min)<input type="number" min="0" value={actualLaborMinutes} disabled={isSaving} placeholder="Ej. 25" onChange={(event) => setActualLaborMinutes(event.target.value)} /></label>
-          <label>Fallos y desperdicio ({costCurrency})<input type="number" min="0" step="0.01" value={failureCostAmount} disabled={isSaving} placeholder="0" onChange={(event) => setFailureCostAmount(event.target.value)} /></label>
+          <label>{t("printRun.laborMinutes")}<input type="number" min="0" value={actualLaborMinutes} disabled={isSaving} placeholder={t("printRun.laborExample")} onChange={(event) => setActualLaborMinutes(event.target.value)} /></label>
+          <label>{t("printRun.wasteAmount", { currency: costCurrency })}<input type="number" min="0" step="0.01" value={failureCostAmount} disabled={isSaving} placeholder="0" onChange={(event) => setFailureCostAmount(event.target.value)} /></label>
         </div>
         <div className="run-operating-grid">
-          <span><small>Electricidad{selectedPrinter ? ` · ${selectedPrinter.name}` : ""}</small><strong>{electricityCost == null ? "Por configurar" : money(costCurrency, electricityCost)}</strong></span>
-          <span><small>Uso de máquina</small><strong>{printerCurrencyMismatch ? "Revisar moneda" : machineCost == null ? "Falta duración" : money(costCurrency, machineCost)}</strong></span>
-          <span><small>Mano de obra</small><strong>{laborCost == null ? "Falta tiempo" : money(costCurrency, laborCost)}</strong></span>
-          <span><small>Fallos</small><strong>{money(costCurrency, failureCost)}</strong></span>
+          <span><small>{t("production.costs.electricity")}{selectedPrinter ? ` · ${selectedPrinter.name}` : ""}</small><strong>{electricityCost == null ? t("printRun.unconfigured") : displayMoney(costCurrency, electricityCost)}</strong></span>
+          <span><small>{t("production.costs.machine")}</small><strong>{printerCurrencyMismatch ? t("printRun.checkCurrency") : machineCost == null ? t("printRun.missingDuration") : displayMoney(costCurrency, machineCost)}</strong></span>
+          <span><small>{t("production.costs.labor")}</small><strong>{laborCost == null ? t("printRun.missingLabor") : displayMoney(costCurrency, laborCost)}</strong></span>
+          <span><small>{t("printRun.failures")}</small><strong>{displayMoney(costCurrency, failureCost)}</strong></span>
         </div>
-        {electricityCost == null && <p className="operating-cost-note"><AlertTriangle size={15} />Configurá el precio por kWh y la potencia promedio en Perfil para incluir electricidad.</p>}
-        <p className="operating-cost-note">Al cerrar, guardamos una copia de estas tarifas. El histórico no cambia si luego las actualizás.</p>
+        {electricityCost == null && <p className="operating-cost-note"><AlertTriangle size={15} />{t("printRun.electricityHelp")}</p>}
+        <p className="operating-cost-note">{t("printRun.snapshot")}</p>
       </section>
 
-      <section className="run-cost-preview"><div className="section-head"><div><p className="eyebrow">Vista previa</p><h3>Costo y utilidad</h3></div></div><div className="run-cost-currencies">{Array.from(previewTotals.entries()).map(([currency, total]) => <span key={currency}><small>Costo {currency}</small><strong>{money(currency, total)}</strong></span>)}{!previewTotals.size && <span><small>Costo</small><strong>Incompleto</strong></span>}</div>{incompleteFilamentCosts > 0 && <p><AlertTriangle size={15} />{incompleteFilamentCosts} filamento{incompleteFilamentCosts === 1 ? "" : "s"} sin costo registrado.</p>}<div className="form-grid"><label>Venta total<input type="number" min="0" step="0.01" value={saleAmount} disabled={isSaving} placeholder="Opcional" onChange={(event) => setSaleAmount(event.target.value)} /></label><label>Moneda<select value={saleCurrency} disabled={isSaving || saleAmount === ""} onChange={(event) => setSaleCurrency(event.target.value)}><option value="CRC">CRC</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label></div>{profit != null ? <div className={profit >= 0 ? "profit-preview positive" : "profit-preview negative"}><TrendingUp size={18} /><span>Utilidad estimada</span><strong>{money(saleCurrency, profit)}</strong></div> : parsedSale != null && <p><AlertTriangle size={15} />No mezclamos monedas ni costos incompletos. La utilidad aparecerá cuando todos los costos sean comparables.</p>}</section>
+      <section className="run-cost-preview"><div className="section-head"><div><p className="eyebrow">{t("printRun.preview")}</p><h3>{t("printRun.costAndProfit")}</h3></div></div><div className="run-cost-currencies">{Array.from(previewTotals.entries()).map(([currency, total]) => <span key={currency}><small>{t("printRun.costCurrency", { currency })}</small><strong>{displayMoney(currency, total)}</strong></span>)}{!previewTotals.size && <span><small>{t("printRun.cost")}</small><strong>{t("printRun.incomplete")}</strong></span>}</div>{incompleteFilamentCosts > 0 && <p><AlertTriangle size={15} />{t(incompleteFilamentCosts === 1 ? "printRun.missingFilamentOne" : "printRun.missingFilamentMany", { count: incompleteFilamentCosts.toLocaleString(locale) })}</p>}<div className="form-grid"><label>{t("printRun.sale")}<input type="number" min="0" step="0.01" value={saleAmount} disabled={isSaving} placeholder={t("printRun.optional")} onChange={(event) => setSaleAmount(event.target.value)} /></label><label>{t("printRun.currency")}<select value={saleCurrency} disabled={isSaving || saleAmount === ""} onChange={(event) => setSaleCurrency(event.target.value)}><option value="CRC">{language === "en" ? currencyLabel("CRC", language) : "CRC"}</option><option value="USD">{language === "en" ? currencyLabel("USD", language) : "USD"}</option><option value="EUR">{language === "en" ? currencyLabel("EUR", language) : "EUR"}</option></select></label></div>{profit != null ? <div className={profit >= 0 ? "profit-preview positive" : "profit-preview negative"}><TrendingUp size={18} /><span>{t("printRun.profit")}</span><strong>{displayMoney(saleCurrency, profit)}</strong></div> : parsedSale != null && <p><AlertTriangle size={15} />{t("printRun.profitUnavailable")}</p>}</section>
 
-      {shortageMessages.length > 0 && <div className="run-blockers"><strong>No se puede cerrar todavía</strong>{shortageMessages.map((message) => <span key={message}>{message}</span>)}</div>}
-      <label className="project-run-notes">Notas<textarea maxLength={1000} value={notes} disabled={isSaving} placeholder="Fallo, desperdicio, observaciones de calidad…" onChange={(event) => setNotes(event.target.value)} /></label>
-      <button className="primary-action" type="submit" disabled={isSaving || shortageMessages.length > 0}><PackageCheck size={18} />{isSaving ? "Cerrando corrida sin duplicar…" : "Cerrar corrida y descontar inventario"}</button>
+      {shortageMessages.length > 0 && <div className="run-blockers"><strong>{t("printRun.blocked")}</strong>{shortageMessages.map((message) => <span key={message}>{message}</span>)}</div>}
+      <label className="project-run-notes">{t("printRun.notes")}<textarea maxLength={1000} value={notes} disabled={isSaving} placeholder={t("printRun.notesExample")} onChange={(event) => setNotes(event.target.value)} /></label>
+      <button className="primary-action" type="submit" disabled={isSaving || shortageMessages.length > 0}><PackageCheck size={18} />{t(isSaving ? "printRun.saving" : "printRun.save")}</button>
     </form>
   );
 }
@@ -527,13 +539,12 @@ export function ProjectsModal({
         </p>
         {mode !== "authenticated" && <p className="project-mode-note">{t("projects.local")}</p>}
 
-        {language === "en" && runProject && !showCreate && <p className="form-help">{t("projects.formsInSpanish")}</p>}
         {showPrinters ? (
           <PrinterManager language={language} printers={printers} profile={profile} isSaving={isSavingPrinter} onBack={() => setShowPrinters(false)} onSave={onSavePrinter} />
         ) : showCreate ? (
           <ProjectForm language={language} supplies={supplies} key={variantSource?.id ?? "new"} sourceName={variantSource?.name} initialValues={variantSource ? createVariantDraft(variantSource, requirements, components, rolls) : undefined} rolls={rolls} baseCurrency={baseCurrency} isSaving={isSavingProject} onCancel={() => { setShowCreate(false); setVariantSource(null); }} onCreate={onCreateProject} />
         ) : runProject ? (
-          <ProductionRunForm supplies={supplies} project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
+          <ProductionRunForm language={language} supplies={supplies} project={runProject} requirements={requirements.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} components={components.filter((item) => item.project_id === runProject.id).sort((a, b) => a.position - b.position)} rolls={rolls} baseCurrency={baseCurrency} profile={profile} printers={printers} isSaving={isSavingRun} onCancel={() => setRunProjectId("")} onSave={onCompleteRun} />
         ) : (
           <>
             <div className="project-summary">

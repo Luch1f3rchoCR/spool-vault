@@ -31,8 +31,11 @@ export function normalizeSupply(s: Supply): Supply {
 export function supplyShortages(components: Array<{id: string; supply_id?: string | null; name: string}>, usage: Record<string,string>, supplies: Supply[]) {
   const totals = new Map<string,number>();
   for (const c of components) if (c.supply_id) totals.set(c.supply_id,(totals.get(c.supply_id) ?? 0)+Number(usage[c.id] || 0));
-  return Array.from(totals,([id,quantity]) => {
-    const s=supplies.find(item=>item.id===id);
-    return !s ? "Un insumo del proyecto no está disponible." : quantity>Number(s.quantity)+0.0000001 ? `${s.name}: necesitás ${quantity} ${s.unit}; disponibles ${s.quantity}.` : "";
-  }).filter(Boolean);
+  const shortages: Array<{ kind: "missing" } | { kind: "insufficient"; supply: Supply; needed: number }> = [];
+  for (const [id, needed] of totals) {
+    const supply = supplies.find((item) => item.id === id);
+    if (!supply) shortages.push({ kind: "missing" });
+    else if (needed > Number(supply.quantity) + 0.0000001) shortages.push({ kind: "insufficient", supply, needed });
+  }
+  return shortages;
 }
