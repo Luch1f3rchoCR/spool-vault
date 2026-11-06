@@ -1,3 +1,13 @@
+export const printProfileValidationMessages = {
+  decimal: "Usá un número decimal, sin unidades ni separadores de miles.",
+  precision: "El número excede la precisión admitida.",
+  positive: "El valor debe ser mayor que cero.",
+  nonnegative: "El valor no puede ser negativo.",
+  nameRequired: "Escribí un nombre para reconocer esta configuración.",
+  nameLength: "Usá un nombre de hasta 120 caracteres.",
+} as const;
+export type PrintProfileValidationCode = keyof typeof printProfileValidationMessages;
+
 // Presentation metadata and single-field validation, not a persisted profile DTO.
 // Values are intentionally blank by default; these are not printer recommendations.
 export const printProfileNumericFields = [
@@ -12,21 +22,21 @@ export function validatePrintProfileNumber(raw: string, positive: boolean) {
   if (!text) return { value: null, error: null };
   // Both decimal separators are accepted, never thousands separators or units.
   if (!/^-?(?:\d+(?:[.,]\d*)?|[.,]\d+)$/.test(text)) {
-    return { value: null, error: "Usá un número decimal, sin unidades ni separadores de miles." };
+    return { value: null, error: printProfileValidationMessages.decimal };
   }
   const value = Number(text.replace(",", "."));
   if (!Number.isFinite(value) || Math.abs(value) > Number.MAX_SAFE_INTEGER) {
-    return { value: null, error: "El número excede la precisión admitida." };
+    return { value: null, error: printProfileValidationMessages.precision };
   }
   if (value < 0 || (positive && value === 0)) {
-    return { value: null, error: positive ? "El valor debe ser mayor que cero." : "El valor no puede ser negativo." };
+    return { value: null, error: positive ? printProfileValidationMessages.positive : printProfileValidationMessages.nonnegative };
   }
   return { value: Object.is(value, -0) ? 0 : value, error: null };
 }
 
 export function validatePrintProfileName(raw: string) {
   const value = raw.trim();
-  if (!value) return "Escribí un nombre para reconocer esta configuración.";
-  if (value.length > 120) return "Usá un nombre de hasta 120 caracteres.";
+  if (!value) return printProfileValidationMessages.nameRequired;
+  if (value.length > 120) return printProfileValidationMessages.nameLength;
   return null;
 }

@@ -45,7 +45,9 @@ Publicado en #78: lista de órdenes y detalle de factura en español e inglés, 
 
 Publicado en #79: formulario de nueva orden y editor de filamentos en español e inglés, incluidos cargos, pago y mensajes de guardado.
 
-Bloque en revisión: Insumos en español e inglés, con catálogo, entradas y ajustes, historial, búsquedas y mensajes. Las categorías y unidades predefinidas cambian su etiqueta visible, conservando sus valores guardados. Unidades personalizadas, nombres y notas se muestran originales. Continúan pendientes perfiles de impresión, otras superficies de la app y el selector global.
+Publicado en #80: Insumos en español e inglés, incluidos catálogo, movimientos e historial. Los valores guardados de categorías y unidades se conservan.
+
+Bloque en revisión: perfiles de impresión en español e inglés, incluidos campos, validaciones, revisiones y mensajes. El error visible y la validación personalizada del navegador actualizan su idioma conservando borradores y el intento pendiente. Continúan pendientes Proyectos, superficies de inventario/spools y el selector global.
 
 ## Primer bloque de implementación · 2026-10-30
 
