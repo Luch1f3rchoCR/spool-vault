@@ -1,5 +1,9 @@
 # Auditoría de atomicidad y UX de Spool Vault
 
+## Cotizaciones V1 · 2026-11-08
+
+En rama de desarrollo. Cada versión privada guarda un snapshot en una sola inserción validada, con total calculado en unidades monetarias menores y sin escrituras de stock. La clave de solicitud recupera exactamente la versión original, incluso tras una revisión posterior. RLS por cuenta, proyectos propios y permisos sin UPDATE/DELETE para los clientes. La descarga usa solo campos de cara al cliente; el desglose interno se conserva en el historial y el respaldo privado de la cuenta. Verificación aislada; falta conectar Proyectos y publicar.
+
 ## Saldo conjunto de filamentos e insumos · 2026-10-25
 
 `inventory_value_summary()` lee ambos saldos en una misma instantánea STABLE/invoker, con RLS por propietario. Filamentos reutiliza FIN-01A; insumos convierte cada entrada a su fecha de compra y descuenta el promedio histórico al consumir. Un ciclo agotado reinicia la valoración de la reposición. No escribe ni consulta BCCR al abrir; datos faltantes u orden cronológico ambiguo se muestran como parciales, sin cero ficticio ni tasa actual de reemplazo. Costos y consumos históricos quedan intactos.

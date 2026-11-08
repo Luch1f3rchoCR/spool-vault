@@ -4,6 +4,41 @@ Este archivo refleja lo que existe en el producto, no solamente ideas futuras.
 
 El contexto transversal y las decisiones recientes se consultan en [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md). Las hipótesis de marca, clientes y negocio están separadas de las funciones implementadas.
 
+## Avance por frente · 2026-11-08
+
+Los porcentajes cuentan hitos del alcance indicado, con el mismo peso por hito. Un borrador no cuenta como publicado. Beta, cotizaciones e idiomas se miden por separado.
+
+### Beta operativa en español · 3/5 (60%)
+
+- [x] Inventario, spools, compras e insumos publicados.
+- [x] Proyectos, variantes, producción y costos publicados.
+- [x] Invitaciones privadas, primer ingreso, perfil y feedback disponibles.
+- [ ] Confirmar un recorrido real de invitación, correo, acceso, cuestionario y perfil.
+- [ ] Cerrar el criterio de piloto completado y alinear el momento de otorgar Founder Personal. Luego, ampliar a la cohorte de 8 activos y 2 suplentes.
+
+### Cotizaciones V1 para WhatsApp · 4/6 (67%) en desarrollo
+
+- [x] Aprobar el flujo secundario desde Proyectos, el PDF para el cliente y el envío manual por WhatsApp.
+- [x] Preparar y probar versiones privadas, totales, permisos y recuperación de guardado.
+- [x] Preparar y probar el formulario, partidas de varios proyectos, desglose interno e historial.
+- [x] Preparar y comprobar la descarga del PDF de la versión guardada, con exclusión del desglose interno.
+- [ ] Conectar **Agregar a cotización** desde Proyectos y verificar el recorrido con sesión y proyectos reales de prueba. Coordinar cambios con #82 y #83.
+- [ ] Aplicar la migración en el entorno autorizado, publicar y probar el PDF compartido desde un teléfono.
+
+Los costos internos se ingresan manualmente en este bloque. Descuentos, impuestos, envío como cargo separado, aceptación y conversión a pedido se siguen por fuera del primer corte.
+
+### Español e inglés · 4/7 (57%) para habilitar el selector
+
+- [x] Catálogo ES/EN y formatos comunes.
+- [x] Inicio, navegación, cuenta, impresoras y primer ingreso preparados en ambos idiomas.
+- [x] Compras e insumos preparados en ambos idiomas.
+- [x] Editor de filamentos, perfiles y valoraciones preparados en ambos idiomas.
+- [ ] Revisar y publicar Proyectos, registro de impresión y Spools (#82 y #83).
+- [ ] Completar la pantalla principal de Inventario y los mensajes restantes.
+- [ ] Conectar y guardar la preferencia global, y probar el cambio completo de idioma.
+
+El alcance y las condiciones para ampliar el piloto se mantienen en [Clientes y Piloto](docs/ROADMAP.md#clientes-y-piloto). El detalle de traducciones se mantiene en el [checklist de idiomas](docs/LANGUAGE_SUPPORT.md).
+
 ## MVP operativo
 
 - [x] Inventario real conectado a Supabase con autenticación y RLS.

@@ -1,0 +1,20 @@
+.modal { width: min(100%, 760px); }
+.body, .fields { display: grid; gap: 1rem; min-width: 0; }
+.fields { border: 0; margin: 0; padding: 0; }
+.fields legend { margin-bottom: 0.75rem; font-weight: 700; }
+.body h3, .body p { margin: 0; }
+.body label { display: grid; gap: 0.35rem; min-width: 0; }
+.body input, .body select, .body textarea { width: 100%; }
+.body summary { cursor: pointer; font-weight: 700; }
+.body button { display: inline-flex; align-items: center; gap: 0.4rem; justify-self: start; min-height: 44px; }
+.fields details > * + * { margin-top: 0.75rem; }
+.card {
+  display: grid;
+  min-width: 0;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--proper-line);
+  border-radius: 0.65rem;
+  overflow-wrap: anywhere;
+}
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
