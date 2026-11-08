@@ -236,7 +236,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
   }
 
   return (
-    <ModalFrame title="Cotización" titleId="quotation-title" eyebrow="Proyectos" className={styles.modal} busy={busy || readingLogo} onClose={onClose}>
+    <ModalFrame title="Cotización" titleId="quotation-title" eyebrow="Proyectos" className={styles.modal} busy={busy || readingLogo} onClose={onClose} onBack={onClose} backLabel="Volver a Proyectos">
       {message && <p className="form-help" role="status">{message}</p>}
       {history ? (
         <section className={styles.body} aria-label="Historial de cotizaciones">
@@ -290,6 +290,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
                   </div>
                 )}
               </div>
+              <label>Contacto del taller<input maxLength={200} value={draft.seller_contact ?? ""} placeholder="Correo o teléfono comercial" onChange={(e) => setDraft({ ...draft, seller_contact: e.target.value })} /></label>
               <label>Cliente<input required maxLength={120} value={draft.customer_name} onChange={(e) => setDraft({ ...draft, customer_name: e.target.value })} /></label>
               <label>Contacto del cliente<input maxLength={200} value={draft.customer_contact} onChange={(e) => setDraft({ ...draft, customer_contact: e.target.value })} /></label>
               <label>Moneda de venta<select value={draft.currency} onChange={(e) => setDraft({ ...draft, currency: e.target.value as QuotationCurrency })}>
@@ -338,8 +339,12 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
                 key: crypto.randomUUID(), category: "filament", currency: draft.currency, amount: ""
               }] })}><Plus size={16} /> Agregar costo</button>
             </details>
+            <div className="form-grid">
+              <label>Entrega<input maxLength={300} value={draft.delivery ?? ""} placeholder="Ej. Retiro en el taller en 5 días hábiles" onChange={(e) => setDraft({ ...draft, delivery: e.target.value })} /></label>
+              <label>Forma de pago o anticipo<input maxLength={300} value={draft.payment_terms ?? ""} placeholder="Ej. 50% de anticipo por transferencia" onChange={(e) => setDraft({ ...draft, payment_terms: e.target.value })} /></label>
+            </div>
             <label>Observaciones para el cliente<textarea maxLength={1500} value={draft.observations ?? ""} onChange={(e) => setDraft({ ...draft, observations: e.target.value })} /></label>
-            <label>Condiciones<textarea maxLength={1500} value={draft.terms} onChange={(e) => setDraft({ ...draft, terms: e.target.value })} /></label>
+            <label>Condiciones<textarea maxLength={1500} placeholder="Alcance, garantía o indicaciones sobre impuestos, si aplican." value={draft.terms} onChange={(e) => setDraft({ ...draft, terms: e.target.value })} /></label>
           </fieldset>
           <p><strong>Total de venta · {money(total)}</strong></p>
           <div className={styles.actions}>

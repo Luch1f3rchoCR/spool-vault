@@ -55,6 +55,15 @@ begin
     or char_length(document->>'customer_contact') > 200
     or jsonb_typeof(document->'terms') is distinct from 'string'
     or char_length(document->>'terms') > 1500
+    or (document ? 'seller_contact' and (
+      jsonb_typeof(document->'seller_contact') <> 'string' or char_length(document->>'seller_contact') > 200
+    ))
+    or (document ? 'delivery' and (
+      jsonb_typeof(document->'delivery') <> 'string' or char_length(document->>'delivery') > 300
+    ))
+    or (document ? 'payment_terms' and (
+      jsonb_typeof(document->'payment_terms') <> 'string' or char_length(document->>'payment_terms') > 300
+    ))
     or (document ? 'observations' and (
       jsonb_typeof(document->'observations') <> 'string' or char_length(document->>'observations') > 1500
     ))

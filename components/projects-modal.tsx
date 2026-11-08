@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { createVariantDraft, type ProjectCreateValues } from "@/lib/project-variant";
 export type { ProjectCreateValues } from "@/lib/project-variant";
 import { supplyShortages, type Supply } from "@/lib/supplies";
@@ -16,6 +16,7 @@ import {
   FileBox,
   FolderKanban,
   PackageCheck,
+  ReceiptText,
   Plus,
   Printer,
   Save,
@@ -71,6 +72,7 @@ type Props = {
   isSavingRun: boolean;
   isSavingPrinter: boolean;
   statusMessage: string;
+  renderQuotation?: (projectId: string | undefined, onBack: () => void) => ReactNode;
   onClose: () => void;
   onCreateProject: (values: ProjectCreateValues, file: File | null) => Promise<boolean>;
   onCompleteRun: (values: ProductionRunValues) => Promise<boolean>;
@@ -499,6 +501,7 @@ export function ProjectsModal({
   isSavingRun,
   isSavingPrinter,
   statusMessage,
+  renderQuotation,
   onClose,
   onCreateProject,
   onCompleteRun,
@@ -509,11 +512,23 @@ export function ProjectsModal({
   const [variantSource, setVariantSource] = useState<PrintProject | null>(null);
   const [showPrinters, setShowPrinters] = useState(false);
   const [runProjectId, setRunProjectId] = useState("");
+  const [quotationEntry, setQuotationEntry] = useState<{ projectId?: string } | null>(null);
+  const quoteOpener = useRef<HTMLButtonElement>(null);
+  const quote = quotationEntry && renderQuotation?.(quotationEntry.projectId, () => {
+    setQuotationEntry(null);
+    requestAnimationFrame(() => quoteOpener.current?.focus());
+  });
+
+  function openQuotation(opener: HTMLButtonElement, projectId?: string) {
+    quoteOpener.current = opener;
+    setQuotationEntry({ projectId });
+  }
+
   const runProject = projects.find((project) => project.id === runProjectId);
   const sortedProjects = [...projects].sort((a, b) => b.created_at.localeCompare(a.created_at));
   const sortedRuns = [...runs].sort((a, b) => b.produced_at.localeCompare(a.produced_at) || b.created_at.localeCompare(a.created_at));
 
-  return (
+  const projectsPanel = (
     <ModalFrame title="Proyectos" titleId="projects-title" eyebrow="Producción" className="projects-modal"
       busy={isSavingProject || isSavingRun || isSavingPrinter} onClose={onClose}
       viewKey={showPrinters ? "printers" : showCreate ? "create" : runProjectId || "list"}>
@@ -531,11 +546,18 @@ export function ProjectsModal({
             <div className="project-summary"><article><FolderKanban size={18} /><strong>{projects.length}</strong><span>proyectos</span></article><article><Printer size={18} /><strong>{runs.length}</strong><span>corridas</span></article><article><Boxes size={18} /><strong>{requirements.reduce((sum, item) => sum + Number(item.planned_grams), 0).toLocaleString("es-CR")} g</strong><span>por recetas</span></article><button type="button" onClick={() => setShowPrinters(true)}><Printer size={18} />Impresoras</button><button type="button" onClick={() => setShowCreate(true)} disabled={!rolls.length}><Plus size={18} />Nuevo proyecto</button></div>
 
             <div className="project-list">
+              {renderQuotation && (
+                <div className="project-card-actions">
+                  <button type="button" onClick={(event) => openQuotation(event.currentTarget)}><ReceiptText size={16} />Cotizaciones</button>
+                </div>
+              )}
               {sortedProjects.length ? sortedProjects.map((project) => {
                 const projectRequirements = requirements.filter((item) => item.project_id === project.id).sort((a, b) => a.position - b.position);
                 const projectComponents = components.filter((item) => item.project_id === project.id).sort((a, b) => a.position - b.position);
                 const projectRuns = sortedRuns.filter((run) => run.project_id === project.id);
-                return <article className="project-card" key={project.id}><div className="project-card-head"><div><span className="project-icon"><FolderKanban size={20} /></span><div><h3>{project.name}</h3><p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes)} · {projectRuns.length} corrida{projectRuns.length === 1 ? "" : "s"}</p></div></div><div className="project-card-actions"><button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />Registrar impresión</button><button type="button" onClick={() => { setVariantSource(project); setShowCreate(true); }}><Save size={16} />Guardar variante</button>{project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || "Archivo"}</button>}</div></div>{project.description && <p className="project-description">{project.description}</p>}<div className="project-recipe-preview">{projectRequirements.map((item) => <span key={item.id}><i style={{ backgroundColor: item.color_hex }} /><strong>{item.label || item.color_name}</strong><small>{Number(item.planned_grams).toLocaleString("es-CR")} g</small></span>)}</div>{projectComponents.length > 0 && <p className="project-components-preview">+ {projectComponents.map((item) => `${Number(item.quantity).toLocaleString("es-CR")} ${item.unit} ${item.name}`).join(" · ")}</p>}{projectRuns.slice(0, 2).map((run) => {
+                return <article className="project-card" key={project.id}><div className="project-card-head"><div><span className="project-icon"><FolderKanban size={20} /></span><div><h3>{project.name}</h3><p>{project.version ? `v${project.version} · ` : ""}{duration(project.estimated_minutes)} · {projectRuns.length} corrida{projectRuns.length === 1 ? "" : "s"}</p></div></div><div className="project-card-actions"><button className="primary" type="button" onClick={() => setRunProjectId(project.id)}><Printer size={16} />Registrar impresión</button><button type="button" onClick={() => { setVariantSource(project); setShowCreate(true); }}><Save size={16} />Guardar variante</button>{project.file_path && <button type="button" onClick={() => void onOpenFile(project)}><FileBox size={16} />{project.file_name || "Archivo"}</button>}
+                  {renderQuotation && <button type="button" onClick={(event) => openQuotation(event.currentTarget, project.id)}><ReceiptText size={16} />Agregar a cotización</button>}
+                </div></div>{project.description && <p className="project-description">{project.description}</p>}<div className="project-recipe-preview">{projectRequirements.map((item) => <span key={item.id}><i style={{ backgroundColor: item.color_hex }} /><strong>{item.label || item.color_name}</strong><small>{Number(item.planned_grams).toLocaleString("es-CR")} g</small></span>)}</div>{projectComponents.length > 0 && <p className="project-components-preview">+ {projectComponents.map((item) => `${Number(item.quantity).toLocaleString("es-CR")} ${item.unit} ${item.name}`).join(" · ")}</p>}{projectRuns.slice(0, 2).map((run) => {
                   const filamentLines = runFilaments.filter((line) => line.run_id === run.id);
                   const componentLines = runComponents.filter((line) => line.run_id === run.id);
                   const operatingCosts = runCosts.find((cost) => cost.run_id === run.id);
@@ -556,4 +578,8 @@ export function ProjectsModal({
         )}
     </ModalFrame>
   );
+  return <>
+    <div hidden={Boolean(quote)}>{projectsPanel}</div>
+    {quote}
+  </>;
 }

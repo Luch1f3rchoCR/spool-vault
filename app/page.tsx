@@ -49,6 +49,8 @@ import {
   type ProductionRunValues,
   type ProjectCreateValues
 } from "@/components/projects-modal";
+import { QuotationModal } from "@/components/quotation-modal";
+import { listQuotationVersions, saveQuotation } from "@/lib/quotations-client";
 import {
   PurchaseOrdersModal,
   newOrderPurchase,
@@ -4433,6 +4435,22 @@ export default function Home() {
 
       {showProjects && (
         <ProjectsModal
+          key={signedInUserId || "local"}
+          renderQuotation={supabase && signedInUserId && dataMode === "authenticated" ? (projectId, onBack) => (
+            <QuotationModal key={signedInUserId} ownerId={signedInUserId}
+              sellerName={userProfile.billing_name || userProfile.display_name || ""}
+              currency={userProfile.base_currency === "USD" || userProfile.base_currency === "EUR" ? userProfile.base_currency : "CRC"}
+              projects={projects.map((project) => ({
+                id: project.id,
+                description: project.version ? `${project.name} · v${project.version}`.slice(0, 220) : project.name,
+                colors: [...new Set(projectRequirements.filter((item) => item.project_id === project.id)
+                  .sort((a, b) => a.position - b.position).map((item) => item.color_name))].join(", ").slice(0, 300)
+              }))}
+              initialProjectId={projectId} onClose={onBack}
+              onSave={(attempt) => saveQuotation(supabase, signedInUserId, attempt)}
+              onList={(before) => listQuotationVersions(supabase, signedInUserId, before)}
+            />
+          ) : undefined}
           supplies={dataMode === "authenticated" ? supplies : []}
           projects={projects}
           requirements={projectRequirements}

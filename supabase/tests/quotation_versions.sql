@@ -80,6 +80,17 @@ begin
   exception when invalid_parameter_value then null;
   end;
 
+  begin
+    perform public.save_quotation_version(gen_random_uuid(), quote, 1, payload || '{"seller_contact":1234}');
+    assert false, 'non-text seller contact accepted';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    perform public.save_quotation_version(gen_random_uuid(), quote, 1, payload || jsonb_build_object('delivery', repeat('x', 301)));
+    assert false, 'oversized delivery details accepted';
+  exception when invalid_parameter_value then null;
+  end;
+
   assert (select count(*) from public.quotation_versions) = 1, 'rejection changed persisted versions';
   select * into saved from jsonb_populate_record(null::public.quotation_versions, public.save_quotation_version(gen_random_uuid(), quote, 1,
     jsonb_set(payload, '{lines,0,quantity}', '3') ||

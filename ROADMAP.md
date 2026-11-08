@@ -16,16 +16,16 @@ Los porcentajes cuentan hitos del alcance indicado, con el mismo peso por hito. 
 - [ ] Confirmar un recorrido real de invitación, correo, acceso, cuestionario y perfil.
 - [ ] Cerrar el criterio de piloto completado y alinear el momento de otorgar Founder Personal. Luego, ampliar a la cohorte de 8 activos y 2 suplentes.
 
-### Cotizaciones V1 para WhatsApp · 4/6 (67%) en desarrollo
+### Cotizaciones V1 para WhatsApp · 5/6 (83%) en desarrollo
 
 - [x] Aprobar el flujo secundario desde Proyectos, el PDF para el cliente y el envío manual por WhatsApp.
 - [x] Preparar y probar versiones privadas, totales, permisos y recuperación de guardado.
 - [x] Preparar y probar el formulario, partidas de varios proyectos, desglose interno e historial.
 - [x] Preparar y comprobar la descarga del PDF de la versión guardada, con observaciones para el cliente, logo opcional del taller y exclusión del desglose interno.
-- [ ] Conectar **Agregar a cotización** desde Proyectos y verificar el recorrido con sesión y proyectos reales de prueba. Coordinar cambios con #82 y #83.
+- [x] Conectar **Agregar a cotización** desde Proyectos y verificar el recorrido con sesión simulada y proyectos en una base local aislada. Incluye acceso al historial desde Proyectos.
 - [ ] Aplicar la migración en el entorno autorizado, publicar y probar el PDF compartido desde un teléfono.
 
-Los costos internos se ingresan manualmente en este bloque. Descuentos, impuestos, envío como cargo separado, aceptación y conversión a pedido se siguen por fuera del primer corte.
+El PDF incluye campos opcionales de contacto comercial del taller, entrega y forma de pago o anticipo. Las condiciones permiten aclarar alcance, garantía o impuestos aplicables como texto. Los costos internos se ingresan manualmente en este bloque. Descuentos, impuestos, envío como cargo separado, aceptación y conversión a pedido se siguen por fuera del primer corte.
 
 ### Español e inglés · 4/7 (57%) para habilitar el selector
 
