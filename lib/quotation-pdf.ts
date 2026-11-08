@@ -4,7 +4,7 @@ import type { QuotationVersion } from "@/lib/quotations";
 
 // Only customer-facing fields enter the document. PDF amounts use the saved sale currency.
 export function quotationPdfDefinition({ quote_id, version, snapshot, total_minor }: QuotationVersion): TDocumentDefinitions {
-  const { seller_name, customer_name, customer_contact, issued_on, valid_until, terms, currency, lines } = snapshot;
+  const { seller_name, seller_logo, customer_name, customer_contact, issued_on, valid_until, terms, observations, currency, lines } = snapshot;
   const reference = `${quote_id.slice(0, 13).toUpperCase()} · V${version}`;
   const money = (minor: number) => formatMoney(minor / 100, currency, "es");
   const date = (value: string) => formatDate(value, "es", { dateStyle: "medium" }) ?? value;
@@ -23,10 +23,22 @@ export function quotationPdfDefinition({ quote_id, version, snapshot, total_mino
     ]);
   }
 
+  const heading: Content = {
+    stack: [
+      { text: seller_name, style: "seller" },
+      { text: "Cotización", style: "title" },
+      { text: reference, style: "detail" }
+    ]
+  };
   const content: Content[] = [
-    { text: seller_name, style: "seller" },
-    { text: "Cotización", style: "title" },
-    { text: reference, style: "detail", margin: [0, 0, 0, 18] },
+    {
+      columns: [
+        { width: "*", ...heading },
+        ...(seller_logo ? [{ width: 104, stack: [{ image: seller_logo, fit: [104, 52] as [number, number], alignment: "right" as const }] }] : [])
+      ],
+      columnGap: 16,
+      margin: [0, 0, 0, 18]
+    },
     {
       columns: [
         { stack: [{ text: "CLIENTE", style: "label" }, customer_name, ...(customer_contact ? [{ text: customer_contact, style: "detail" }] : [])] },
@@ -45,7 +57,8 @@ export function quotationPdfDefinition({ quote_id, version, snapshot, total_mino
     },
     { text: `Total  ${money(total_minor)}`, style: "total", alignment: "right", margin: [0, 14, 0, 18] }
   ];
-  if (terms) content.push({ text: "CONDICIONES", style: "label" }, { text: terms });
+  if (observations?.trim()) content.push({ text: "OBSERVACIONES", style: "label" }, { text: observations, margin: [0, 0, 0, 14] });
+  if (terms?.trim()) content.push({ text: "CONDICIONES", style: "label" }, { text: terms });
 
   return {
     pageSize: "A4",

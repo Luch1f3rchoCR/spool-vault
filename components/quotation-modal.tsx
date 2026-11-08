@@ -38,6 +38,7 @@ function dateOffset(days: number) {
 function draftFromSnapshot(snapshot: QuotationSnapshot): Draft {
   return {
     ...snapshot,
+    observations: snapshot.observations ?? "",
     lines: snapshot.lines.map(({ unit_price_minor, ...line }) => ({ ...line, price: (unit_price_minor / 100).toFixed(2), key: crypto.randomUUID() })),
     internal_costs: snapshot.internal_costs.map(({ amount_minor, ...cost }) => ({ ...cost, amount: (amount_minor / 100).toFixed(2), key: crypto.randomUUID() }))
   };
@@ -47,6 +48,33 @@ function minorUnits(value: string) {
   if (!/^\d+(?:[.,]\d{1,2})?$/.test(value.trim())) return NaN;
   const [whole, fraction = ""] = value.trim().replace(",", ".").split(".");
   return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+}
+
+const logoMaxLength = 120000;
+const logoMaxFileSize = 5 * 1024 * 1024;
+
+async function readQuotationLogo(file: File) {
+  if (!["image/png", "image/jpeg"].includes(file.type) || file.size > logoMaxFileSize) {
+    throw new Error("Elegí un PNG o JPG de hasta 5 MB.");
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    const scale = Math.min(1, 200 / image.naturalWidth, 100 / image.naturalHeight);
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("No se pudo preparar el logo.");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/png");
+    if (dataUrl.length > logoMaxLength) throw new Error("El logo quedó muy pesado. Probá con una imagen más simple.");
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function restoreAttempt(key: string): QuotationAttempt | null {
@@ -66,7 +94,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
     if (pending) return draftFromSnapshot(pending.snapshot);
     const project = projects.find(({ id }) => id === initialProjectId);
     return {
-      seller_name: sellerName, customer_name: "", customer_contact: "", terms: "",
+      seller_name: sellerName, customer_name: "", customer_contact: "", terms: "", observations: "",
       issued_on: dateOffset(0), valid_until: dateOffset(15), currency, internal_costs: [],
       lines: [{ key: crypto.randomUUID(), project_id: project?.id ?? "", description: project?.description ?? "", colors: project?.colors ?? "", quantity: 1, price: "" }]
     };
@@ -76,6 +104,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
   const [history, setHistory] = useState<QuotationVersion[] | null>(null);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [readingLogo, setReadingLogo] = useState(false);
   const [message, setMessage] = useState(pending ? "Hay un guardado pendiente. Recuperá su resultado antes de editar." : "");
   const working = useRef(false);
   const money = (minor: number, code = draft.currency) => formatMoney(minor / 100, code, "es");
@@ -89,6 +118,22 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
     setDraft((current) => ({ ...current, internal_costs: current.internal_costs.map((cost) => cost.key === key ? { ...cost, ...values } : cost) }));
   }
 
+  async function selectLogo(file: File) {
+    if (working.current || pending) return;
+    working.current = true;
+    setReadingLogo(true);
+    setMessage("");
+    try {
+      const logo = await readQuotationLogo(file);
+      setDraft((current) => ({ ...current, seller_logo: logo }));
+    } catch (error) {
+      setMessage(error instanceof Error && error.name === "Error" ? error.message : "No se pudo leer la imagen. Probá con otro PNG o JPG.");
+    } finally {
+      working.current = false;
+      setReadingLogo(false);
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (working.current) return;
@@ -96,6 +141,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
     const snapshot: QuotationSnapshot = {
       ...header,
       seller_name: header.seller_name.trim(), customer_name: header.customer_name.trim(),
+      observations: header.observations?.trim(),
       lines: lines.map(({ key: _, price, ...line }) => ({ ...line, description: line.description.trim(), unit_price_minor: minorUnits(price) })),
       internal_costs: internal_costs.map(({ key: _, amount, ...cost }) => ({ ...cost, amount_minor: minorUnits(amount) }))
     };
@@ -190,7 +236,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
   }
 
   return (
-    <ModalFrame title="Cotización" titleId="quotation-title" eyebrow="Proyectos" className={styles.modal} busy={busy} onClose={onClose}>
+    <ModalFrame title="Cotización" titleId="quotation-title" eyebrow="Proyectos" className={styles.modal} busy={busy || readingLogo} onClose={onClose}>
       {message && <p className="form-help" role="status">{message}</p>}
       {history ? (
         <section className={styles.body} aria-label="Historial de cotizaciones">
@@ -222,10 +268,28 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
         </section>
       ) : (
         <form className={styles.body} onSubmit={submit} aria-busy={busy} noValidate={Boolean(pending)}>
-          <fieldset className={styles.fields} disabled={Boolean(pending) || busy}>
+          <fieldset className={styles.fields} disabled={Boolean(pending) || busy || readingLogo}>
             <legend>{source ? `Nueva versión a partir de V${source.version}` : "Datos de la cotización"}</legend>
             <div className="form-grid">
               <label>Tu taller<input required maxLength={120} value={draft.seller_name} onChange={(e) => setDraft({ ...draft, seller_name: e.target.value })} /></label>
+              <div className={styles.logoField}>
+                <label>Logo del taller (opcional)
+                  <input type="file" accept="image/png,image/jpeg" aria-describedby="quotation-logo-help" onChange={(e) => {
+                    const file = e.currentTarget.files?.[0];
+                    e.currentTarget.value = "";
+                    if (file) void selectLogo(file);
+                  }} />
+                </label>
+                <small id="quotation-logo-help">{readingLogo ? "Preparando logo…" : "PNG o JPG de hasta 5 MB. Aparece junto al nombre en el PDF."}</small>
+                {draft.seller_logo && (
+                  <div className={styles.logoPreview}>
+                    {/* A local, bounded PNG needs no image optimization or network request. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={draft.seller_logo} alt="Vista previa del logo del taller" />
+                    <button type="button" onClick={() => setDraft((current) => ({ ...current, seller_logo: undefined }))}>Quitar logo</button>
+                  </div>
+                )}
+              </div>
               <label>Cliente<input required maxLength={120} value={draft.customer_name} onChange={(e) => setDraft({ ...draft, customer_name: e.target.value })} /></label>
               <label>Contacto del cliente<input maxLength={200} value={draft.customer_contact} onChange={(e) => setDraft({ ...draft, customer_contact: e.target.value })} /></label>
               <label>Moneda de venta<select value={draft.currency} onChange={(e) => setDraft({ ...draft, currency: e.target.value as QuotationCurrency })}>
@@ -274,12 +338,13 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
                 key: crypto.randomUUID(), category: "filament", currency: draft.currency, amount: ""
               }] })}><Plus size={16} /> Agregar costo</button>
             </details>
+            <label>Observaciones para el cliente<textarea maxLength={1500} value={draft.observations ?? ""} onChange={(e) => setDraft({ ...draft, observations: e.target.value })} /></label>
             <label>Condiciones<textarea maxLength={1500} value={draft.terms} onChange={(e) => setDraft({ ...draft, terms: e.target.value })} /></label>
           </fieldset>
           <p><strong>Total de venta · {money(total)}</strong></p>
           <div className={styles.actions}>
-            <button className="primary-action" type="submit" disabled={busy}>{busy ? "Guardando…" : pending ? "Recuperar guardado" : "Guardar cotización"}</button>
-            <button type="button" onClick={() => void openHistory()} disabled={busy || Boolean(pending)}>Ver historial</button>
+            <button className="primary-action" type="submit" disabled={busy || readingLogo}>{busy ? "Guardando…" : pending ? "Recuperar guardado" : "Guardar cotización"}</button>
+            <button type="button" onClick={() => void openHistory()} disabled={busy || readingLogo || Boolean(pending)}>Ver historial</button>
           </div>
         </form>
       )}

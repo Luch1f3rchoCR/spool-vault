@@ -21,7 +21,7 @@ Los porcentajes cuentan hitos del alcance indicado, con el mismo peso por hito. 
 - [x] Aprobar el flujo secundario desde Proyectos, el PDF para el cliente y el envío manual por WhatsApp.
 - [x] Preparar y probar versiones privadas, totales, permisos y recuperación de guardado.
 - [x] Preparar y probar el formulario, partidas de varios proyectos, desglose interno e historial.
-- [x] Preparar y comprobar la descarga del PDF de la versión guardada, con exclusión del desglose interno.
+- [x] Preparar y comprobar la descarga del PDF de la versión guardada, con observaciones para el cliente, logo opcional del taller y exclusión del desglose interno.
 - [ ] Conectar **Agregar a cotización** desde Proyectos y verificar el recorrido con sesión y proyectos reales de prueba. Coordinar cambios con #82 y #83.
 - [ ] Aplicar la migración en el entorno autorizado, publicar y probar el PDF compartido desde un teléfono.
 

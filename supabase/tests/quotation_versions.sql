@@ -15,6 +15,7 @@ declare
   request uuid := gen_random_uuid();
   first_version public.quotation_versions;
   saved public.quotation_versions;
+  logo text := 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
   payload jsonb := '{
     "seller_name":"Taller de prueba", "customer_name":"Prueba", "customer_contact":"",
     "issued_on":"2026-11-08", "valid_until":"2026-11-30", "terms":"Condiciones",
@@ -63,9 +64,28 @@ begin
   exception when invalid_parameter_value then null;
   end;
 
+  begin
+    perform public.save_quotation_version(gen_random_uuid(), quote, 1, payload || jsonb_build_object('observations', repeat('x', 1501)));
+    assert false, 'oversized observations accepted';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    perform public.save_quotation_version(gen_random_uuid(), quote, 1, payload || '{"seller_logo":"https://example.invalid/logo.png"}');
+    assert false, 'external logo accepted';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    perform public.save_quotation_version(gen_random_uuid(), quote, 1, payload || '{"seller_logo":"data:image/png;base64,iVBORw0KGgoAAAAA"}');
+    assert false, 'truncated PNG header accepted';
+  exception when invalid_parameter_value then null;
+  end;
+
   assert (select count(*) from public.quotation_versions) = 1, 'rejection changed persisted versions';
   select * into saved from jsonb_populate_record(null::public.quotation_versions, public.save_quotation_version(gen_random_uuid(), quote, 1,
-    jsonb_set(payload, '{lines,0,quantity}', '3')));
+    jsonb_set(payload, '{lines,0,quantity}', '3') ||
+    jsonb_build_object('seller_logo', logo, 'observations', 'Incluye muestra de color.')));
+  assert saved.snapshot->>'seller_logo' = logo, 'logo missing from the saved version';
+  assert saved.snapshot->>'observations' = 'Incluye muestra de color.', 'observations missing';
   assert saved.version = 2 and saved.total_minor = 470000, 'next version wrong';
   select * into saved from jsonb_populate_record(null::public.quotation_versions, public.save_quotation_version(request, quote, 0, payload));
   assert saved = first_version, 'old document changed after revision';

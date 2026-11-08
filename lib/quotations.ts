@@ -14,12 +14,14 @@ export type QuotationLine = {
 
 export type QuotationSnapshot = {
   seller_name: string;
+  seller_logo?: string;
   customer_name: string;
   customer_contact: string;
   issued_on: string;
   valid_until: string;
   currency: QuotationCurrency;
   terms: string;
+  observations?: string;
   lines: QuotationLine[];
   internal_costs: Array<{
     category: typeof quotationCostCategories[number];

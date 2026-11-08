@@ -32,6 +32,7 @@ declare
   subtotal bigint := 0;
   issued date;
   expires date;
+  logo_bytes bytea;
 begin
   if new.user_id is distinct from (select auth.uid()) then
     raise exception 'Sesión requerida' using errcode = '42501';
@@ -45,7 +46,7 @@ begin
     raise exception 'La cotización cambió. Abrí su versión más reciente' using errcode = '40001';
   end if;
 
-  if jsonb_typeof(document) is distinct from 'object' or pg_column_size(document) > 65536
+  if jsonb_typeof(document) is distinct from 'object' or pg_column_size(document - 'seller_logo') > 65536
     or jsonb_typeof(document->'seller_name') is distinct from 'string'
     or char_length(btrim(document->>'seller_name')) not between 1 and 120
     or jsonb_typeof(document->'customer_name') is distinct from 'string'
@@ -54,12 +55,33 @@ begin
     or char_length(document->>'customer_contact') > 200
     or jsonb_typeof(document->'terms') is distinct from 'string'
     or char_length(document->>'terms') > 1500
+    or (document ? 'observations' and (
+      jsonb_typeof(document->'observations') <> 'string' or char_length(document->>'observations') > 1500
+    ))
+    or (document ? 'seller_logo' and (
+      jsonb_typeof(document->'seller_logo') <> 'string'
+      or char_length(document->>'seller_logo') > 120000
+      or (document->>'seller_logo') !~ '^data:image/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$'
+    ))
     or coalesce(document->>'currency', '') not in ('CRC', 'USD', 'EUR')
     or coalesce(document->>'issued_on', '') !~ '^\d{4}-\d{2}-\d{2}$'
     or coalesce(document->>'valid_until', '') !~ '^\d{4}-\d{2}-\d{2}$'
     or jsonb_typeof(document->'lines') is distinct from 'array'
     or jsonb_typeof(document->'internal_costs') is distinct from 'array' then
     raise exception 'Revisá los datos de la cotización' using errcode = '22023';
+  end if;
+  if document ? 'seller_logo' then
+    logo_bytes := decode(split_part(document->>'seller_logo', ',', 2), 'base64');
+    if octet_length(logo_bytes) < 33 or substring(logo_bytes from 9 for 8) <> decode('0000000d49484452', 'hex') then
+      raise exception 'El logo debe ser un PNG válido' using errcode = '22023';
+    end if;
+    -- Bound the PNG dimensions before it can be loaded in a client or PDF.
+    if substring(logo_bytes from 17 for 3) <> decode('000000', 'hex')
+      or substring(logo_bytes from 21 for 3) <> decode('000000', 'hex')
+      or get_byte(logo_bytes, 19) not between 1 and 200
+      or get_byte(logo_bytes, 23) not between 1 and 100 then
+      raise exception 'El logo supera el tamaño permitido' using errcode = '22023';
+    end if;
   end if;
   issued := (document->>'issued_on')::date;
   expires := (document->>'valid_until')::date;
