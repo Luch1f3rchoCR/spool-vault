@@ -21,6 +21,10 @@ La persona puede elegir el idioma de la interfaz y conservar su elección. Cambi
 - [ ] Probar persistencia/fallback, teclado, lectores de pantalla y textos largos en 320/390 px y escritorio.
 - [ ] Publicar por bloques verificados y registrar los módulos/idiomas disponibles; no anunciar toda la app traducida antes de completar el alcance aprobado.
 
+## Spools · 2026-11-08
+
+El modal de crear, asignar y administrar spools queda preparado en español e inglés, incluidos tipos de referencia, tara, estados, edición y avisos de operación. El inglés identifica la moneda del costo por código. Cambiar idioma conserva el borrador y los valores enviados, incluidos materiales y marcas guardados, moneda y clave de reintento. Las notas del usuario y detalles externos conservan el texto original. El español sigue siendo el idioma de la app hasta integrar el selector global.
+
 ## Decisiones pendientes y límites
 
 Los idiomas iniciales ya están confirmados. Fallback final y almacenamiento de la preferencia siguen pendientes. No se añade un selector que active inglés mientras falten pantallas o ayudas por traducir.

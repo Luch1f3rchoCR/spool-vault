@@ -29,6 +29,7 @@ import { InventoryReportModal } from "@/components/inventory-report-modal";
 import { InventoryValueCards, InventoryValueDetails, useInventoryValueSummary } from "@/components/inventory-value-summary";
 import { FilamentPrintProfilesModal } from "@/components/filament-print-profiles-modal";
 import { AddActionsModal } from "@/components/add-actions-modal";
+import { defaultLanguage, formatNumber, translate, type MessageKey } from "@/lib/i18n";
 import { ModalFrame } from "@/components/modal-frame";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { AppNavigation, type WorkspaceSection } from "@/components/app-navigation";
@@ -249,11 +250,17 @@ const inventoryLevelRank: Record<InventoryLevel, number> = {
   available: 4,
   archived: 5
 };
-const spoolStatusLabels: Record<Spool["status"], string> = {
-  empty: "Vacío",
-  in_use: "En uso",
-  reserved: "Reservado",
-  retired: "Inactivo"
+const spoolMaterialKeys = {
+  "Plástico reutilizable": "spools.plastic",
+  Cartón: "spools.cardboard",
+  Otro: "spools.other"
+} as const;
+const spoolMaterials = Object.keys(spoolMaterialKeys);
+type SpoolNote = {
+  key: Extract<MessageKey, `spools.${string}`>;
+  code?: string;
+  detail?: string;
+  fallback?: "spools.emptyResponse" | "spools.unexpectedError";
 };
 const tareConfidenceLabels: Record<TareConfidence, string> = {
   verified: "Verificada",
@@ -749,7 +756,19 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [draft, setDraft] = useState<RollDraft>(initialDraft);
   const [qrDataUrl, setQrDataUrl] = useState("");
-  const [syncNote, setSyncNote] = useState("Modo demo local");
+  const [syncMessage, setSyncNote] = useState<string | SpoolNote>("Modo demo local");
+  const spoolLanguage = defaultLanguage;
+  const spoolText = (key: MessageKey, values?: Readonly<Record<string, string | number>>) => translate(spoolLanguage, key, values);
+  const spoolAmount = (value: number) => spoolLanguage === "es" ? String(value) : formatNumber(Number(value), spoolLanguage, { maximumFractionDigits: 20 });
+  const spoolCost = (currency: string) => spoolLanguage === "es" ? spoolText("spools.cost") : spoolText("spools.costCurrency", { currency });
+  const spoolBrand = (brand: string | null) => !brand ? spoolText("spools.noBrand") : brand === "Genérico" ? spoolText("spools.genericBrand") : brand;
+  const spoolMaterial = (material: string) => {
+    const key = spoolMaterialKeys[material as keyof typeof spoolMaterialKeys];
+    return Object.hasOwn(spoolMaterialKeys, material) ? spoolText(key) : material;
+  };
+  const spoolNoteText = typeof syncMessage === "string" ? syncMessage : spoolText(syncMessage.key, { code: syncMessage.code ?? "" });
+  const spoolNoteDetail = typeof syncMessage === "string" ? undefined : syncMessage.detail ?? (syncMessage.fallback ? spoolText(syncMessage.fallback) : undefined);
+  const syncNote = spoolNoteDetail === undefined ? spoolNoteText : `${spoolNoteText}: ${spoolNoteDetail}`;
   const [authEmail, setAuthEmail] = useState("");
   const [authNote, setAuthNote] = useState("");
   const [authRedirectUrl, setAuthRedirectUrl] = useState("");
@@ -2881,9 +2900,7 @@ export default function Home() {
         });
 
         if (error || !data) {
-          setSyncNote(
-            `No se pudo confirmar el spool. Podés reintentar sin duplicarlo: ${error?.message ?? "respuesta vacía"}`
-          );
+          setSyncNote({ key: "spools.createUnconfirmed", detail: error?.message, fallback: "spools.emptyResponse" });
           return;
         }
         const result = data as SpoolWriteResult;
@@ -2891,20 +2908,18 @@ export default function Home() {
           result.spool,
           ...current.filter((item) => item.id !== result.spool.id)
         ].sort((a, b) => a.code.localeCompare(b.code)));
-        setSyncNote(result.replayed
-          ? `El spool ${result.spool.code} ya estaba guardado; recuperamos su resultado.`
-          : `Spool ${result.spool.code} agregado como vacío`);
+        setSyncNote({ key: result.replayed ? "spools.createRecovered" : "spools.created", code: result.spool.code });
         createSpoolRequestId.current = null;
       } else {
         setSpools((current) => [...current, spool].sort((a, b) => a.code.localeCompare(b.code)));
-        setSyncNote(`Spool ${spool.code} agregado como vacío`);
+        setSyncNote({ key: "spools.created", code: spool.code });
       }
 
       formElement.reset();
       setNewSpoolTypeId("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "error inesperado";
-      setSyncNote(`No se pudo confirmar el spool. Podés reintentar sin duplicarlo: ${message}`);
+      const message = error instanceof Error ? error.message : undefined;
+      setSyncNote({ key: "spools.createUnconfirmed", detail: message, fallback: "spools.unexpectedError" });
     } finally {
       setPendingSpoolAction("");
     }
@@ -2927,7 +2942,7 @@ export default function Home() {
           p_spool_id: spoolId
         });
         if (error) {
-          setSyncNote(`No se pudo asignar el spool: ${error.message}`);
+          setSyncNote({ key: "spools.assignError", detail: error.message });
           return;
         }
 
@@ -2940,10 +2955,10 @@ export default function Home() {
       }
 
       const assignedSpool = spools.find((spool) => spool.id === spoolId);
-      setSyncNote(`Spool ${assignedSpool?.code ?? ""} asignado correctamente`);
+      setSyncNote({ key: "spools.assigned", code: assignedSpool?.code });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "error inesperado";
-      setSyncNote(`No se pudo asignar el spool: ${message}`);
+      const message = error instanceof Error ? error.message : undefined;
+      setSyncNote({ key: "spools.assignError", detail: message, fallback: "spools.unexpectedError" });
     } finally {
       setPendingSpoolAction("");
     }
@@ -2962,7 +2977,7 @@ export default function Home() {
           p_retire: false
         });
         if (error) {
-          setSyncNote(`No se pudo liberar el spool: ${error.message}`);
+          setSyncNote({ key: "spools.releaseError", detail: error.message });
           return;
         }
         const result = data as SpoolMutationResult;
@@ -2972,10 +2987,10 @@ export default function Home() {
         setRolls((current) => current.map((item) => item.id === roll.id ? { ...item, spool_id: null } : item));
         setSpools((current) => current.map((spool) => spool.id === spoolId ? { ...spool, status: "empty" } : spool));
       }
-      setSyncNote("Spool liberado y disponible");
+      setSyncNote({ key: "spools.released" });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "error inesperado";
-      setSyncNote(`No se pudo liberar el spool: ${message}`);
+      const message = error instanceof Error ? error.message : undefined;
+      setSyncNote({ key: "spools.releaseError", detail: message, fallback: "spools.unexpectedError" });
     } finally {
       setPendingSpoolAction("");
     }
@@ -3017,30 +3032,26 @@ export default function Home() {
           p_notes: updates.notes
         });
         if (error || !data) {
-          setSyncNote(
-            `No se pudo confirmar la edición. Podés reintentar sin repetirla: ${error?.message ?? "respuesta vacía"}`
-          );
+          setSyncNote({ key: "spools.editUnconfirmed", detail: error?.message, fallback: "spools.emptyResponse" });
           return;
         }
         const result = data as SpoolWriteResult;
         setSpools((current) => current
           .map((item) => item.id === spool.id ? result.spool : item)
           .sort((a, b) => a.code.localeCompare(b.code)));
-        setSyncNote(result.replayed
-          ? `La edición del spool ${result.spool.code} ya estaba guardada.`
-          : `Spool ${result.spool.code} actualizado`);
+        setSyncNote({ key: result.replayed ? "spools.editRecovered" : "spools.edited", code: result.spool.code });
         delete updateSpoolRequests.current[spool.id];
       } else {
         setSpools((current) => current
           .map((item) => item.id === spool.id ? { ...item, ...updates } : item)
           .sort((a, b) => a.code.localeCompare(b.code)));
-        setSyncNote(`Spool ${updates.code} actualizado`);
+        setSyncNote({ key: "spools.edited", code: updates.code });
       }
 
       setEditingSpoolId("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "error inesperado";
-      setSyncNote(`No se pudo confirmar la edición. Podés reintentar sin repetirla: ${message}`);
+      const message = error instanceof Error ? error.message : undefined;
+      setSyncNote({ key: "spools.editUnconfirmed", detail: message, fallback: "spools.unexpectedError" });
     } finally {
       setPendingSpoolAction("");
     }
@@ -3060,7 +3071,7 @@ export default function Home() {
           p_retired: retiring
         });
         if (error) {
-          setSyncNote(`No se pudo ${retiring ? "inactivar" : "reactivar"} el spool: ${error.message}`);
+          setSyncNote({ key: retiring ? "spools.retireError" : "spools.reactivateError", detail: error.message });
           return;
         }
         const result = data as SpoolMutationResult;
@@ -3078,12 +3089,11 @@ export default function Home() {
       }
 
       setEditingSpoolId("");
-      setSyncNote(retiring
-        ? `Spool ${spool.code} inactivado${assignedRoll ? " y filamento liberado" : ""}`
-        : `Spool ${spool.code} reactivado como vacío`);
+      const key = retiring ? (assignedRoll ? "spools.retiredWithRoll" : "spools.retired") : "spools.reactivated";
+      setSyncNote({ key, code: spool.code });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "error inesperado";
-      setSyncNote(`No se pudo ${retiring ? "inactivar" : "reactivar"} el spool: ${message}`);
+      const message = error instanceof Error ? error.message : undefined;
+      setSyncNote({ key: retiring ? "spools.retireError" : "spools.reactivateError", detail: message, fallback: "spools.unexpectedError" });
     } finally {
       setPendingSpoolAction("");
     }
@@ -4174,37 +4184,43 @@ export default function Home() {
       )}
 
       {showSpools && (
-        <ModalFrame className="spool-modal" titleId="spool-modal-title" eyebrow="Spools reutilizables"
-          title={spoolView === "create" ? "Crear spool" : spoolView === "assign" ? "Asignar spool" : "Mis spools"}
+        <ModalFrame className="spool-modal" titleId="spool-modal-title" eyebrow={spoolText("spools.eyebrow")}
+          lang={spoolLanguage} closeLabel={spoolText("spools.close")}
+          title={spoolView === "create" ? spoolText("spools.create") : spoolView === "assign" ? spoolText("spools.assign") : spoolText("spools.inventory")}
           viewKey={spoolView} busy={Boolean(pendingSpoolAction)} onClose={() => setShowSpools(false)}>
-            <nav className="spool-view-nav" aria-label="Opciones de spools">
-              <button type="button" aria-current={spoolView === "create" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("create")}>Crear spool</button>
-              <button type="button" aria-current={spoolView === "assign" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("assign")}>Asignar spool</button>
-              <button type="button" aria-current={spoolView === "inventory" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("inventory")}>Mis spools</button>
+            <nav className="spool-view-nav" aria-label={spoolText("spools.navigation")}>
+              <button type="button" aria-current={spoolView === "create" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("create")}>{spoolText("spools.create")}</button>
+              <button type="button" aria-current={spoolView === "assign" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("assign")}>{spoolText("spools.assign")}</button>
+              <button type="button" aria-current={spoolView === "inventory" ? "page" : undefined} disabled={Boolean(pendingSpoolAction)} onClick={() => setSpoolView("inventory")}>{spoolText("spools.inventory")}</button>
             </nav>
-            <p className="spool-operation-note" role="status">{syncNote}</p>
+            <p className="spool-operation-note" role="status">
+              {typeof syncMessage === "string" && spoolLanguage === "en"
+                ? <>{spoolText("account.originalMessage")} <span lang="">{syncNote}</span></>
+                : <>{spoolNoteText}{spoolNoteDetail !== undefined && <>: {typeof syncMessage !== "string" && syncMessage.detail !== undefined
+                  ? <span lang="">{spoolNoteDetail}</span> : spoolNoteDetail}</>}</>}
+            </p>
 
             <div className="spool-summary">
-              <article><strong>{spools.length}</strong><span>registrados</span></article>
-              <article><strong>{emptySpools.length}</strong><span>vacíos</span></article>
-              <article><strong>{spools.filter((spool) => spool.status === "in_use").length}</strong><span>en uso</span></article>
-              <article><strong>{spools.filter((spool) => spool.status === "retired").length}</strong><span>inactivos</span></article>
+              <article><strong>{spoolAmount(spools.length)}</strong><span>{spoolText("spools.registered")}</span></article>
+              <article><strong>{spoolAmount(emptySpools.length)}</strong><span>{spoolText("spools.emptyCount")}</span></article>
+              <article><strong>{spoolAmount(spools.filter((spool) => spool.status === "in_use").length)}</strong><span>{spoolText("spools.activeCount")}</span></article>
+              <article><strong>{spoolAmount(spools.filter((spool) => spool.status === "retired").length)}</strong><span>{spoolText("spools.retiredCount")}</span></article>
             </div>
 
             <form hidden={spoolView !== "create"} className="form-grid compact-form" onSubmit={addSpool} aria-busy={pendingSpoolAction === "create"}>
-              <h3 className="wide">Registrar spool vacío</h3>
+              <h3 className="wide">{spoolText("spools.register")}</h3>
               <label className="wide">
-                Tipo de spool
+                {spoolText("spools.type")}
                 <select
                   name="spool_type_id"
                   value={newSpoolTypeId}
                   onChange={(event) => setNewSpoolTypeId(event.target.value)}
                   disabled={Boolean(pendingSpoolAction)}
                 >
-                  <option value="">Personalizado · indicar tara manualmente</option>
+                  <option value="">{spoolText("spools.customTare")}</option>
                   {spoolTypes.map((type) => (
                     <option key={type.id} value={type.id}>
-                      {type.manufacturer} · {type.name} · {type.total_tare_g} g ({tareConfidenceLabels[type.tare_confidence].toLowerCase()})
+                      {type.manufacturer} · {type.name} · {spoolAmount(type.total_tare_g)} g ({spoolText(`spools.confidence.${type.tare_confidence}`).toLowerCase()})
                     </option>
                   ))}
                 </select>
@@ -4213,90 +4229,88 @@ export default function Home() {
                 const type = spoolTypes.find((item) => item.id === newSpoolTypeId);
                 return type ? (
                   <p className="spool-type-reference wide">
-                    <strong>{type.total_tare_g} g de tara · {tareConfidenceLabels[type.tare_confidence]}</strong>
-                    <span>{type.weight_source || "Sin fuente indicada"}{type.notes ? ` · ${type.notes}` : ""}</span>
+                    <strong>{spoolText("spools.tareSummary", { weight: spoolAmount(type.total_tare_g), confidence: spoolText(`spools.confidence.${type.tare_confidence}`) })}</strong>
+                    <span>{type.weight_source || spoolText("spools.sourceMissing")}{type.notes ? ` · ${type.notes}` : ""}</span>
                   </p>
                 ) : null;
               })()}
               <label>
-                Código
+                {spoolText("spools.code")}
                 <input name="code" required defaultValue={`SP-${String(spools.length + 1).padStart(3, "0")}`} disabled={Boolean(pendingSpoolAction)} />
               </label>
               <label>
-                Marca / compatibilidad
+                {spoolText("spools.brand")}
                 <select name="brand" defaultValue="Bambu Lab" disabled={Boolean(newSpoolTypeId) || Boolean(pendingSpoolAction)}>
-                  {brandOptions.map((brand) => <option key={brand}>{brand}</option>)}
+                  {brandOptions.map((brand) => <option key={brand} value={brand}>{spoolBrand(brand)}</option>)}
                 </select>
               </label>
               <label>
-                Material del spool
+                {spoolText("spools.material")}
                 <select name="spool_material" defaultValue="Plástico reutilizable" disabled={Boolean(newSpoolTypeId) || Boolean(pendingSpoolAction)}>
-                  <option>Plástico reutilizable</option>
-                  <option>Cartón</option>
-                  <option>Otro</option>
+                  {spoolMaterials.map((material) => <option key={material} value={material}>{spoolMaterial(material)}</option>)}
                 </select>
               </label>
               <label>
-                Tara en gramos
-                <input name="tare_weight_g" type="number" min="0" step="0.01" placeholder="Peso vacío opcional" disabled={Boolean(newSpoolTypeId) || Boolean(pendingSpoolAction)} />
+                {spoolText("spools.tare")}
+                <input name="tare_weight_g" type="number" min="0" step="0.01" placeholder={spoolText("spools.optionalTare")} disabled={Boolean(newSpoolTypeId) || Boolean(pendingSpoolAction)} />
               </label>
               <label>
-                Costo
+                {spoolCost("CRC")}
                 <input name="acquisition_cost" type="number" min="0" defaultValue="1000" disabled={Boolean(pendingSpoolAction)} />
               </label>
               <input name="currency" type="hidden" value="CRC" />
               <label>
-                Notas
-                <input name="notes" placeholder="Estado, origen..." disabled={Boolean(pendingSpoolAction)} />
+                {spoolText("spools.notes")}
+                <input name="notes" placeholder={spoolText("spools.notesExample")} disabled={Boolean(pendingSpoolAction)} />
               </label>
               <button className="primary-action wide" type="submit" disabled={Boolean(pendingSpoolAction)}>
-                {pendingSpoolAction === "create" ? "Guardando sin duplicar…" : "Agregar spool vacío"}
+                {pendingSpoolAction === "create" ? spoolText("spools.creating") : spoolText("spools.addEmpty")}
               </button>
             </form>
 
             <form hidden={spoolView !== "assign"} className="form-grid compact-form" onSubmit={assignSpool} aria-busy={pendingSpoolAction === "assign"}>
-              <h3 className="wide">Asignar spool a un filamento</h3>
+              <h3 className="wide">{spoolText("spools.assignHeading")}</h3>
               {(!unassignedRolls.length || !emptySpools.length) && <p className="form-help wide">
-                {!unassignedRolls.length ? "No hay filamentos sin spool. Registrá un filamento o liberá su spool desde Mis spools." : "No hay spools vacíos. Creá uno o liberá uno desde Mis spools."}
+                {!unassignedRolls.length ? spoolText("spools.noUnassignedRolls") : spoolText("spools.noEmptySpools")}
               </p>}
               <label>
-                Filamento sin spool
+                {spoolText("spools.unassignedRoll")}
                 <select name="roll_id" required disabled={!unassignedRolls.length || Boolean(pendingSpoolAction)}>
-                  <option value="">Seleccionar filamento</option>
+                  <option value="">{spoolText("spools.selectRoll")}</option>
                   {unassignedRolls.map((roll) => (
                     <option key={roll.id} value={roll.id}>{roll.brand} · {roll.product_line} · {roll.color_name}</option>
                   ))}
                 </select>
               </label>
               <label>
-                Spool vacío
+                {spoolText("spools.emptySpool")}
                 <select name="spool_id" required disabled={!emptySpools.length || Boolean(pendingSpoolAction)}>
-                  <option value="">Seleccionar spool</option>
+                  <option value="">{spoolText("spools.selectSpool")}</option>
                   {emptySpools.map((spool) => (
-                    <option key={spool.id} value={spool.id}>{spool.code} · {spool.brand || "Sin marca"}</option>
+                    <option key={spool.id} value={spool.id}>{spool.code} · {spoolBrand(spool.brand)}</option>
                   ))}
                 </select>
               </label>
               <button className="primary-action wide" type="submit" disabled={!unassignedRolls.length || !emptySpools.length || Boolean(pendingSpoolAction)}>
-                {pendingSpoolAction === "assign" ? "Asignando…" : "Asignar spool"}
+                {pendingSpoolAction === "assign" ? spoolText("spools.assigning") : spoolText("spools.assign")}
               </button>
             </form>
 
             <div className="spool-list" hidden={spoolView !== "inventory"}>
-              <h3>Inventario de spools</h3>
+              <h3>{spoolText("spools.inventoryHeading")}</h3>
               {spools.length ? spools.map((spool) => {
                 const assignedRoll = rolls.find((roll) => roll.spool_id === spool.id);
                 return (
                   <article key={spool.id} className={spool.status === "retired" ? "spool-item retired" : "spool-item"}>
-                    <div className="spool-item-info"><strong>{spool.code}</strong><span>{spool.brand || "Sin marca"} · {spool.spool_material}</span></div>
-                    <div className="spool-item-status"><strong>{spoolStatusLabels[spool.status]}</strong><span>{assignedRoll ? `${assignedRoll.product_line || assignedRoll.material} · ${assignedRoll.color_name}` : spool.tare_weight_g ? `Tara ${spool.tare_weight_g} g` : "Sin tara"}</span></div>
+                    <div className="spool-item-info"><strong>{spool.code}</strong><span>{spoolBrand(spool.brand)} · {spoolMaterial(spool.spool_material)}</span></div>
+                    <div className="spool-item-status"><strong>{spoolText(`spools.status.${spool.status}`)}</strong><span>{assignedRoll ? `${assignedRoll.product_line || assignedRoll.material} · ${assignedRoll.color_name}` : spool.tare_weight_g ? spoolText("spools.tareValue", { weight: spoolAmount(spool.tare_weight_g) }) : spoolText("spools.noTare")}</span></div>
                     <div className="spool-actions">
                       <button type="button" disabled={Boolean(pendingSpoolAction)} onClick={() => setEditingSpoolId((current) => current === spool.id ? "" : spool.id)}>
-                        {editingSpoolId === spool.id ? "Cancelar" : "Editar"}
+                        {editingSpoolId === spool.id ? spoolText("spools.cancel") : spoolText("spools.edit")}
                       </button>
                       {assignedRoll && (
                         <button type="button" disabled={Boolean(pendingSpoolAction)} onClick={() => releaseSpool(assignedRoll)}>
-                          {pendingSpoolAction === `release:${spool.id}` ? "Liberando…" : "Quitar filamento"}
+                          {pendingSpoolAction === `release:${spool.id}` ? spoolText("spools.releasing") : spoolText("spools.removeFilament")}
                         </button>
                       )}
                       <button
@@ -4306,53 +4320,51 @@ export default function Home() {
                         onClick={() => toggleSpoolRetired(spool)}
                       >
                         {pendingSpoolAction === `retire:${spool.id}`
-                          ? (spool.status === "retired" ? "Reactivando…" : "Inactivando…")
-                          : (spool.status === "retired" ? "Reactivar" : "Inactivar")}
+                          ? (spool.status === "retired" ? spoolText("spools.reactivating") : spoolText("spools.retiring"))
+                          : (spool.status === "retired" ? spoolText("spools.reactivate") : spoolText("spools.retire"))}
                       </button>
                     </div>
                     {editingSpoolId === spool.id && (
                       <form className="spool-edit-form" onSubmit={(event) => updateSpool(event, spool)}>
-                        <label>Código<input name="code" required defaultValue={spool.code} /></label>
+                        <label>{spoolText("spools.code")}<input name="code" required defaultValue={spool.code} /></label>
                         <label className="wide">
-                          Tipo de spool
+                          {spoolText("spools.type")}
                           <select name="spool_type_id" defaultValue={spool.spool_type_id || ""}>
-                            <option value="">Personalizado</option>
+                            <option value="">{spoolText("spools.custom")}</option>
                             {spoolTypes.map((type) => (
                               <option key={type.id} value={type.id}>
-                                {type.manufacturer} · {type.name} · {type.total_tare_g} g
+                                {type.manufacturer} · {type.name} · {spoolAmount(type.total_tare_g)} g
                               </option>
                             ))}
                           </select>
                         </label>
                         <label>
-                          Marca / compatibilidad
+                          {spoolText("spools.brand")}
                           <select name="brand" defaultValue={spool.brand || "Bambu Lab"}>
                             {spool.brand && !brandOptions.includes(spool.brand) && <option>{spool.brand}</option>}
-                            {brandOptions.map((brand) => <option key={brand}>{brand}</option>)}
+                            {brandOptions.map((brand) => <option key={brand} value={brand}>{spoolBrand(brand)}</option>)}
                           </select>
                         </label>
                         <label>
-                          Material del spool
+                          {spoolText("spools.material")}
                           <select name="spool_material" defaultValue={spool.spool_material}>
-                            {!['Plástico reutilizable', 'Cartón', 'Otro'].includes(spool.spool_material) && <option>{spool.spool_material}</option>}
-                            <option>Plástico reutilizable</option>
-                            <option>Cartón</option>
-                            <option>Otro</option>
+                            {!Object.hasOwn(spoolMaterialKeys, spool.spool_material) && <option>{spool.spool_material}</option>}
+                            {spoolMaterials.map((material) => <option key={material} value={material}>{spoolMaterial(material)}</option>)}
                           </select>
                         </label>
-                        <label>Tara en gramos<input name="tare_weight_g" type="number" min="0" step="0.01" defaultValue={spool.tare_weight_g ?? ""} /></label>
-                        <label>Costo<input name="acquisition_cost" type="number" min="0" defaultValue={spool.acquisition_cost} /></label>
-                        <label>Notas<input name="notes" defaultValue={spool.notes || ""} /></label>
+                        <label>{spoolText("spools.tare")}<input name="tare_weight_g" type="number" min="0" step="0.01" defaultValue={spool.tare_weight_g ?? ""} /></label>
+                        <label>{spoolCost(spool.currency)}<input name="acquisition_cost" type="number" min="0" defaultValue={spool.acquisition_cost} /></label>
+                        <label>{spoolText("spools.notes")}<input name="notes" defaultValue={spool.notes || ""} /></label>
                         <input name="currency" type="hidden" value={spool.currency} />
-                        <p className="form-help wide">Si elegís un tipo de referencia, su marca, material y tara reemplazan los valores manuales al guardar.</p>
+                        <p className="form-help wide">{spoolText("spools.referenceHelp")}</p>
                         <button className="primary-action wide" type="submit" disabled={Boolean(pendingSpoolAction)}>
-                          {pendingSpoolAction === `update:${spool.id}` ? "Guardando sin repetir…" : "Guardar cambios"}
+                          {pendingSpoolAction === `update:${spool.id}` ? spoolText("spools.savingEdit") : spoolText("spools.saveEdit")}
                         </button>
                       </form>
                     )}
                   </article>
                 );
-              }) : <p className="empty-state">Todavía no hay spools registrados.</p>}
+              }) : <p className="empty-state">{spoolText("spools.emptyInventory")}</p>}
             </div>
         </ModalFrame>
       )}
