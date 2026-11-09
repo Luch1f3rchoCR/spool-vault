@@ -23,6 +23,7 @@ export type QuotationSnapshot = {
   currency: QuotationCurrency;
   delivery?: string;
   payment_terms?: string;
+  deposit_terms?: string;
   terms: string;
   observations?: string;
   lines: QuotationLine[];

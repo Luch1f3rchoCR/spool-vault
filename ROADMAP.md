@@ -25,7 +25,7 @@ Los porcentajes cuentan hitos del alcance indicado, con el mismo peso por hito. 
 - [x] Conectar **Agregar a cotización** desde Proyectos y verificar el recorrido con sesión simulada y proyectos en una base local aislada. Incluye acceso al historial desde Proyectos.
 - [ ] Aplicar la migración en el entorno autorizado, publicar y probar el PDF compartido desde un teléfono.
 
-El PDF incluye campos opcionales de contacto comercial del taller, entrega y forma de pago o anticipo. Las condiciones permiten aclarar alcance, garantía o impuestos aplicables como texto. Los costos internos se ingresan manualmente en este bloque. Descuentos, impuestos, envío como cargo separado, aceptación y conversión a pedido se siguen por fuera del primer corte.
+El PDF incluye campos opcionales de contacto comercial del taller, entrega y forma de pago. El anticipo se habilita por cotización y queda guardado por versión. Las condiciones permiten aclarar alcance, garantía o impuestos aplicables como texto. Los costos internos se ingresan manualmente en este bloque. Descuentos, impuestos, envío como cargo separado, aceptación y conversión a pedido se siguen por fuera del primer corte.
 
 ### Español e inglés · 4/7 (57%) para habilitar el selector
 

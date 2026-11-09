@@ -4,7 +4,7 @@ import type { QuotationVersion } from "@/lib/quotations";
 
 // Only customer-facing fields enter the document. PDF amounts use the saved sale currency.
 export function quotationPdfDefinition({ quote_id, version, snapshot, total_minor }: QuotationVersion): TDocumentDefinitions {
-  const { seller_name, seller_logo, seller_contact, customer_name, customer_contact, issued_on, valid_until, delivery, payment_terms, terms, observations, currency, lines } = snapshot;
+  const { seller_name, seller_logo, seller_contact, customer_name, customer_contact, issued_on, valid_until, delivery, payment_terms, deposit_terms, terms, observations, currency, lines } = snapshot;
   const reference = `${quote_id.slice(0, 13).toUpperCase()} · V${version}`;
   const money = (minor: number) => formatMoney(minor / 100, currency, "es");
   const date = (value: string) => formatDate(value, "es", { dateStyle: "medium" }) ?? value;
@@ -60,6 +60,7 @@ export function quotationPdfDefinition({ quote_id, version, snapshot, total_mino
   ];
   if (delivery?.trim()) content.push({ text: "ENTREGA", style: "label" }, { text: delivery, margin: [0, 0, 0, 14] });
   if (payment_terms?.trim()) content.push({ text: "PAGO", style: "label" }, { text: payment_terms, margin: [0, 0, 0, 14] });
+  if (deposit_terms?.trim()) content.push({ text: "ANTICIPO", style: "label" }, { text: deposit_terms, margin: [0, 0, 0, 14] });
   if (observations?.trim()) content.push({ text: "OBSERVACIONES", style: "label" }, { text: observations, margin: [0, 0, 0, 14] });
   if (terms?.trim()) content.push({ text: "CONDICIONES", style: "label" }, { text: terms });
 

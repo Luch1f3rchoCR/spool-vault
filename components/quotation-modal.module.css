@@ -23,3 +23,6 @@
 .logoField small { color: var(--proper-muted); }
 .logoPreview { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
 .logoPreview img { max-width: 8rem; max-height: 4rem; object-fit: contain; }
+
+.body .depositToggle { display: flex; align-items: center; }
+.depositToggle input { width: auto; }

@@ -99,6 +99,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
       lines: [{ key: crypto.randomUUID(), project_id: project?.id ?? "", description: project?.description ?? "", colors: project?.colors ?? "", quantity: 1, price: "" }]
     };
   });
+  const [includeDeposit, setIncludeDeposit] = useState(Boolean(pending?.snapshot.deposit_terms));
   const [source, setSource] = useState<QuotationVersion | null>(null);
   const [saved, setSaved] = useState<QuotationVersion | null>(null);
   const [history, setHistory] = useState<QuotationVersion[] | null>(null);
@@ -142,9 +143,14 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
       ...header,
       seller_name: header.seller_name.trim(), customer_name: header.customer_name.trim(),
       observations: header.observations?.trim(),
+      deposit_terms: includeDeposit ? header.deposit_terms?.trim() : undefined,
       lines: lines.map(({ key: _, price, ...line }) => ({ ...line, description: line.description.trim(), unit_price_minor: minorUnits(price) })),
       internal_costs: internal_costs.map(({ key: _, amount, ...cost }) => ({ ...cost, amount_minor: minorUnits(amount) }))
     };
+    if (!pending && includeDeposit && !snapshot.deposit_terms) {
+      setMessage("Indicá el monto o porcentaje del anticipo.");
+      return;
+    }
     const validMoney = (amount: number) => Number.isSafeInteger(amount) && amount >= 0 && amount <= 1_000_000_000;
     if (!pending && (!snapshot.seller_name || !snapshot.customer_name
       || snapshot.lines.some((line) => !line.description || !validMoney(line.unit_price_minor))
@@ -230,6 +236,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
   function editVersion(version: QuotationVersion) {
     setSource(version);
     setDraft(draftFromSnapshot(version.snapshot));
+    setIncludeDeposit(Boolean(version.snapshot.deposit_terms));
     setSaved(null);
     setHistory(null);
     setMessage("");
@@ -341,8 +348,13 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
             </details>
             <div className="form-grid">
               <label>Entrega<input maxLength={300} value={draft.delivery ?? ""} placeholder="Ej. Retiro en el taller en 5 días hábiles" onChange={(e) => setDraft({ ...draft, delivery: e.target.value })} /></label>
-              <label>Forma de pago o anticipo<input maxLength={300} value={draft.payment_terms ?? ""} placeholder="Ej. 50% de anticipo por transferencia" onChange={(e) => setDraft({ ...draft, payment_terms: e.target.value })} /></label>
+              <label>Forma de pago<input maxLength={300} value={draft.payment_terms ?? ""} placeholder="Ej. Transferencia o SINPE Móvil" onChange={(e) => setDraft({ ...draft, payment_terms: e.target.value })} /></label>
             </div>
+            <label className={styles.depositToggle}>
+              <input type="checkbox" checked={includeDeposit} onChange={(e) => setIncludeDeposit(e.target.checked)} />
+              Solicitar anticipo
+            </label>
+            {includeDeposit && <label>Anticipo<input required maxLength={300} value={draft.deposit_terms ?? ""} placeholder="Ej. 50% para iniciar el trabajo" onChange={(e) => setDraft({ ...draft, deposit_terms: e.target.value })} /></label>}
             <label>Observaciones para el cliente<textarea maxLength={1500} value={draft.observations ?? ""} onChange={(e) => setDraft({ ...draft, observations: e.target.value })} /></label>
             <label>Condiciones<textarea maxLength={1500} placeholder="Alcance, garantía o indicaciones sobre impuestos, si aplican." value={draft.terms} onChange={(e) => setDraft({ ...draft, terms: e.target.value })} /></label>
           </fieldset>

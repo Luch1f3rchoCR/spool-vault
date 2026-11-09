@@ -91,10 +91,18 @@ begin
   exception when invalid_parameter_value then null;
   end;
 
+  begin
+    perform public.save_quotation_version(gen_random_uuid(), quote, 1, payload || '{"deposit_terms":"  "}');
+    assert false, 'empty deposit terms accepted';
+  exception when invalid_parameter_value then null;
+  end;
+
   assert (select count(*) from public.quotation_versions) = 1, 'rejection changed persisted versions';
   select * into saved from jsonb_populate_record(null::public.quotation_versions, public.save_quotation_version(gen_random_uuid(), quote, 1,
     jsonb_set(payload, '{lines,0,quantity}', '3') ||
-    jsonb_build_object('seller_logo', logo, 'observations', 'Incluye muestra de color.')));
+    jsonb_build_object('seller_logo', logo, 'observations', 'Incluye muestra de color.', 'deposit_terms', '50% para iniciar')));
+  assert saved.snapshot->>'deposit_terms' = '50% para iniciar', 'deposit missing from the revision';
+  assert not (first_version.snapshot ? 'deposit_terms'), 'optional deposit appeared in the prior version';
   assert saved.snapshot->>'seller_logo' = logo, 'logo missing from the saved version';
   assert saved.snapshot->>'observations' = 'Incluye muestra de color.', 'observations missing';
   assert saved.version = 2 and saved.total_minor = 470000, 'next version wrong';

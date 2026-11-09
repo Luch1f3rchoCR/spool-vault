@@ -64,6 +64,9 @@ begin
     or (document ? 'payment_terms' and (
       jsonb_typeof(document->'payment_terms') <> 'string' or char_length(document->>'payment_terms') > 300
     ))
+    or (document ? 'deposit_terms' and (
+      jsonb_typeof(document->'deposit_terms') <> 'string' or char_length(btrim(document->>'deposit_terms')) not between 1 and 300
+    ))
     or (document ? 'observations' and (
       jsonb_typeof(document->'observations') <> 'string' or char_length(document->>'observations') > 1500
     ))
