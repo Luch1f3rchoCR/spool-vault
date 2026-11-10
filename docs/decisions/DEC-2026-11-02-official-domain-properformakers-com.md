@@ -1,9 +1,9 @@
 # DEC-2026-11-02 · properformakers.com como dominio oficial
 
-**Estado:** ACCEPTED  
-**Fecha:** 2026-11-02  
-**Frente:** Dirección / Infraestructura pública  
-**Aprobador:** Founder HQ
+- **Estado:** ACCEPTED
+- **Fecha:** 2026-11-02
+- **Frente:** Dirección / Infraestructura pública
+- **Aprobador:** Founder HQ
 
 ## Contexto
 

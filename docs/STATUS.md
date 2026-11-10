@@ -1,6 +1,6 @@
 # Project Ledger · estado actual
 
-Actualizado: 2026-11-02  
+Actualizado: 2026-11-02
 Frentes sincronizados en el Project Ledger: **Marca e Identidad**; **Modelo de negocio**; **Clientes y Piloto**; **Marketing y lanzamiento**.
 
 Este archivo inicia la capa administrativa común del Project Ledger sin reemplazar los documentos técnicos existentes.
