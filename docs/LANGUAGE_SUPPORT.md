@@ -21,6 +21,10 @@ La persona puede elegir el idioma de la interfaz y conservar su elección. Cambi
 - [ ] Probar persistencia/fallback, teclado, lectores de pantalla y textos largos en 320/390 px y escritorio.
 - [ ] Publicar por bloques verificados y registrar los módulos/idiomas disponibles; no anunciar toda la app traducida antes de completar el alcance aprobado.
 
+## Spools · 2026-11-08
+
+El modal de crear, asignar y administrar spools queda preparado en español e inglés, incluidos tipos de referencia, tara, estados, edición y avisos de operación. El inglés identifica la moneda del costo por código. Cambiar idioma conserva el borrador y los valores enviados, incluidos materiales y marcas guardados, moneda y clave de reintento. Las notas del usuario y detalles externos conservan el texto original. El español sigue siendo el idioma de la app hasta integrar el selector global.
+
 ## Decisiones pendientes y límites
 
 Los idiomas iniciales ya están confirmados. Fallback final y almacenamiento de la preferencia siguen pendientes. No se añade un selector que active inglés mientras falten pantallas o ayudas por traducir.
@@ -47,7 +51,9 @@ Publicado en #79: formulario de nueva orden y editor de filamentos en español e
 
 Publicado en #80: Insumos en español e inglés, incluidos catálogo, movimientos e historial. Los valores guardados de categorías y unidades se conservan.
 
-Bloque en revisión: perfiles de impresión en español e inglés, incluidos campos, validaciones, revisiones y mensajes. El error visible y la validación personalizada del navegador actualizan su idioma conservando borradores y el intento pendiente. Continúan pendientes Proyectos, superficies de inventario/spools y el selector global.
+Publicado en #81: perfiles de impresión en español e inglés, incluidos campos, validaciones, revisiones y mensajes. El error visible y la validación personalizada del navegador actualizan su idioma conservando borradores y el intento pendiente.
+
+En revisión (#82): lista de Proyectos y formularios de receta y variante en español e inglés, con acciones, costos e historial. Impresoras y el desglose reciben el mismo idioma. Se verificó que cambiar de idioma conserva el archivo y los datos del borrador. El mismo PR incluye el registro de impresión en ambos idiomas: consumo real, avisos de existencias, costos, utilidad y acciones. La versión inglesa identifica las monedas por código y explica las opciones de venta. El idioma conserva el borrador, los códigos y las cantidades enviadas. Continúan pendientes las pantallas restantes de inventario/spools y el selector global.
 
 ## Primer bloque de implementación · 2026-10-30
 

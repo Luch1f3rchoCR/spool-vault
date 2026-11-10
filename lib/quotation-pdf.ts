@@ -1,0 +1,96 @@
+import type { Content, TableCell, TDocumentDefinitions } from "pdfmake/interfaces";
+import { formatDate, formatMoney } from "@/lib/i18n";
+import type { QuotationVersion } from "@/lib/quotations";
+
+// Only customer-facing fields enter the document. PDF amounts use the saved sale currency.
+export function quotationPdfDefinition({ quote_id, version, snapshot, total_minor }: QuotationVersion): TDocumentDefinitions {
+  const { seller_name, seller_logo, seller_contact, customer_name, customer_contact, issued_on, valid_until, delivery, payment_terms, deposit_terms, terms, observations, currency, lines } = snapshot;
+  const reference = `${quote_id.slice(0, 13).toUpperCase()} · V${version}`;
+  const money = (minor: number) => formatMoney(minor / 100, currency, "es");
+  const date = (value: string) => formatDate(value, "es", { dateStyle: "medium" }) ?? value;
+  const columns: TableCell[][] = [[
+    { text: "Proyecto / variante", style: "columnHeading" },
+    { text: "Cant.", style: "columnHeading", alignment: "right" },
+    { text: "Precio unitario", style: "columnHeading", alignment: "right" },
+    { text: "Importe", style: "columnHeading", alignment: "right" }
+  ]];
+  for (const line of lines) {
+    columns.push([
+      { stack: [line.description, ...(line.colors ? [{ text: line.colors, style: "detail" }] : [])] },
+      { text: String(line.quantity), alignment: "right" },
+      { text: money(line.unit_price_minor), alignment: "right" },
+      { text: money(line.quantity * line.unit_price_minor), alignment: "right" }
+    ]);
+  }
+
+  const heading: Content = {
+    stack: [
+      { text: seller_name, style: "seller" },
+      ...(seller_contact?.trim() ? [{ text: seller_contact, style: "detail" }] : []),
+      { text: "Cotización", style: "title" },
+      { text: reference, style: "detail" }
+    ]
+  };
+  const content: Content[] = [
+    {
+      columns: [
+        { width: "*", ...heading },
+        ...(seller_logo ? [{ width: 104, stack: [{ image: seller_logo, fit: [104, 52] as [number, number], alignment: "right" as const }] }] : [])
+      ],
+      columnGap: 16,
+      margin: [0, 0, 0, 18]
+    },
+    {
+      columns: [
+        { stack: [{ text: "CLIENTE", style: "label" }, customer_name, ...(customer_contact ? [{ text: customer_contact, style: "detail" }] : [])] },
+        { stack: [
+          { text: "EMISIÓN / VIGENCIA", style: "label" },
+          { text: `Emitida el ${date(issued_on)}` },
+          { text: `Válida hasta el ${date(valid_until)}` }
+        ] }
+      ],
+      columnGap: 18,
+      margin: [0, 0, 0, 22]
+    },
+    {
+      table: { headerRows: 1, dontBreakRows: true, widths: ["*", 38, 94, 94], body: columns },
+      layout: "lightHorizontalLines"
+    },
+    { text: `Total  ${money(total_minor)}`, style: "total", alignment: "right", margin: [0, 14, 0, 18] }
+  ];
+  if (delivery?.trim()) content.push({ text: "ENTREGA", style: "label" }, { text: delivery, margin: [0, 0, 0, 14] });
+  if (payment_terms?.trim()) content.push({ text: "PAGO", style: "label" }, { text: payment_terms, margin: [0, 0, 0, 14] });
+  if (deposit_terms?.trim()) content.push({ text: "ANTICIPO", style: "label" }, { text: deposit_terms, margin: [0, 0, 0, 14] });
+  if (observations?.trim()) content.push({ text: "OBSERVACIONES", style: "label" }, { text: observations, margin: [0, 0, 0, 14] });
+  if (terms?.trim()) content.push({ text: "CONDICIONES", style: "label" }, { text: terms });
+
+  return {
+    pageSize: "A4",
+    pageMargins: [38, 38, 38, 54],
+    info: { title: `Cotización ${reference}`, author: seller_name },
+    defaultStyle: { fontSize: 10, color: "#192C24", lineHeight: 1.2 },
+    styles: {
+      seller: { fontSize: 13, bold: true, color: "#23634B" },
+      title: { fontSize: 27, bold: true, margin: [0, 4, 0, 5] },
+      detail: { fontSize: 9, color: "#58695E" },
+      label: { fontSize: 9, bold: true, color: "#23634B", margin: [0, 0, 0, 5] },
+      columnHeading: { fillColor: "#E8EFE5", color: "#192C24", bold: true },
+      total: { fontSize: 15, bold: true, color: "#23634B" }
+    },
+    content,
+    footer: (page, pages) => ({
+      text: `Generado con Proper · ${page} / ${pages}`,
+      style: "detail",
+      margin: [38, 14, 38, 0]
+    })
+  };
+}
+
+export async function createQuotationPdf(quotation: QuotationVersion) {
+  const [pdfMake, fonts] = await Promise.all([
+    import("pdfmake/build/pdfmake"),
+    import("pdfmake/build/vfs_fonts")
+  ]);
+  pdfMake.default.addVirtualFileSystem(fonts.default);
+  return pdfMake.default.createPdf(quotationPdfDefinition(quotation)).getBlob();
+}

@@ -1,6 +1,6 @@
 # Project Ledger · estado actual
 
-Actualizado: 2026-10-21  
+Actualizado: 2026-11-02
 Frentes sincronizados en el Project Ledger: **Marca e Identidad**; **Modelo de negocio**; **Clientes y Piloto**; **Marketing y lanzamiento**.
 
 Este archivo inicia la capa administrativa común del Project Ledger sin reemplazar los documentos técnicos existentes.
@@ -15,6 +15,17 @@ Este archivo inicia la capa administrativa común del Project Ledger sin reempla
 - Decisiones formales: [decisions/](./decisions/)
 - Handoffs formales: [handoffs/](./handoffs/)
 - Hitos administrativos: [WORKLOG.md](./WORKLOG.md)
+
+## Infraestructura pública · CONFIRMADO ACTUAL
+
+- **Dominio oficial:** `properformakers.com`, adquirido por Founder HQ el 2026-11-02 por 2 años.
+- Costo base confirmado: **US$30.98** más la parte proporcional de impuestos/tarifas de la compra conjunta; el adicional exacto queda pendiente de desglose.
+- La marca sigue siendo **Proper.**; el dominio/namespace `properformakers` no reemplaza el nombre ni el wordmark.
+- Hosting: **Vercel** dentro de la estrategia vigente; no se contrata Vercel Pro ni servicios adicionales por esta migración.
+- `https://properformakers.vercel.app/` sigue operativo como URL técnica/secundaria durante la transición.
+- La migración a `https://properformakers.com/` está **aprobada pero todavía no ejecutada**: antes de promover el dominio deben validarse Vercel custom domain/DNS/TLS, Supabase Site URL + Redirect URLs, magic links/OTP, logout/reingreso, onboarding de testers, QR con parámetros y PWA.
+- Los orígenes anteriores no deben retirarse ni redirigirse permanentemente hasta cerrar esas pruebas.
+- Decisión formal: [DEC-2026-11-02 · properformakers.com como dominio oficial](./decisions/DEC-2026-11-02-official-domain-properformakers-com.md).
 
 ## Marca e Identidad · CONFIRMADO ACTUAL
 
