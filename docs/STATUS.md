@@ -118,7 +118,7 @@ Este archivo inicia la capa administrativa común del Project Ledger sin reempla
 - Founder Personal no incluye enterprise, workspaces, miembros, futuros servicios externos ni todos los futuros planes.
 - No se exige reseña positiva, publicación ni recomendación.
 - Reclutamiento: priorizar candidatos directos; complementar con comunidades especializadas y redes propias de Proper. Marketing atrae/comunica; Clientes/Piloto selecciona.
-- El primer recorrido real invitación → correo → login → cuestionario → estado final sigue sin evidencia end-to-end de cierre en el repo; no ampliar invitaciones antes de cerrarlo.
+- Producción confirma un onboarding real completo el 6 de octubre de 2026. Falta la prueba controlada en el dominio definitivo antes de enviar invitaciones formales. Ver [evidencia y pendientes](PILOT_ENTRY.md).
 
 ### Antecedente confirmado
 
@@ -144,7 +144,7 @@ Este archivo inicia la capa administrativa común del Project Ledger sin reempla
 
 ### Pendientes / bloqueos
 
-1. Confirmar end-to-end el primer invitado real.
+1. Confirmar el recorrido controlado de un invitado nuevo en el dominio definitivo, incluido logout y reingreso.
 2. Resolver el desalineamiento **política vs. implementación**: la política otorga Founder Personal tras completar el piloto; la implementación actual lo activa en primer ingreso.
 3. Cerrar criterios verificables de “completó razonablemente el piloto”.
 4. Construir y poblar la hoja de candidatos fuera del Ledger con los datos personales necesarios.

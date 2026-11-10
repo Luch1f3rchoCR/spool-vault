@@ -51,7 +51,7 @@ La primera cohorte estructurada de Proper queda definida como un piloto de **usu
 
 **Desalineamiento pendiente:** la implementación publicada por PR #23 activa hoy `founder_personal_v1` durante el primer ingreso elegible. Ese comportamiento técnico todavía **no implementa** el momento de otorgamiento aprobado para el nuevo piloto. No escalar invitaciones afirmando que el gating post-piloto existe hasta que Producto/Desarrollo lo alinee mediante una spec o se apruebe un mecanismo transitorio.
 
-El recorrido real del primer invitado sigue sin evidencia end-to-end de cierre en el repositorio; mantenerlo como condición antes de ampliar la cohorte.
+Producción confirma un onboarding real completo el 6 de octubre de 2026. Antes de ampliar la cohorte sigue pendiente repetir el recorrido controlado en el dominio definitivo, incluido logout y reingreso. Ver [entrada al piloto](docs/PILOT_ENTRY.md).
 
 ## Licencia
 
