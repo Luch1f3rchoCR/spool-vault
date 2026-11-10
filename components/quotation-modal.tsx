@@ -243,7 +243,7 @@ export function QuotationModal({ ownerId, sellerName, currency, projects, initia
   }
 
   return (
-    <ModalFrame title="Cotización" titleId="quotation-title" eyebrow="Proyectos" className={styles.modal} busy={busy || readingLogo} onClose={onClose} onBack={onClose} backLabel="Volver a Proyectos">
+    <ModalFrame lang="es" title="Cotización" titleId="quotation-title" eyebrow="Proyectos" className={styles.modal} busy={busy || readingLogo} onClose={onClose} onBack={onClose} backLabel="Volver a Proyectos">
       {message && <p className="form-help" role="status">{message}</p>}
       {history ? (
         <section className={styles.body} aria-label="Historial de cotizaciones">
