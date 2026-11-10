@@ -2,6 +2,20 @@
 
 El roadmap detallado y operativo del producto sigue siendo [../ROADMAP.md](../ROADMAP.md). Este archivo existe para que los chats del Project Ledger tengan una ruta estable en `docs/ROADMAP.md` sin duplicar el checklist técnico.
 
+## Infraestructura pública / dominio
+
+- [x] Comprar `properformakers.com` por 2 años y declararlo dominio oficial de Proper.
+- [ ] Agregar `properformakers.com` al proyecto Vercel existente y validar DNS/TLS/HTTPS sin contratar Vercel Pro.
+- [ ] Añadir `https://properformakers.com/**` a Supabase Auth Redirect URLs conservando temporalmente los orígenes vigentes.
+- [ ] Probar OTP/magic link en el nuevo origen antes de promoverlo como Site URL.
+- [ ] Cambiar Supabase Site URL a `https://properformakers.com/` después de la prueba anterior.
+- [ ] Revisar y alinear `NEXT_PUBLIC_SITE_URL` de Vercel Production; redeployar si cambia.
+- [ ] Actualizar enlaces públicos activos de bienvenida/copy link/placeholders y sus pruebas después de validar el dominio.
+- [ ] Verificar login, logout, reingreso, onboarding nuevo, inventario autenticado, QR con `?roll=...` y PWA en el dominio oficial.
+- [ ] Mantener `properformakers.vercel.app` como URL técnica/secundaria durante observación; decidir redirects permanentes en un bloque posterior.
+
+**Gate:** no promover ni hardcodear `properformakers.com` en flujos de Auth/correos hasta confirmar DNS/TLS y aceptación del origen por Supabase.
+
 ## Marca e Identidad
 
 - [x] Aprobar Proper como working brand visual.
