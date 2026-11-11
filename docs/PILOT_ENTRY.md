@@ -8,9 +8,10 @@ Print Izards tiene CONDITIONAL GO para contacto humano inmediato y NO-GO tempora
 
 ## Dominio y prueba controlada
 
-- Vercel aceptó y verificó `properformakers.com` en el proyecto existente de Proper. Los aliases de Vercel siguen disponibles. La zona autoritativa está en GoDaddy. Vercel reportó DNS externo sin configurar y recomendó el A `216.198.79.1` para el raíz. Validar el control de la zona, la propagación y HTTPS antes del cambio de Auth.
-- Después de HTTPS, comprobar la URL de sitio, la lista de redirecciones y las plantillas de Auth. Agregar el origen exacto al listado conservando los orígenes vigentes. Validar el enlace en el dominio nuevo antes de promover la URL de sitio y cambiar enlaces de bienvenida. El remitente de bienvenida y el remitente de Auth se validan por separado.
-- Bienvenida: se actualizó `WELCOME_EMAIL_FROM` de Production a `Proper <hello@stonecollective.dev>` manteniendo Resend y la dirección existentes. La recepción y el remitente observado en correo se verifican en la prueba controlada.
+- Vercel sirve Proper por HTTPS en `properformakers.com`. GoDaddy publica el registro A `216.198.79.1` y ambos aliases de Vercel responden.
+- Supabase Auth permite el destino exacto `https://properformakers.com/` y conserva sus tres redirecciones anteriores. Site URL y los enlaces de bienvenida usan aún `https://properformakers.vercel.app/`. Antes de promover el nuevo destino, falta comprobar el enlace de acceso en el dominio oficial.
+- Producción usa `Proper <hello@stonecollective.dev>` como remitente de bienvenida mediante Resend. La recepción y el remitente observado se verifican durante la prueba controlada.
+- Purelymail verificó el dominio en la cuenta de Stone Collective. GoDaddy publica el TXT de propiedad y el MX `50 mailserver.purelymail.com.`. Founder HQ eligió `hola@properformakers.com` como buzón de contacto general y para probadores. El formulario está preparado en Safari y falta que el titular configure la contraseña y guarde el buzón. La prueba de acceso puede usar el Gmail autorizado por el titular.
 - Prueba con cuenta nueva autorizada por Founder HQ: reserva, correo de bienvenida, Auth, enlace de acceso, login, cuestionario, estado activo, logout y segundo login. Registrar hora, origen, resultado de cada paso y nombre visible del remitente. No guardar correos, enlaces de un solo uso ni tokens en el repositorio. No invitar al candidato desde Desarrollo.
 
 ## Founder Personal · decisión pendiente de HQ y 02

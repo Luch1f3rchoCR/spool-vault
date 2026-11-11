@@ -23,7 +23,7 @@ Este archivo inicia la capa administrativa común del Project Ledger sin reempla
 - La marca sigue siendo **Proper.**; el dominio/namespace `properformakers` no reemplaza el nombre ni el wordmark.
 - Hosting: **Vercel** dentro de la estrategia vigente; no se contrata Vercel Pro ni servicios adicionales por esta migración.
 - `https://properformakers.vercel.app/` sigue operativo como URL técnica/secundaria durante la transición.
-- La migración a `https://properformakers.com/` está **aprobada pero todavía no ejecutada**: antes de promover el dominio deben validarse Vercel custom domain/DNS/TLS, Supabase Site URL + Redirect URLs, magic links/OTP, logout/reingreso, onboarding de testers, QR con parámetros y PWA.
+- `https://properformakers.com/` ya sirve Proper por HTTPS y figura entre las redirecciones permitidas en Supabase. Falta validar el acceso y reingreso en ese dominio y promoverlo como Site URL y destino de bienvenida. Ver [entrada al piloto](PILOT_ENTRY.md).
 - Los orígenes anteriores no deben retirarse ni redirigirse permanentemente hasta cerrar esas pruebas.
 - Decisión formal: [DEC-2026-11-02 · properformakers.com como dominio oficial](./decisions/DEC-2026-11-02-official-domain-properformakers-com.md).
 
