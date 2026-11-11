@@ -13,7 +13,7 @@ Los porcentajes cuentan hitos del alcance indicado, con el mismo peso por hito. 
 - [x] Inventario, spools, compras e insumos publicados.
 - [x] Proyectos, variantes, producción y costos publicados.
 - [x] Invitaciones privadas, primer ingreso, perfil y feedback disponibles.
-- [ ] Repetir el recorrido de invitación, correo, acceso, cuestionario, perfil y reingreso en el dominio definitivo. Producción confirma un onboarding completo histórico del 6 de octubre de 2026.
+- [x] Verificar en producción el recorrido controlado de invitación, bienvenida, acceso, cuestionario y reingreso en el dominio definitivo. Ver [entrada al piloto](docs/PILOT_ENTRY.md).
 - [ ] Cerrar el criterio de piloto completado y alinear el momento de otorgar Founder Personal. Luego, ampliar a la cohorte de 8 activos y 2 suplentes.
 
 ### Cotizaciones V1 para WhatsApp · 5/6 (83%) en desarrollo
@@ -280,7 +280,7 @@ Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Prod
 - [x] Implementar Proper V1 con tokens/assets suministrados, sin rediseñar formularios ni infraestructura. Ver `docs/brand/proper-v1/IMPLEMENTATION.md`; publicación autorizada el 26 de septiembre y evidencia final en el PR del bloque.
 - [ ] Recibir SVG oficial de Stone Collective para incorporar el endorsement sin recrearlo.
 - [x] Validar invitación, recepción de correo, acceso, cuestionario único y reingreso con una cuenta interna nueva en el dominio definitivo. Ver [entrada al piloto](docs/PILOT_ENTRY.md).
-- [ ] Publicar el enlace oficial de bienvenida y comprobar un correo generado por esa versión.
+- [x] Publicar el enlace oficial de bienvenida y comprobar en Gmail que su botón abre Proper en el dominio definitivo.
 - [ ] Implementar cotizaciones como flujo secundario; separar aprobación de mockups de publicación real.
 - [ ] Cotizaciones PDF para compartir por WhatsApp (canal confirmado 2026-09-29): partir de proyecto/variante, congelar cantidades y precio, incluir todos los rubros, vigencia y datos del cliente. No enviar mensajes automáticamente ni descontar inventario al cotizar.
 - [ ] Perfiles de impresión por filamento (solicitado 2026-09-29): guardar configuraciones por impresora/boquilla y laminador, temperaturas, flujo y notas; permitir varias configuraciones sin sobrescribir históricos. No asumir que existe un perfil universal ni inventar parámetros del fabricante.

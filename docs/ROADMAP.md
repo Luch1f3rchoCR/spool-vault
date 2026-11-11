@@ -46,11 +46,11 @@ Cualquier cambio de secuencia funcional, dependencias de producto o alcance téc
 ### C0 · Condiciones antes de escalar beta
 
 - [x] Confirmar onboarding histórico en producción: el 6 de octubre de 2026 hubo una cuenta con correo verificado, cuestionario guardado y membresía activa.
-- [ ] Repetir el recorrido controlado completo en el dominio definitivo. Ver [entrada al piloto](PILOT_ENTRY.md).
+- [x] Verificar el recorrido controlado en el dominio definitivo y el enlace de bienvenida en un correo real de producción. Ver [entrada al piloto](PILOT_ENTRY.md).
 - [ ] Alinear la política Founder con la implementación: la decisión vigente entrega Proper Founder Personal tras completar razonablemente el piloto; PR #23 activa hoy `founder_personal_v1` en el primer ingreso elegible.
 - [ ] Cerrar criterios observables de “piloto completado”.
 
-**Dependencia:** no ampliar invitaciones hasta aprobar el recorrido en el dominio definitivo y resolver el momento del otorgamiento.
+**Dependencia para ampliar invitaciones.** Resolver el momento del otorgamiento de Founder Personal.
 
 ### C1 · Reclutamiento controlado
 

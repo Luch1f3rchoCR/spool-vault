@@ -51,7 +51,7 @@ La primera cohorte estructurada de Proper queda definida como un piloto de **usu
 
 **Desalineamiento pendiente:** la implementación publicada por PR #23 activa hoy `founder_personal_v1` durante el primer ingreso elegible. Ese comportamiento técnico todavía **no implementa** el momento de otorgamiento aprobado para el nuevo piloto. No escalar invitaciones afirmando que el gating post-piloto existe hasta que Producto/Desarrollo lo alinee mediante una spec o se apruebe un mecanismo transitorio.
 
-Producción confirma un onboarding real completo el 6 de octubre de 2026. Antes de ampliar la cohorte sigue pendiente repetir el recorrido controlado en el dominio definitivo, incluido logout y reingreso. Ver [entrada al piloto](docs/PILOT_ENTRY.md).
+Producción confirma un onboarding real completo el 6 de octubre de 2026. El 11 de noviembre de 2026 se comprobó el recorrido controlado en el dominio definitivo, incluido logout y reingreso, y la recepción de la bienvenida con el enlace oficial. Ver [entrada al piloto](docs/PILOT_ENTRY.md).
 
 ## Licencia
 
@@ -63,7 +63,7 @@ Producción confirma un onboarding real completo el 6 de octubre de 2026. Antes 
 2. Se guardan juntos la licencia reservada y una bienvenida pendiente. Repetir el mismo correo recupera el alta original sin cambiar datos ni crear otra licencia.
 3. Con correo configurado, puede enviar la bienvenida al guardar o desde el registro del probador.
 4. Sin correo configurado, puede abrir el mensaje listo en su programa de correo. Esta acción no se marca como envío automático confirmado.
-5. Las bienvenidas generadas con la versión del PR #55 enlazan a `https://properformakers.vercel.app/`; no llevan contraseñas ni tokens de acceso. El destinatario inicia sesión con el correo registrado. El enlace anterior sigue activo para mensajes ya enviados; no se reenvían ni reescriben. Auth permite el dominio nuevo y el fundador confirmó recepción, apertura del enlace y acceso a su inventario; falta comprobar logout/reingreso y onboarding de un invitado nuevo.
+5. Desde el PR #86, las nuevas bienvenidas enlazan a `https://properformakers.com/`. El destinatario inicia sesión con el correo registrado y recibe el enlace seguro por separado. Los enlaces de bienvenidas anteriores siguen activos.
 
 ## Remitente acordado
 

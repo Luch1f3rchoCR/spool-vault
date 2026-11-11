@@ -2,7 +2,7 @@
 
 ## Estado vigente · 2026-11-11 (Costa Rica)
 
-Vercel sirve Proper por HTTPS en el dominio oficial `https://properformakers.com/`. El acceso y reingreso desde el origen oficial pasaron la prueba controlada. Supabase ya lo usa como Site URL. Queda pendiente publicar y verificar el enlace de las nuevas bienvenidas. Ver [entrada al piloto](PILOT_ENTRY.md).
+Vercel sirve Proper por HTTPS en el dominio oficial `https://properformakers.com/`. El acceso y reingreso desde el origen oficial pasaron la prueba controlada. Supabase ya lo usa como Site URL. Las nuevas bienvenidas apuntan al dominio oficial. Se comprobó la recepción en Gmail y la apertura del botón en producción. Ver [entrada al piloto](PILOT_ENTRY.md).
 
 Decisión formal: `docs/decisions/DEC-2026-11-02-official-domain-properformakers-com.md`.
 
@@ -17,7 +17,7 @@ Decisión formal: `docs/decisions/DEC-2026-11-02-official-domain-properformakers
 - Redirect URLs verificadas: `https://properformakers.com/`, `https://properformakers.vercel.app/`, `https://spool-vault.vercel.app/**` y `http://localhost:3000/**`.
 - Plantillas Auth confirmadas en la migración anterior usan `{{ .ConfirmationURL }}`; no existe razón para inventar una ruta callback nueva.
 - `getAuthRedirectUrl()` usa primero `window.location.origin`; por tanto, cuando el usuario abra Proper desde el dominio oficial, el cliente puede solicitar el retorno al mismo origen siempre que Supabase lo permita.
-- El PR #86 cambia el enlace de `lib/tester-welcome.ts` a `https://properformakers.com/`. Producción continúa enviando el enlace anterior hasta publicar ese cambio.
+- El PR #86 publicó el enlace de `lib/tester-welcome.ts` a `https://properformakers.com/` en el commit `42a810d`. Se comprobó el botón en un correo real.
 - `app/page.tsx` contiene un placeholder visible con el origen Vercel. Los QR reales se generan con `window.location.origin`; etiquetas antiguas no se reescriben.
 - `NEXT_PUBLIC_SITE_URL` está contemplada por el código. La lista de variables de Production revisada el 10 de noviembre no incluye esa clave. Si se configura, Next.js la incorpora en el siguiente build.
 

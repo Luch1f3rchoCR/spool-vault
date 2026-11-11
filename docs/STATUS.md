@@ -23,7 +23,7 @@ Este archivo inicia la capa administrativa común del Project Ledger sin reempla
 - La marca sigue siendo **Proper.**; el dominio/namespace `properformakers` no reemplaza el nombre ni el wordmark.
 - Hosting: **Vercel** dentro de la estrategia vigente; no se contrata Vercel Pro ni servicios adicionales por esta migración.
 - `https://properformakers.vercel.app/` sigue operativo como URL técnica/secundaria durante la transición.
-- `https://properformakers.com/` ya sirve Proper por HTTPS y figura entre las redirecciones permitidas en Supabase. El acceso y reingreso pasaron la prueba controlada y Supabase ya lo usa como Site URL. El enlace de futuras bienvenidas queda pendiente de publicación y verificación. Ver [entrada al piloto](PILOT_ENTRY.md).
+- `https://properformakers.com/` ya sirve Proper por HTTPS y figura entre las redirecciones permitidas en Supabase. El acceso y reingreso pasaron la prueba controlada y Supabase ya lo usa como Site URL. El PR #86 publicó el enlace oficial y se comprobó el botón en una bienvenida recibida en Gmail. Ver [entrada al piloto](PILOT_ENTRY.md).
 - Los orígenes anteriores no deben retirarse ni redirigirse permanentemente hasta cerrar esas pruebas.
 - Decisión formal: [DEC-2026-11-02 · properformakers.com como dominio oficial](./decisions/DEC-2026-11-02-official-domain-properformakers-com.md).
 
@@ -118,7 +118,7 @@ Este archivo inicia la capa administrativa común del Project Ledger sin reempla
 - Founder Personal no incluye enterprise, workspaces, miembros, futuros servicios externos ni todos los futuros planes.
 - No se exige reseña positiva, publicación ni recomendación.
 - Reclutamiento: priorizar candidatos directos; complementar con comunidades especializadas y redes propias de Proper. Marketing atrae/comunica; Clientes/Piloto selecciona.
-- Producción confirma un onboarding real completo el 6 de octubre de 2026. El 11 de noviembre pasó la prueba controlada de acceso y activación en el dominio definitivo. Siguen pendientes la publicación y verificación del enlace de bienvenida y la decisión sobre Founder Personal. Ver [evidencia y pendientes](PILOT_ENTRY.md).
+- Producción confirma un onboarding real completo el 6 de octubre de 2026. El 11 de noviembre pasó la prueba controlada de acceso y activación en el dominio definitivo. También se verificó la bienvenida publicada. Sigue pendiente la decisión sobre Founder Personal. Ver [evidencia y pendientes](PILOT_ENTRY.md).
 
 ### Antecedente confirmado
 
@@ -144,7 +144,7 @@ Este archivo inicia la capa administrativa común del Project Ledger sin reempla
 
 ### Pendientes / bloqueos
 
-1. Confirmar el recorrido controlado de un invitado nuevo en el dominio definitivo, incluido logout y reingreso.
+1. Acordar con Founder HQ y Clientes & Piloto cuándo otorgar Founder Personal antes de invitar formalmente a Print Izards.
 2. Resolver el desalineamiento **política vs. implementación**: la política otorga Founder Personal tras completar el piloto; la implementación actual lo activa en primer ingreso.
 3. Cerrar criterios verificables de “completó razonablemente el piloto”.
 4. Construir y poblar la hoja de candidatos fuera del Ledger con los datos personales necesarios.
