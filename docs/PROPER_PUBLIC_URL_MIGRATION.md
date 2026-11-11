@@ -1,25 +1,25 @@
 # Proper · Migración de URL pública
 
-## Estado vigente · 2026-11-02 (Costa Rica)
+## Estado vigente · 2026-11-11 (Costa Rica)
 
-**Founder HQ adquirió `properformakers.com` por 2 años y lo declaró dominio oficial de Proper. La decisión está aprobada; la migración técnica al custom domain todavía NO se ha ejecutado.** La URL `https://properformakers.vercel.app/` continúa como origen público/técnico operativo durante la transición.
+Vercel sirve Proper por HTTPS en el dominio oficial `https://properformakers.com/`. El acceso y reingreso desde el origen oficial pasaron la prueba controlada. Supabase ya lo usa como Site URL. Queda pendiente publicar y verificar el enlace de las nuevas bienvenidas. Ver [entrada al piloto](PILOT_ENTRY.md).
 
 Decisión formal: `docs/decisions/DEC-2026-11-02-official-domain-properformakers-com.md`.
 
-### Estado confirmado antes de tocar producción
+### Estado confirmado
 
 - Marca: **Proper.**; `properformakers.com` es dominio oficial, no rename de marca.
 - Dominio adquirido: `properformakers.com`, 2 años.
 - Costo base: **US$30.98** + parte proporcional de impuestos/tarifas de la compra conjunta; no se conoce aquí el adicional exacto.
 - Hosting: mantener el proyecto Vercel existente; no contratar Vercel Pro ni servicios adicionales.
-- Origen operativo actual: `https://properformakers.vercel.app/`.
-- Supabase Site URL confirmado por la migración anterior: `https://properformakers.vercel.app/`.
-- Redirect URLs confirmadas en la migración anterior: `https://properformakers.vercel.app/`, `https://spool-vault.vercel.app/**` y `http://localhost:3000/**`.
+- Origen oficial operativo: `https://properformakers.com/`. Los dos aliases de Vercel siguen activos.
+- Supabase Site URL confirmado después de recargar: `https://properformakers.com/`.
+- Redirect URLs verificadas: `https://properformakers.com/`, `https://properformakers.vercel.app/`, `https://spool-vault.vercel.app/**` y `http://localhost:3000/**`.
 - Plantillas Auth confirmadas en la migración anterior usan `{{ .ConfirmationURL }}`; no existe razón para inventar una ruta callback nueva.
 - `getAuthRedirectUrl()` usa primero `window.location.origin`; por tanto, cuando el usuario abra Proper desde el dominio oficial, el cliente puede solicitar el retorno al mismo origen siempre que Supabase lo permita.
-- `lib/tester-welcome.ts` sigue enlazando explícitamente a `https://properformakers.vercel.app/`; **no cambiarlo antes de validar DNS/TLS/Auth del .com**.
+- El PR #86 cambia el enlace de `lib/tester-welcome.ts` a `https://properformakers.com/`. Producción continúa enviando el enlace anterior hasta publicar ese cambio.
 - `app/page.tsx` contiene un placeholder visible con el origen Vercel. Los QR reales se generan con `window.location.origin`; etiquetas antiguas no se reescriben.
-- `NEXT_PUBLIC_SITE_URL` existe como configuración pública; el valor efectivo de Production debe inspeccionarse sin exponer secretos. Si cambia, requiere redeploy porque Next.js lo embebe en build.
+- `NEXT_PUBLIC_SITE_URL` está contemplada por el código. La lista de variables de Production revisada el 10 de noviembre no incluye esa clave. Si se configura, Next.js la incorpora en el siguiente build.
 
 ### Archivos/documentos afectados
 
@@ -51,7 +51,7 @@ No hacer un reemplazo global de `spool-vault` ni `properformakers.vercel.app`: v
 1. **Vercel:** confirmar el proyecto existente `spool-vault` y agregar `properformakers.com` como custom domain. No renombrar proyecto ni cambiar plan.
 2. **DNS:** aplicar únicamente los registros que Vercel solicite para el dominio web. No tocar MX/SPF/DKIM/DMARC de correo por esta tarea.
 3. **TLS/HTTP:** esperar/verificar dominio válido, HTTPS, HTTP 200, assets, manifest, navegación y consola antes de usarlo en Auth o correos.
-4. **Supabase Redirect URLs:** añadir exactamente `https://properformakers.com/**` (y, si la UI de Supabase requiere entrada raíz separada, la variante exacta correspondiente) conservando temporalmente los orígenes actuales.
+4. **Supabase Redirect URLs:** añadir `https://properformakers.com/` como destino exacto y conservar los orígenes vigentes.
 5. **Auth pre-Site-URL:** desde el .com solicitar OTP/magic link con una cuenta de prueba/autorizada y comprobar que Supabase acepta el redirect al nuevo origen.
 6. **Supabase Site URL:** solo después de esa prueba, cambiar Site URL a `https://properformakers.com/`.
 7. **Vercel env:** inspeccionar `NEXT_PUBLIC_SITE_URL`; si sigue apuntando al origen Vercel, cambiarlo a `https://properformakers.com` y redeployar Production. No exponer ni tocar secretos no relacionados.
