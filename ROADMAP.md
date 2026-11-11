@@ -279,7 +279,8 @@ Continuidad Mac · 9 de septiembre: PR #23 fusionado como `a431c42`, Vercel Prod
 - [x] Publicar UI-01A: primera capa gráfica aprobada, preservando formularios y navegación existentes. PR #29, merge `cc036d7`, Vercel Production `6589383039` confirmado el 22 de septiembre.
 - [x] Implementar Proper V1 con tokens/assets suministrados, sin rediseñar formularios ni infraestructura. Ver `docs/brand/proper-v1/IMPLEMENTATION.md`; publicación autorizada el 26 de septiembre y evidencia final en el PR del bloque.
 - [ ] Recibir SVG oficial de Stone Collective para incorporar el endorsement sin recrearlo.
-- [ ] Validar invitación, correo, acceso, cuestionario único y reingreso en el dominio definitivo antes de ampliar beta. Ver [entrada al piloto](docs/PILOT_ENTRY.md).
+- [x] Validar invitación, recepción de correo, acceso, cuestionario único y reingreso con una cuenta interna nueva en el dominio definitivo. Ver [entrada al piloto](docs/PILOT_ENTRY.md).
+- [ ] Publicar el enlace oficial de bienvenida y comprobar un correo generado por esa versión.
 - [ ] Implementar cotizaciones como flujo secundario; separar aprobación de mockups de publicación real.
 - [ ] Cotizaciones PDF para compartir por WhatsApp (canal confirmado 2026-09-29): partir de proyecto/variante, congelar cantidades y precio, incluir todos los rubros, vigencia y datos del cliente. No enviar mensajes automáticamente ni descontar inventario al cotizar.
 - [ ] Perfiles de impresión por filamento (solicitado 2026-09-29): guardar configuraciones por impresora/boquilla y laminador, temperaturas, flujo y notas; permitir varias configuraciones sin sobrescribir históricos. No asumir que existe un perfil universal ni inventar parámetros del fabricante.

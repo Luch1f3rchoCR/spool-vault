@@ -1,8 +1,8 @@
 # Proper · Migración de URL pública
 
-## Estado vigente · 2026-11-10 (Costa Rica)
+## Estado vigente · 2026-11-11 (Costa Rica)
 
-Vercel sirve Proper por HTTPS en el dominio oficial `https://properformakers.com/`. Supabase ya permite el origen exacto como destino de Auth. Quedan pendientes la prueba de acceso en ese origen y la actualización de Site URL y los enlaces de bienvenida. Ver [entrada al piloto](PILOT_ENTRY.md).
+Vercel sirve Proper por HTTPS en el dominio oficial `https://properformakers.com/`. El acceso y reingreso desde el origen oficial pasaron la prueba controlada. Supabase ya lo usa como Site URL. Queda pendiente publicar y verificar el enlace de las nuevas bienvenidas. Ver [entrada al piloto](PILOT_ENTRY.md).
 
 Decisión formal: `docs/decisions/DEC-2026-11-02-official-domain-properformakers-com.md`.
 
@@ -13,11 +13,11 @@ Decisión formal: `docs/decisions/DEC-2026-11-02-official-domain-properformakers
 - Costo base: **US$30.98** + parte proporcional de impuestos/tarifas de la compra conjunta; no se conoce aquí el adicional exacto.
 - Hosting: mantener el proyecto Vercel existente; no contratar Vercel Pro ni servicios adicionales.
 - Origen oficial operativo: `https://properformakers.com/`. Los dos aliases de Vercel siguen activos.
-- Supabase Site URL confirmado por la migración anterior: `https://properformakers.vercel.app/`.
+- Supabase Site URL confirmado después de recargar: `https://properformakers.com/`.
 - Redirect URLs verificadas: `https://properformakers.com/`, `https://properformakers.vercel.app/`, `https://spool-vault.vercel.app/**` y `http://localhost:3000/**`.
 - Plantillas Auth confirmadas en la migración anterior usan `{{ .ConfirmationURL }}`; no existe razón para inventar una ruta callback nueva.
 - `getAuthRedirectUrl()` usa primero `window.location.origin`; por tanto, cuando el usuario abra Proper desde el dominio oficial, el cliente puede solicitar el retorno al mismo origen siempre que Supabase lo permita.
-- `lib/tester-welcome.ts` sigue enlazando explícitamente a `https://properformakers.vercel.app/`; **no cambiarlo antes de validar DNS/TLS/Auth del .com**.
+- El PR #86 cambia el enlace de `lib/tester-welcome.ts` a `https://properformakers.com/`. Producción continúa enviando el enlace anterior hasta publicar ese cambio.
 - `app/page.tsx` contiene un placeholder visible con el origen Vercel. Los QR reales se generan con `window.location.origin`; etiquetas antiguas no se reescriben.
 - `NEXT_PUBLIC_SITE_URL` está contemplada por el código. La lista de variables de Production revisada el 10 de noviembre no incluye esa clave. Si se configura, Next.js la incorpora en el siguiente build.
 
