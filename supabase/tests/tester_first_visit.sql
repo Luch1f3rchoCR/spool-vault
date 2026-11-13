@@ -74,7 +74,12 @@ begin
  assert (select count(*)=1 from public.tester_first_visits), 'retry duplicated answers';
  assert (select count(*)=0 from public.tester_invitation_notes), 'admin notes leaked to invitee';
  assert public.get_tester_first_visit()->>'status'='active', 'questionnaire repeated';
- assert (public.claim_tester_membership()).activated_at is not null, 'license not readable';
+ assert (public.claim_tester_membership()).activated_at is not null, 'pilot not active';
+ assert (public.claim_tester_membership()).founder_granted_at is null, 'activation granted Founder prematurely';
+ begin
+  perform public.grant_tester_founder_personal((public.claim_tester_membership()).id);
+  assert false, 'participant granted their own Founder benefit';
+ exception when insufficient_privilege then null; end;
  update public.printers set name='Renamed',is_active=false where name='P1S';
  b := public.complete_tester_first_visit(answers);
  assert (select count(*)=2 from public.printers), 'old onboarding retry duplicated edited printer';
@@ -94,6 +99,31 @@ do $$ begin
  assert (select count(*)=3 from public.tester_invitation_notes), 'admin lost rationale';
  assert jsonb_array_length(public.export_my_data()->'tables'->'tester_first_visits')=0, 'admin export includes other accounts';
 end $$;
+do $$
+declare member_id uuid := (select id from public.tester_memberships where email='invitee@example.invalid');
+begin
+ begin
+  perform public.grant_tester_founder_personal(member_id);
+  assert false, 'admin awarded Founder before 14 days';
+ exception when invalid_parameter_value then null; end;
+end $$;
 reset role;
-select 'first visit checks passed' as result;
+update public.tester_memberships set activated_at=now()-interval '336 hours' where email='invitee@example.invalid';
+set local role authenticated;
+do $$
+declare
+ member_id uuid := (select id from public.tester_memberships where email='invitee@example.invalid');
+ awarded_at timestamptz;
+begin
+ awarded_at := public.grant_tester_founder_personal(member_id);
+ assert awarded_at is not null, 'eligible award failed';
+ assert awarded_at=public.grant_tester_founder_personal(member_id), 'retry changed grant timestamp';
+ assert (select founder_granted_by=auth.uid() from public.tester_memberships where id=member_id), 'grant missed actor';
+end $$;
+select set_config('request.jwt.claim.sub','e0900000-0000-4000-8000-000000000002',true);
+do $$ begin
+ assert (public.claim_tester_membership()).founder_granted_at is not null, 'participant cannot read award';
+end $$;
+reset role;
+select 'first visit and Founder grant checks passed' as result;
 rollback;

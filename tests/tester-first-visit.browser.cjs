@@ -23,7 +23,7 @@ async function run(browser, width) {
   else if(name==="get_tester_first_visit") data={status:active?"active":"pending",display_name:"Tester"};
   else if(name==="printers") data=printers;
   else if(name==="app_admins") data=null;
-  else if(name==="claim_tester_membership") data=active?{id:"member",activated_at:"2026-09-08"}:null;
+  else if(name==="claim_tester_membership") data=active?{id:"member",activated_at:"2026-09-08",founder_granted_at:null}:null;
   else if(name==="complete_tester_first_visit") {
    calls++;
    const answers=req.postDataJSON().p_answers;
@@ -61,7 +61,7 @@ async function run(browser, width) {
   await page.getByRole("button",{name:"Agregar otra impresora"}).click();
   await page.getByLabel("Nombre o apodo").last().fill(name);
  }
- await page.getByLabel("Entiendo el alcance personal").check();
+ await page.getByLabel("Entiendo que estoy activando mi acceso al piloto de 14 días.").check();
  const panel=page.getByRole("dialog");
  const size=await panel.evaluate(e=>({w:e.clientWidth,s:e.scrollWidth,right:e.getBoundingClientRect().right,viewport:innerWidth}));
  assert.ok(size.s<=size.w+1&&size.right<=size.viewport+1,JSON.stringify(size));
@@ -76,6 +76,8 @@ async function run(browser, width) {
  await page.getByRole("dialog").waitFor({state:"hidden"});
  assert.equal(calls,2); assert.equal(printers.length,2);
  await page.getByRole("button",{name:/Perfil.*tester@example/}).click();
+ await page.getByRole("heading",{name:"Piloto activo",exact:true}).waitFor();
+ assert.equal(await page.getByText("Gratis de por vida · sin vencimiento",{exact:true}).count(),0);
  await page.getByRole("button",{name:/Mis impresoras Equipo/}).click();
  await page.getByRole("heading",{name:"Mis impresoras",exact:true}).first().waitFor();
  const cards=page.locator(".profile-panel .printer-card");
