@@ -41,7 +41,7 @@ async function run(browser, { admin, width, configured = false, uncertainWelcome
     else if (name === 'user_profiles') result = { user_id: userId, display_name: 'Tester', base_currency: 'CRC', membership_status: 'early_access' };
     else if (name === 'app_admins') result = admin ? { user_id: userId } : null;
     else if (name === 'get_tester_first_visit') result = { status: 'active' };
-    else if (name === 'claim_tester_membership') result = { id: 'active-member', email: user.email, user_id: userId, activated_at: new Date().toISOString(), plan_code: 'founder_personal_v1' };
+    else if (name === 'claim_tester_membership') result = { id: 'active-member', email: user.email, user_id: userId, activated_at: new Date().toISOString(), plan_code: 'founder_personal_v1', founder_granted_at: new Date().toISOString() };
     else if (name === 'tester_memberships') result = members;
     else if (name === 'tester_welcome_deliveries') result = deliveries;
     else if (name === 'reserve_tester_invitation') {

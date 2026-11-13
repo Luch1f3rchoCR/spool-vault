@@ -1,10 +1,23 @@
 export const FOUNDER_SCOPE = "Acceso personal gratuito de por vida a las funciones de inventario, compras, pesajes, etiquetas y proyectos de esta versión. Sin cobros recurrentes. Vinculado a tu cuenta.";
 export const FOUNDER_EXCLUSIONS = "Los servicios externos y futuros planes adicionales no están incluidos.";
 export const APP_URL = "https://properformakers.com/";
-export const WELCOME_SUBJECT = "Bienvenido a Proper · Probador fundador";
+export const SUPPORT_EMAIL = "hola@properformakers.com";
+export const WELCOME_SUBJECT = "Te invitamos al piloto de Proper";
+
+function welcomeCopy(name: string, email: string) {
+  return {
+    greeting: name ? `Hola, ${name}:` : "Hola:",
+    intro: "Proper te ayuda a organizar los materiales, las compras y los proyectos de tu taller de impresión 3D.",
+    reason: "Te invitamos a un piloto privado de 14 días para conocer cómo usás Proper en tu taller y qué podemos mejorar.",
+    next: `Entrá con ${email}. Te enviaremos un enlace seguro y, en tu primer ingreso, vas a completar un breve cuestionario para activar tu acceso al piloto.`,
+    feedback: "Durante la prueba, contanos qué te sirvió, qué te confundió o qué falló. Podés hacerlo desde Tu espacio → Compartir una idea o respondiendo este correo."
+  };
+}
 
 export function welcomeText(name: string, email: string) {
-  return `Hola, ${name || "probador fundador"}:\n\nTe damos la bienvenida al grupo de pruebas de Proper.\n\nTu licencia: Probador fundador · gratis de por vida.\n${FOUNDER_SCOPE}\n${FOUNDER_EXCLUSIONS}\n\nEntrá a ${APP_URL} e iniciá sesión con ${email}. Recibirás un enlace seguro para verificar tu correo. Al ingresar por primera vez, completá un breve formulario sobre tu experiencia, uso e impresoras y activá tu acceso de probador. Después podrás administrar tus máquinas desde Perfil > Mis impresoras.\n\nNos gustaría que probés la app con tus filamentos y nos contés qué falla, qué resulta confuso y qué ideas tenés. Podés enviar tus aportes desde Tu espacio > Compartir una idea.\n\nGracias por ayudarnos a mejorar Proper.\nEl equipo de Proper`;
+  const copy = welcomeCopy(name, email);
+  return [copy.greeting, copy.intro, copy.reason, copy.next, `Entrar a Proper: ${APP_URL}`,
+    copy.feedback, `¿Necesitás ayuda? Escribinos a ${SUPPORT_EMAIL}.`, "El equipo de Proper"].join("\n\n");
 }
 
 function escapeHtml(value: string) {
@@ -12,12 +25,38 @@ function escapeHtml(value: string) {
 }
 
 export function welcomePayload(name: string, email: string, from: string) {
-  const text = welcomeText(name, email);
-  const paragraphs = text.split("\n\n").map((paragraph) => `<p style="line-height:1.6;margin:0 0 18px">${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("");
+  const copy = welcomeCopy(name, email);
+  const paragraph = (text: string) => `<p style="margin:0 0 16px;font-size:16px;line-height:1.55">${escapeHtml(text)}</p>`;
   return {
-    from, to: [email], subject: WELCOME_SUBJECT,
-    text,
-    html: `<!doctype html><html lang="es"><body style="margin:0;background:#f4f6f5;color:#172b24;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;padding:32px 24px;background:white"><h1 style="font-size:28px;margin:0 0 24px">Proper</h1>${paragraphs}<a href="${APP_URL}" style="display:inline-block;padding:14px 20px;background:#20684d;color:white;text-decoration:none;border-radius:6px">Entrar a Proper</a><p style="font-size:12px;color:#64736b;margin-top:28px">Proper by Stone Collective</p></main></body></html>`
+    from, to: [email], reply_to: SUPPORT_EMAIL, subject: WELCOME_SUBJECT,
+    text: welcomeText(name, email),
+    html: `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>${WELCOME_SUBJECT}</title>
+  <style>@media(prefers-color-scheme:dark){.canvas{background:#192C24!important}.paper{background:#243A30!important}.ink,.support{color:#FFFFFF!important}.muted{color:#E8EFE5!important}}</style>
+</head>
+<body class="canvas" bgcolor="#F8F4EB" style="margin:0;background:#F8F4EB;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="canvas" bgcolor="#F8F4EB">
+    <tr><td align="center" style="padding:32px 16px">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="paper" bgcolor="#FFFFFF" style="max-width:552px;border-radius:16px">
+        <tr><td class="ink" style="padding:32px 24px;color:#192C24;overflow-wrap:anywhere">
+          <p class="ink" style="margin:0 0 24px;font-size:30px;font-weight:800;letter-spacing:-1.2px">Proper<span style="color:#C76F56">.</span></p>
+          <h1 style="margin:0 0 16px;font-size:26px;line-height:1.2">Te invitamos al piloto</h1>
+          ${[copy.greeting, copy.intro, copy.reason, copy.next].map(paragraph).join("")}
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#23634B" style="border-radius:8px">
+            <a href="${APP_URL}" style="display:inline-block;background:#23634B;border:1px solid #23634B;border-radius:8px;color:#FFFFFF;font-size:16px;font-weight:bold;line-height:22px;padding:13px 20px;text-decoration:none">Entrar a Proper</a>
+          </td></tr></table>
+          <div style="padding-top:24px">${paragraph(copy.feedback)}</div>
+          <p class="muted" style="margin:16px 0 0;color:#58695E;font-size:14px;line-height:1.55">¿Necesitás ayuda? Escribinos a <a class="support" href="mailto:${SUPPORT_EMAIL}" style="color:#23634B">${SUPPORT_EMAIL}</a>.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
   };
 }
 

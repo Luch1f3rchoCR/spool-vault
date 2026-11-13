@@ -7,28 +7,33 @@ const vm = require('node:vm');
 const { transform, loadBindings } = require('next/dist/build/swc');
 const helpers = import(pathToFileURL(path.resolve('lib/tester-welcome.ts')).href);
 
-test('new welcomes use the approved brand without renaming technical addresses', async () => {
-  const { welcomePayload, welcomeText, WELCOME_SUBJECT, APP_URL, FOUNDER_SCOPE, FOUNDER_EXCLUSIONS } = await helpers;
-  const brand = JSON.parse(fs.readFileSync('app/brand/proper-brand-tokens.json', 'utf8'));
-  const from = 'Spool Vault <hola@example.invalid>';
+test('new welcomes explain the pilot and use the approved Proper identity', async () => {
+  const { welcomePayload, welcomeText, WELCOME_SUBJECT, APP_URL, SUPPORT_EMAIL } = await helpers;
+  const from = 'Proper <hola@example.invalid>';
   const mail = welcomePayload('Lucho', 'person@example.invalid', from);
-  assert.equal(WELCOME_SUBJECT, `Bienvenido a ${brand.name} · Probador fundador`);
+  assert.equal(WELCOME_SUBJECT, 'Te invitamos al piloto de Proper');
   assert.equal(mail.subject, WELCOME_SUBJECT);
   assert.equal(mail.text, welcomeText('Lucho', 'person@example.invalid'));
-  assert.ok(mail.text.includes(`grupo de pruebas de ${brand.name}.`));
-  assert.ok(mail.text.endsWith(`El equipo de ${brand.name}`));
-  assert.ok(mail.html.includes(`>${brand.name}</h1>`));
-  assert.ok(mail.html.includes(`>Entrar a ${brand.name}</a>`));
-  assert.ok(mail.html.includes(`${brand.name} ${brand.copy.endorsement}`));
   for (const content of [mail.text, mail.html]) {
-    assert.ok(!content.includes('Spool Vault'));
-    assert.ok(content.includes(FOUNDER_SCOPE));
-    assert.ok(content.includes(FOUNDER_EXCLUSIONS));
+    assert.match(content, /piloto privado de 14 días/);
+    assert.match(content, /cuestionario/);
+    assert.match(content, /Compartir una idea/);
+    assert.doesNotMatch(content, /Spool Vault|gratis de por vida/);
   }
   assert.equal(APP_URL, 'https://properformakers.com/');
   assert.ok(mail.html.includes(`href="${APP_URL}"`));
+  assert.equal(mail.reply_to, SUPPORT_EMAIL);
   assert.equal(mail.from, from);
-  assert.match(welcomeText('', 'person@example.invalid'), /^Hola, probador fundador:/);
+  assert.match(welcomeText('', 'person@example.invalid'), /^Hola:/);
+});
+
+test('auth template keeps the provider link and works without images', () => {
+  const html = fs.readFileSync('supabase/templates/proper-access.html', 'utf8');
+  assert.match(html, /href="\{\{ \.ConfirmationURL \}\}"/);
+  assert.match(html, />Entrar a Proper<\/a>/);
+  assert.match(html, /una sola vez y caduca/);
+  assert.match(html, /Si no solicitaste el acceso/);
+  assert.doesNotMatch(html, /<img|Spool Vault|Supabase/);
 });
 
 test('manual welcome uses the same subject and text as automatic delivery', async () => {
@@ -39,13 +44,13 @@ test('manual welcome uses the same subject and text as automatic delivery', asyn
   assert.ok(!source.includes('Bienvenido a Spool Vault'));
 });
 
-test('welcome escapes recipient text and describes the account-bound license', async () => {
+test('welcome escapes recipient text without exposing administrative notes', async () => {
   const { welcomePayload } = await helpers;
   const mail = welcomePayload('<img src=x onerror=alert(1)>', 'person@example.invalid', 'Spool Vault <hola@example.invalid>');
   assert.ok(!mail.html.includes('<img'));
   assert.ok(mail.html.includes('&lt;img'));
   assert.deepEqual(mail.to, ['person@example.invalid']);
-  assert.match(mail.text, /gratis de por vida/);
+  assert.doesNotMatch(mail.text, /gratis de por vida/);
   assert.match(mail.text, /https:\/\/properformakers\.com\//);
 });
 
