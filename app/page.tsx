@@ -8,6 +8,7 @@ import {
   Camera,
   Check,
   Filter,
+  History,
   LinkIcon,
   LogIn,
   Nfc,
@@ -180,6 +181,51 @@ type PurchaseView = {
   latestCorrection: PurchaseCorrection | null;
   correctionCount: number;
 };
+function filamentPurchaseKey(filament: Pick<PurchaseRecord, "brand" | "material" | "product_line" | "color_name">) {
+  return JSON.stringify([filament.brand, filament.material, filament.product_line, filament.color_name]
+    .map((value) => (value ?? "").normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase()));
+}
+
+function PurchasePriceHistory({ views, currentRollId, onCorrect }: {
+  views: PurchaseView[];
+  currentRollId?: string;
+  onCorrect?: (id: string) => void;
+}) {
+  return (
+    <div className="history-list">
+      {views.map(({ original, effective, latestCorrection, correctionCount }) => (
+        <article key={original.id} className={latestCorrection ? "corrected" : ""}>
+          <span className="mini-swatch" style={{ backgroundColor: original.color_hex }} />
+          <div className="history-copy">
+            <strong>{effective.brand} · {effective.product_line} · {effective.color_name}</strong>
+            <span>{effective.supplier_name} · {effective.purchased_at} · {effective.package_type === "spooled" ? "Con spool" : "Refill"}</span>
+            {currentRollId && <span>{Number(effective.quantity_g).toLocaleString("es-CR")} g{original.roll_id === currentRollId ? " · Este rollo" : ""}</span>}
+            {latestCorrection && (
+              <small className="correction-badge" title={latestCorrection.reason}>
+                Corregida · {correctionCount} revisión{correctionCount === 1 ? "" : "es"}
+              </small>
+            )}
+          </div>
+          <div className="history-actions">
+            <div className="history-price">
+              <strong>{effective.currency} {Number(effective.total_price).toLocaleString("es-CR")}</strong>
+              {Number(effective.quantity_g) > 0 && (
+                <span>{effective.currency} {(Number(effective.filament_cost) / Number(effective.quantity_g)).toLocaleString("es-CR")} / g</span>
+              )}
+            </div>
+            {onCorrect && (
+              <button type="button" onClick={() => onCorrect(original.id)}>
+                <Pencil size={15} aria-hidden="true" />
+                Corregir
+              </button>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 type WeightInput = {
   kind: "scale" | "manual";
   grossWeight: number | null;
@@ -744,6 +790,7 @@ export default function Home() {
   const [editingRollId, setEditingRollId] = useState("");
   const [printProfileRollId, setPrintProfileRollId] = useState("");
   const [correctingPurchaseId, setCorrectingPurchaseId] = useState("");
+  const [purchaseHistoryRollId, setPurchaseHistoryRollId] = useState("");
   const [missingPurchaseRollId, setMissingPurchaseRollId] = useState("");
   const [showSpools, setShowSpools] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -1273,6 +1320,14 @@ export default function Home() {
   const correctingPurchase = purchaseViews.find((view) => view.original.id === correctingPurchaseId);
   const missingPurchaseRoll = rolls.find((roll) => roll.id === missingPurchaseRollId);
   const selectedRollPurchase = purchaseViews.find((view) => view.original.roll_id === selectedRoll?.id);
+  const purchaseHistoryRoll = rolls.find((roll) => roll.id === purchaseHistoryRollId);
+  const filamentPurchaseViews = useMemo(() => {
+    if (!purchaseHistoryRoll) return [];
+    const filamentKey = filamentPurchaseKey(purchaseHistoryRoll);
+    return purchaseViews
+      .filter(({ original }) => original.roll_id === purchaseHistoryRoll.id || filamentPurchaseKey(original) === filamentKey)
+      .sort((a, b) => b.effective.purchased_at.localeCompare(a.effective.purchased_at));
+  }, [purchaseHistoryRoll, purchaseViews]);
   const selectedSpool = spools.find((spool) => spool.id === selectedRoll?.spool_id);
   const weighingCountByRoll = useMemo(() => {
     const counts = new Map<string, number>();
@@ -4157,6 +4212,24 @@ export default function Home() {
         />
       )}
 
+      {purchaseHistoryRoll && (
+        <ModalFrame
+          title="Compras anteriores"
+          titleId="filament-purchase-history-title"
+          eyebrow="Inventario"
+          onClose={() => setPurchaseHistoryRollId("")}
+        >
+          <p className="form-help">
+            {purchaseHistoryRoll.brand} · {purchaseHistoryRoll.material} · {purchaseHistoryRoll.product_line || "Sin línea"} · {purchaseHistoryRoll.color_name}
+          </p>
+          {filamentPurchaseViews.length ? (
+            <PurchasePriceHistory views={filamentPurchaseViews} currentRollId={purchaseHistoryRoll.id} />
+          ) : (
+            <p className="empty-state">Todavía no hay compras registradas para este filamento.</p>
+          )}
+        </ModalFrame>
+      )}
+
       {correctingPurchase && (
         <PurchaseCorrectionModal
           originalPurchase={correctingPurchase.original}
@@ -4605,6 +4678,10 @@ export default function Home() {
                 <SlidersHorizontal size={16} aria-hidden="true" />
                 <span>Perfiles de impresión</span>
               </button>
+              <button className="secondary-action" type="button" onClick={() => setPurchaseHistoryRollId(selectedRoll.id)}>
+                <History size={16} aria-hidden="true" />
+                <span>Compras anteriores</span>
+              </button>
               {selectedRollPurchase ? (
                 <button
                   className="secondary-action"
@@ -4963,32 +5040,7 @@ export default function Home() {
           <span>{purchaseViews.length} registros</span>
         </div>
         {purchaseViews.length ? (
-          <div className="history-list">
-            {purchaseViews.map(({ original, effective, latestCorrection, correctionCount }) => (
-              <article key={original.id} className={latestCorrection ? "corrected" : ""}>
-                <span className="mini-swatch" style={{ backgroundColor: original.color_hex }} />
-                <div className="history-copy">
-                  <strong>{effective.brand} · {effective.product_line} · {effective.color_name}</strong>
-                  <span>{effective.supplier_name} · {effective.purchased_at} · {effective.package_type === "spooled" ? "Con spool" : "Refill"}</span>
-                  {latestCorrection && (
-                    <small className="correction-badge" title={latestCorrection.reason}>
-                      Corregida · {correctionCount} revisión{correctionCount === 1 ? "" : "es"}
-                    </small>
-                  )}
-                </div>
-                <div className="history-actions">
-                  <div className="history-price">
-                    <strong>{effective.currency} {Number(effective.total_price).toLocaleString("es-CR")}</strong>
-                    <span>{effective.currency} {(Number(effective.filament_cost) / Number(effective.quantity_g)).toLocaleString("es-CR")} / g</span>
-                  </div>
-                  <button type="button" onClick={() => setCorrectingPurchaseId(original.id)}>
-                    <Pencil size={15} aria-hidden="true" />
-                    Corregir
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
+          <PurchasePriceHistory views={purchaseViews} onCorrect={setCorrectingPurchaseId} />
         ) : (
           <p className="empty-state">Las próximas compras aparecerán acá sin reemplazar precios anteriores.</p>
         )}
