@@ -246,6 +246,7 @@ const lineOptionsByMaterial: Record<string, string[]> = {
     "PLA Silk Multicolor",
     "PLA Sparkle",
     "PLA Marble",
+    "PLA Metal",
     "PLA Glow",
     "PLA Tough+",
     "PLA Translucent",
