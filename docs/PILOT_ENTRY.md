@@ -4,7 +4,7 @@
 
 Founder HQ recibió de Clientes & Piloto evidencia de un onboarding real completado. El 10 de noviembre se verificó en producción, mediante una consulta agregada con fecha local de Costa Rica, que hubo un registro de primer ingreso completado, una membresía activa, un correo confirmado y una bienvenida aceptada por el proveedor para esa misma cuenta. La aceptación del proveedor no acredita ubicación en la bandeja. Se omiten datos de la cuenta. La evidencia es histórica y la prueba en el dominio definitivo se registra por separado.
 
-Print Izards tiene CONDITIONAL GO para contacto humano inmediato y NO-GO temporal para invitación formal mientras se cierran los P0.
+Print Izards tiene CONDITIONAL GO para contacto humano inmediato y NO-GO temporal para invitación formal mientras Founder HQ y Clientes & Piloto resuelven Founder Personal.
 
 ## Dominio y prueba controlada
 
@@ -21,7 +21,13 @@ Print Izards tiene CONDITIONAL GO para contacto humano inmediato y NO-GO tempora
 | Cuestionario y activación | El formulario apareció en el primer ingreso. Se guardó y la app mostró el acceso activo. Supabase confirmó correo verificado, cuestionario completado, membresía activa y bienvenida aceptada. |
 | Logout, promoción de Site URL y reingreso, desde las 6:23 a. m. | El cierre devolvió a la vista pública. Tras guardar y comprobar el nuevo Site URL, llegó un segundo correo con el enlace de acceso. Volvió al dominio oficial con la cuenta autenticada y sin repetir el cuestionario. |
 
-**E2E PASS** para acceso y activación. El PR #86 lleva el botón y el enlace de futuras bienvenidas al dominio oficial. Queda pendiente desplegarlo y comprobar un correo generado por esa versión. El cambio de Site URL ya está aplicado. Print Izards permanece en NO-GO para invitación formal hasta que Founder HQ y Clientes & Piloto resuelvan Founder Personal y se verifique la bienvenida en el dominio final. No se contactó al candidato desde Desarrollo.
+**E2E PASS** para acceso y activación. Supabase usa el dominio oficial como Site URL.
+
+### Bienvenida en producción · 11 de noviembre de 2026 (Costa Rica)
+
+A las 11:16 a. m., una bienvenida generada por el despliegue de producción del PR #86 (commit `42a810d`, Vercel `dpl_7JfnSvLU9CDcMwPKw6bJrQkVb28y`) llegó a Recibidos de Gmail como `Proper <hello@stonecollective.dev>`. El enlace en el texto y el botón «Entrar a Proper» apuntaban a `https://properformakers.com/`. Al pulsar el botón, Proper cargó en ese dominio.
+
+El alias autorizado para esta comprobación quedó como invitación interna pendiente. El acceso, cuestionario y reingreso se validaron con la cuenta nueva de la prueba anterior. No se contactó al candidato desde Desarrollo.
 
 ## Founder Personal · decisión pendiente de HQ y 02
 
