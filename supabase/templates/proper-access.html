@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>Tu enlace para entrar a Proper</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .canvas { background: #192C24 !important; }
+      .paper { background: #243A30 !important; }
+      .ink, .support { color: #FFFFFF !important; }
+      .muted { color: #E8EFE5 !important; }
+    }
+  </style>
+</head>
+<body class="canvas" bgcolor="#F8F4EB" style="margin:0;background:#F8F4EB;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="canvas" bgcolor="#F8F4EB">
+    <tr><td align="center" style="padding:32px 16px">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="paper" bgcolor="#FFFFFF" style="max-width:552px;border-radius:16px">
+        <tr><td style="padding:32px 24px;color:#192C24" class="ink">
+          <p class="ink" style="margin:0 0 24px;color:#192C24;font-size:30px;font-weight:800;letter-spacing:-1.2px">Proper<span style="color:#C76F56">.</span></p>
+          <h1 class="ink" style="margin:0 0 12px;color:#192C24;font-size:26px;line-height:1.2">Tu enlace de acceso</h1>
+          <p class="ink" style="margin:0 0 24px;color:#192C24;font-size:16px;line-height:1.55">Se solicitó iniciar sesión en Proper con este correo. Usá el botón para entrar a tu taller.</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#23634B" style="border-radius:8px">
+            <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#23634B;border:1px solid #23634B;border-radius:8px;color:#FFFFFF;font-size:16px;font-weight:bold;line-height:22px;padding:13px 20px;text-decoration:none">Entrar a Proper</a>
+          </td></tr></table>
+          <p class="muted" style="margin:20px 0 0;color:#58695E;font-size:14px;line-height:1.55">El enlace es personal, se usa una sola vez y caduca. Si vence, podés pedir otro desde Proper.</p>
+          <p class="muted" style="margin:16px 0 0;color:#58695E;font-size:14px;line-height:1.55">Si no solicitaste el acceso, podés ignorar este correo.</p>
+          <p class="muted" style="margin:24px 0 0;color:#58695E;font-size:14px;line-height:1.55">¿Necesitás ayuda? Escribinos a <a class="support" href="mailto:hola@properformakers.com" style="color:#23634B">hola@properformakers.com</a>.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

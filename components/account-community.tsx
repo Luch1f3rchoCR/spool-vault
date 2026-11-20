@@ -10,7 +10,7 @@ import type { ProfileView } from "@/components/profile-panel";
 type Membership = {
   id: string; email: string; display_name: string; user_id: string | null;
   plan_code: string; terms_version: string; granted_at: string;
-  activated_at: string | null; cancelled_at: string | null;
+  activated_at: string | null; founder_granted_at: string | null; cancelled_at: string | null;
   country?: string; printers?: string; platform?: string; experience?: string; testing_focus?: string;
 };
 type Delivery = { membership_id: string; status: "pending" | "sending" | "accepted" | "uncertain" | "review_required"; first_attempt_at: string | null; accepted_at: string | null };
@@ -236,10 +236,10 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
     <div className="membership-card" hidden={view !== "home"}>
       <div className="membership-copy"><span className="membership-icon"><CreditCard size={20} aria-hidden="true" /></span><div>
         <p className="eyebrow">{t("account.license")}</p>
-        <h3>{loading ? t("account.loading") : membership?.activated_at ? t("account.founder") : t("account.early")}</h3>
-        <p>{membership?.activated_at ? t("account.lifetime") : connected ? t("account.personal") : t("account.local")}</p>
+        <h3>{loading ? t("account.loading") : membership?.founder_granted_at ? t("account.founder") : membership?.activated_at ? t("account.pilot") : t("account.early")}</h3>
+        <p>{membership?.founder_granted_at ? t("account.lifetime") : membership?.activated_at ? t("account.pilotHelp") : connected ? t("account.personal") : t("account.local")}</p>
       </div></div>
-      {membership?.activated_at && <details className="membership-terms"><summary>{t("account.terms")}</summary>{language === "en" && <p>{t("account.termsLanguage")}</p>}<p lang="es">{founderScope}</p><p lang="es">Beneficio founder-v1. Los servicios externos y futuros planes adicionales no están incluidos.</p></details>}
+      {membership?.founder_granted_at && <details className="membership-terms"><summary>{t("account.terms")}</summary>{language === "en" && <p>{t("account.termsLanguage")}</p>}<p lang="es">{founderScope}</p><p lang="es">Beneficio founder-v1. Los servicios externos y futuros planes adicionales no están incluidos.</p></details>}
     </div>
     {error && <div ref={errorRef} tabIndex={-1} role="alert" className="account-error"><p>{showMessage(error)}</p><button type="button" onClick={() => void load()} disabled={busy || loading}><RefreshCw size={16} /> {t("account.retry")}</button></div>}
     {notice && <p role="status" className="account-notice">{showMessage(notice)}</p>}
@@ -276,7 +276,7 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
     {view === "admin" && admin && <section className="account-section" aria-label={t("profile.admin")}>
       <p className="eyebrow">{t("admin.onlyAdmin")}</p>
       <h3>{t("admin.addTester")}</h3>
-      {language === "en" && <p className="form-help">{t("account.termsLanguage")}</p>}<p lang="es">{founderScope}</p>
+      <p>{t("account.pilotHelp")}</p>
       {!mailConfigured && <p className="account-notice">{t("admin.automaticPending")}</p>}
       <form onSubmit={reserve}><fieldset disabled={busy || loading}>
         <label>{t("name")}<input required minLength={2} maxLength={120} value={inviteName} onChange={(event) => { setInviteName(event.target.value); setInviteReady(false); }} /></label>
@@ -300,7 +300,7 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
         aria-label={t("admin.invitationLabel", { name: member.display_name || member.email })}>
         {inviteResult?.id === member.id && <p role="status" className="account-notice">{showMessage(inviteResult.message)}</p>}
         <strong>{member.display_name || member.email}</strong><span>{member.email}</span>
-        <small>{member.cancelled_at ? t("admin.cancelled") : member.activated_at ? t("admin.active") : t("admin.pendingActivation")}</small>
+        <small>{member.cancelled_at ? t("admin.cancelled") : member.founder_granted_at ? t("admin.active") : member.activated_at ? t("account.pilot") : t("admin.pendingActivation")}</small>
         <small>{[member.country, member.printers].filter(Boolean).join(" · ")}</small>
         {member.testing_focus && <p>{t("admin.previousFocus", { focus: member.testing_focus })}</p>}
         {inviteNotes.filter((note) => note.membership_id === member.id).map((note) => <div key={note.membership_id}><p><strong>{t("admin.reason")}</strong> {note.reason}</p>{note.expected_focus && <p><strong>{t("admin.expectedTests")}</strong> {note.expected_focus}</p>}</div>)}
@@ -319,6 +319,18 @@ export function AccountCommunity({ language = "es", userId, mode, localData, onB
             setNotice(null); setInviteResult({ id: member.id, message });
           })}><Send size={16} />{t("admin.sendWelcome")}</button>}
         </>}
+        {member.activated_at && !member.founder_granted_at && !member.cancelled_at
+          && Date.now() - Date.parse(member.activated_at) >= 14 * 24 * 60 * 60 * 1000 && (
+            <button type="button" disabled={busy} onClick={() => {
+              if (!window.confirm(t("admin.confirmFounderGrant"))) return;
+              void perform(async () => {
+                const { data, error } = await getSupabaseClient()!.rpc("grant_tester_founder_personal", { p_id: member.id });
+                if (error || typeof data !== "string") throw error || new Error("missing confirmation");
+                setMembers((current) => current.map((entry) => entry.id === member.id ? { ...entry, founder_granted_at: data } : entry));
+                setNotice({ key: "admin.founderGranted" });
+              });
+            }}>{t("admin.grantFounder")}</button>
+          )}
         {!member.activated_at && !member.cancelled_at && !deliveries.find((delivery) => delivery.membership_id === member.id)?.first_attempt_at && <button type="button" disabled={busy} title={t("admin.cancelPendingTitle")} onClick={() => void perform(async () => {
           const { error: cancelError } = await getSupabaseClient()!.rpc("cancel_tester_invitation", { p_id: member.id });
           if (cancelError) throw cancelError;

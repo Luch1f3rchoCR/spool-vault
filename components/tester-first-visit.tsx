@@ -5,7 +5,6 @@ import { Plus, Trash2 } from "lucide-react";
 import { ModalFrame } from "@/components/modal-frame";
 import { ProperSignature } from "@/components/proper-brand";
 import { getSupabaseClient } from "@/lib/supabase";
-import { FOUNDER_SCOPE } from "@/lib/tester-welcome";
 import { defaultLanguage, translate, type AppLanguage, type MessageKey } from "@/lib/i18n";
 import type { PrinterProfile } from "@/lib/types";
 
@@ -115,8 +114,7 @@ export function TesterFirstVisit({ language = defaultLanguage, userId, onComplet
         </div>)}
         <button type="button" disabled={printers.length >= 20} onClick={() => setPrinters((rows) => [...rows, emptyPrinter()])}><Plus size={17} />{t("firstVisit.addPrinter")}</button>
         <p className="form-help">{t("firstVisit.answersHelp")}</p>
-        {language === "en" && <p className="form-help">{t("account.termsLanguage")}</p>}
-        <p className="form-help" lang="es">{FOUNDER_SCOPE}</p>
+        <p className="form-help">{t("account.pilotHelp")}</p>
         <label className="account-checkbox"><input required type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />{t("firstVisit.acceptScope")}</label>
         <button className="primary-action" type="submit" disabled={!accepted}>{busy ? t("firstVisit.activating") : t("firstVisit.activate")}</button>
         <button type="button" onClick={onSignOut}>{t("firstVisit.leave")}</button>

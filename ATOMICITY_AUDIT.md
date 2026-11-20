@@ -180,6 +180,8 @@ Mensajes recomendados:
 
 ## Licencias y bienvenida de probadores
 
+- La migración de entrada al piloto separa activación de otorgamiento. El administrador confirma Founder Personal mediante un RPC que verifica rol, aplica el mínimo de 14 días, bloquea la membresía y devuelve el otorgamiento existente en reintentos. Ver [impacto y secuencia](docs/PILOT_ENTRY_IMPLEMENTATION.md).
+
 - `reserve_tester_details` guarda licencia y registro de bienvenida en una transacción. El correo normalizado es único; un reintento recupera el registro original.
 - La licencia se activa únicamente con el correo actual confirmado de `auth.users`; `user_metadata` y el campo editable `user_profiles.membership_status` no autorizan beneficios ni administración.
 - El envío externo ocurre después del commit. Nunca se informa una reserva como correo entregado.

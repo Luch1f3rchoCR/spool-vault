@@ -15,6 +15,7 @@ Los porcentajes cuentan hitos del alcance indicado, con el mismo peso por hito. 
 - [x] Invitaciones privadas, primer ingreso, perfil y feedback disponibles.
 - [ ] Repetir el recorrido de invitación, correo, acceso, cuestionario, perfil y reingreso en el dominio definitivo. Producción confirma un onboarding completo histórico del 6 de octubre de 2026.
 - [ ] Cerrar el criterio de piloto completado y alinear el momento de otorgar Founder Personal. Luego, ampliar a la cohorte de 8 activos y 2 suplentes.
+- [ ] Publicar la experiencia de correo y la separación de acceso/otorgamiento. Completar la prueba final antes de la invitación formal. Ver [cierre técnico](docs/PILOT_ENTRY_IMPLEMENTATION.md).
 
 ### Cotizaciones V1 para WhatsApp · 5/6 (83%) en desarrollo
 

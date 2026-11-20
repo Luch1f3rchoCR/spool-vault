@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     const auth = await administrator(request);
     if (auth.response) return auth.response;
     const config = mailConfig();
-    if (!config.apiKey || !config.from || !config.secret) return respond({ error: "El correo de bienvenida aún no está configurado. La licencia permanece guardada." }, 503);
+    if (!config.apiKey || !config.from || !config.secret) return respond({ error: "El correo de bienvenida aún no está configurado. La invitación permanece guardada." }, 503);
     if (Number(request.headers.get("content-length")) > 1024) return respond({ error: "Solicitud demasiado grande." }, 413);
     const rawBody = await request.text();
     if (rawBody.length > 1024) return respond({ error: "Solicitud demasiado grande." }, 413);
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     if (member.error) return respond({ error: "No pudimos consultar la invitación." }, 503);
     if (!member.data || member.data.cancelled_at) return respond({ error: "La invitación no existe o fue cancelada." }, 409);
     const prepared = await service.rpc("prepare_tester_welcome", { p_id: member.data.id, p_payload: welcomePayload(member.data.display_name, member.data.email, config.from) });
-    if (prepared.error || !prepared.data) return respond({ error: "No pudimos preparar el correo. La licencia permanece guardada." }, 503);
+    if (prepared.error || !prepared.data) return respond({ error: "No pudimos preparar el correo. La invitación permanece guardada." }, 503);
     const delivery = prepared.data;
     if (delivery.status === "accepted") return respond({ status: "accepted", already_sent: true });
     if (!canRetryWelcome(delivery.first_attempt_at)) {
